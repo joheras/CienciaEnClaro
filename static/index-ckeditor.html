@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>CKEditor con comentarios y layout fijo</title>
+  <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+
+    /* Grid de tres columnas */
+    .container {
+      display: grid;
+      grid-template-columns: 250px 1fr 250px; /* izquierda fija, centro flexible, derecha fija */
+      height: 100vh;
+      gap: 10px;
+    }
+
+    .panel {
+      border: 1px solid #ccc;
+      padding: 10px;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    .left { background: #f7f7f7; }
+    .center { background: #fff; }
+    .right { background: #f7f7f7; }
+
+    .highlight {
+      background-color: yellow !important;
+      border-radius: 3px;
+      padding: 0 2px;
+    }
+
+    .comment-item {
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 8px;
+      padding-bottom: 5px;
+      cursor: pointer;
+    }
+
+    .comment-item:hover {
+      background: #eee;
+    }
+
+    button {
+      margin-bottom: 10px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Panel izquierdo: botones -->
+    <div class="panel left">
+      <button id="addCommentBtn">Añadir comentario</button>
+      <button id="analyzeBtn">Analizar texto</button>
+      <button id="prependBtn">Añadir "Hola desde FastAPI"</button>
+      <button id="addCommentFirst10Btn">Comentar primeras 10 letras</button>
+      <button id="addCommentFastAPI">Comentario FastAPI</button>
+      <div id="result"></div>
+    </div>
+
+    <!-- Panel central: CKEditor -->
+    <div class="panel center">
+      <div id="editor"></div>
+    </div>
+
+    <!-- Panel derecho: comentarios -->
+    <div class="panel right" id="commentsPanel">
+      <h3>Comentarios</h3>
+      <div id="commentsList"></div>
+    </div>
+  </div>
+
+  <script>
+    import { ClassicEditor, GeneralHtmlSupport } from 'ckeditor5';
+    let editor;
+    let comments = [];
+    let commentIdCounter = 1;
+
+    ClassicEditor
+      .create(document.querySelector('#editor'), { plugins: [GeneralHtmlSupport], extraPlugins: [ CommentMarker ], htmlSupport: {
+            allow: [
+                {index.html
+                    name: 'span',
+                    attributes: ['data-comment-id'],
+                    classes: true,
+                    styles: true
+                }
+            ]
+        } })
+      .then(newEditor => { editor = newEditor;
+        document.getElementById("addCommentBtn").onclick = addComment;
+        document.getElementById("analyzeBtn").onclick = analyzeText;
+        document.getElementById("prependBtn").onclick = prependHola;
+        document.getElementById("addCommentFirst10Btn").onclick = addCommentFirst10Letters;
+        document.getElementById("addCommentFastAPI").onclick = addCommentFirstLineFromFastAPI;
+      })
+      .catch(error => console.error(error));
+
+    function CommentMarker(editor) {
+      editor.conversion.for('downcast').attributeToElement({
+        model: 'commentId',
+        view: (id, { writer }) => writer.createAttributeElement('span', { 'data-comment-id': id }, { priority: 5 })
+      });
+    }
+
+    // Añadir comentario manual
+    function addComment() {
+      const selection = editor.model.document.selection;
+      const range = selection.getFirstRange();
+      if (!range || range.isCollapsed) { alert("Selecciona un texto para comentar."); return; }
+
+      const userComment = prompt("Escribe tu comentario:");
+      if (!userComment) return;
+
+      const id = "comment-" + commentIdCounter++;
+
+      editor.model.change(writer => { writer.setAttribute("commentId", id, range); });
+
+      comments.push({ id, text: userComment, description: "Comentario manual", suggestion: "Texto sugerido" });
+      renderComments();
+    }
+
+    // Añadir comentario a las primeras 10 letras
+    function addCommentFirst10Letters() {
+      if (!editor) return;
+      const text = editor.getData();
+      if (!text) { alert("El editor está vacío."); return; }
+
+      const comment_id = "comment-" + (commentIdCounter++);
+      const comment_text = "Comentario primeras 10 letras";
+
+      editor.model.change(writer => {
+        const root = editor.model.document.getRoot();
+        let firstParagraph;
+        if (root.childCount === 0) {
+          firstParagraph = writer.createElement("paragraph");
+          writer.insert(firstParagraph, root, 0);
+          writer.insertText(text, firstParagraph, 0);
+        } else { firstParagraph = root.getChild(0); }
+
+        const endIndex = Math.min(10, firstParagraph.maxOffset);
+        const start = writer.createPositionAt(firstParagraph, 0);
+        const end = writer.createPositionAt(firstParagraph, endIndex);
+        const range = writer.createRange(start, end);
+        writer.setAttribute("commentId", comment_id, range);
+
+        comments.push({
+          id: comment_id,
+          text: comment_text,
+          description: "Resalta las primeras 10 letras",
+          suggestion: "Sugerencia de reemplazo"
+        });
+      });
+      renderComments();
+    }
+
+    // Panel lateral
+    function renderComments() {
+      const panel = document.getElementById("commentsList");
+      panel.innerHTML = "";
+
+      comments.forEach((c, index) => {
+        const div = document.createElement("div");
+        div.className = "comment-item";
+
+        const title = document.createElement("div");
+        title.innerText = c.text;
+        title.style.fontWeight = "bold";
+        title.style.cursor = "pointer";
+
+        const desc = document.createElement("div");
+        desc.innerText = c.description || "Sin descripción adicional.";
+        desc.style.display = "none";
+        desc.style.fontSize = "0.9em";
+        desc.style.color = "#444";
+        desc.style.marginTop = "4px";
+
+        const btn = document.createElement("button");
+        btn.innerText = "Aceptar sugerencia";
+        btn.style.marginTop = "6px";
+        btn.style.display = "none";
+
+        btn.onclick = () => { applySuggestion(c.id, c.suggestion); comments.splice(index,1); renderComments(); };
+
+        title.onclick = () => {
+          highlightComment(c.id);
+          // Cerrar otros
+          document.querySelectorAll("#commentsList .comment-item div:nth-child(2)").forEach(d => d.style.display = "none");
+          document.querySelectorAll("#commentsList .comment-item button").forEach(b => b.style.display = "none");
+
+          // Mostrar este
+          desc.style.display = "block";
+          if (c.suggestion && c.suggestion.trim() !== "") btn.style.display = "inline-block";
+        };
+
+        div.appendChild(title);
+        div.appendChild(desc);
+        div.appendChild(btn);
+        panel.appendChild(div);
+      });
+    }
+
+    function highlightComment(id) {
+      clearHighlights();
+      document.querySelectorAll(`[data-comment-id="${id}"]`).forEach(span => span.classList.add("highlight"));
+      document.addEventListener("click", function handler(e) {
+        if (!e.target.closest("#commentsPanel")) {
+          clearHighlights();
+          document.querySelectorAll("#commentsList .comment-item div:nth-child(2)").forEach(d => d.style.display="none");
+          document.querySelectorAll("#commentsList .comment-item button").forEach(b=>b.style.display="none");
+          document.removeEventListener("click", handler);
+        }
+      });
+    }
+
+    function clearHighlights() { document.querySelectorAll(".highlight").forEach(span => span.classList.remove("highlight")); }
+
+    function applySuggestion(commentId, suggestion) {
+      if (!suggestion) return;
+
+      editor.model.change(writer => {
+        const root = editor.model.document.getRoot();
+        for (const item of editor.model.createRangeIn(root).getItems()) {
+          if (item.is('text') && item.hasAttribute('commentId') && item.getAttribute('commentId') === commentId) {
+            const insertPosition = writer.createPositionBefore(item);
+            writer.remove(writer.createRangeOn(item));
+            writer.insertText(suggestion, insertPosition);
+            break;
+          }
+        }
+      });
+    }
+
+    async function analyzeText() {
+      const text = editor.getData();
+      document.getElementById("result").innerText = "Resultado del análisis: (simulado) " + text.length + " caracteres";
+    }
+
+    async function prependHola() {
+      const text = editor.getData();
+      editor.setData("<span data-comment-id=\"0\">" + text+"</span>");
+      comments.push({ id: "0", text: "prueba" });
+      renderComments();
+
+    }
+
+    async function addCommentFirstLineFromFastAPI() {
+    const text = editor.getData();
+
+      const response = await fetch("/add_comment_first_line", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+      const data = await response.json();
+      editor.setData(data.modified_text);
+      console.log(data.modified_text);
+       const comment_id = data.comment_id;
+  const comment_text = data.comment_text;
+
+  editor.model.change(writer => {
+    const root = editor.model.document.getRoot();
+
+    let firstParagraph;
+    if (root.childCount === 0) {
+      firstParagraph = writer.createElement("paragraph");
+      writer.insert(firstParagraph, root, 0);
+      writer.insertText(text, firstParagraph, 0);
+    } else {
+      firstParagraph = root.getChild(0);
+    }
+
+    const endIndex = Math.min(10, firstParagraph.maxOffset);
+    const start = writer.createPositionAt(firstParagraph, 0);
+    const end = writer.createPositionAt(firstParagraph, endIndex);
+    const range = writer.createRange(start, end);
+
+    // Mostrar start y end en la consola
+    console.log(range);
+
+    writer.setAttribute("commentId", comment_id, range);
+  });
+
+  comments.push({ id: comment_id, text: comment_text });
+  renderComments();
+
+
+
+
+     // comments.push({ id: data.comment_id, text: data.comment_text });
+     // renderComments();
+}
+  </script>
+</body>
+</html>

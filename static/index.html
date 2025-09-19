@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Quill con comentarios y layout fijo</title>
+    <!-- Quill CSS -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        html, body {
+          margin: 0;
+          height: 100%;
+          font-family: Arial, sans-serif;
+        }
+
+        .container {
+          display: grid;
+          grid-template-columns: 1fr 300px; /* Editor + panel lateral */
+          height: 100vh;
+          gap: 10px;
+        }
+
+        .panel {
+          border: 1px solid #ccc;
+          padding: 10px;
+          box-sizing: border-box;
+          overflow-y: auto;
+        }
+
+        .center { background: #fff; }
+        .right { background: #f7f7f7; }
+
+        .comment-item {
+          border-bottom: 1px solid #ddd;
+          margin-bottom: 8px;
+          padding-bottom: 5px;
+          cursor: pointer;
+        }
+
+        .comment-item:hover {
+          background: #eee;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Editor con toolbar -->
+    <div class="panel center">
+        <div id="toolbar">
+            <!-- Formato básico -->
+            <span class="ql-formats">
+    <button class="ql-bold"></button>
+    <button class="ql-italic"></button>
+    <button class="ql-underline"></button>
+    <button class="ql-strike"></button>
+  </span>
+
+            <!-- Fuente y tamaño -->
+            <span class="ql-formats">
+    <select class="ql-font"></select>
+    <select class="ql-size"></select>
+  </span>
+
+            <!-- Color y fondo -->
+            <span class="ql-formats">
+    <select class="ql-color"></select>
+    <select class="ql-background"></select>
+  </span>
+
+            <!-- Listas y alineación -->
+            <span class="ql-formats">
+    <button class="ql-list" value="ordered"></button>
+    <button class="ql-list" value="bullet"></button>
+    <button class="ql-align" value=""></button>
+    <button class="ql-align" value="center"></button>
+    <button class="ql-align" value="right"></button>
+    <button class="ql-align" value="justify"></button>
+  </span>
+
+            <!-- Links, imágenes y videos -->
+            <span class="ql-formats">
+    <button class="ql-link"></button>
+    <button class="ql-image"></button>
+    <button class="ql-video"></button>
+  </span>
+
+            <span class="ql-formats">
+  <select class="ql-header">
+    <option selected value="0">Normal</option>
+    <option value="1">Título 1</option>
+    <option value="2">Título 2</option>
+    <option value="3">Título 3</option>
+  </select>
+  <select class="ql-align">
+    <option selected value=""></option>
+    <option value="center"></option>
+    <option value="right"></option>
+    <option value="justify"></option>
+  </select>
+</span>
+
+            <!-- Deshacer / Rehacer -->
+            <span class="ql-formats">
+    <button class="ql-undo"><i class="fa-solid fa-rotate-left"></i></button>
+    <button class="ql-redo"><i class="fa-solid fa-rotate-right"></i></button>
+  </span>
+
+            <!-- Botones personalizados con iconos -->
+            <span class="ql-formats">
+    <button class="ql-addComment" title="Añadir comentario"><i class="fa-solid fa-comment"></i></button>
+    <button class="ql-analyze" title="Analizar texto"><i class="fa-solid fa-magnifying-glass"></i></button>
+    <button class="ql-prepend" title="Añadir Hola"><i class="fa-solid fa-plus"></i></button>
+    <button class="ql-comment10" title="Comentar 10 letras"><i class="fa-solid fa-microchip"></i></button>
+  </span>
+        </div>
+        <div id="editor"></div>
+        <div id="result" style="margin-top:10px; color:#444;"></div>
+    </div>
+
+    <!-- Panel de comentarios -->
+    <div class="panel right">
+        <h3>Comentarios</h3>
+        <div id="commentsList"></div>
+    </div>
+</div>
+
+<!-- Quill JS -->
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+<script>
+    let quill;
+    let comments = [];
+    let commentIdCounter = 1;
+
+    // Inicializar Quill
+    quill = new Quill('#editor', {
+      theme: 'snow',
+      modules: {
+        toolbar: {
+          container: "#toolbar",
+          handlers: {
+            addComment: addComment,
+            analyze: analyzeText,
+            prepend: prependHola,
+            comment10: addCommentFirst10Letters
+          }
+        }
+      }
+    });
+
+
+    // Botones
+    document.getElementById("addCommentBtn").onclick = addComment;
+    document.getElementById("analyzeBtn").onclick = analyzeText;
+    document.getElementById("prependBtn").onclick = prependHola;
+    document.getElementById("addCommentFirst10Btn").onclick = addCommentFirst10Letters;
+
+    // Añadir comentario manual
+    function addComment() {
+      const range = quill.getSelection();
+      if (!range || range.length === 0) {
+        alert("Selecciona un texto para comentar.");
+        return;
+      }
+
+      const userComment = prompt("Escribe tu comentario:");
+      if (!userComment) return;
+
+      const id = "comment-" + commentIdCounter++;
+
+      quill.formatText(range.index, range.length, { background: "yellow" });
+
+      comments.push({ id, text: userComment, index: range.index, length: range.length, suggestion: "Texto sugerido" });
+      renderComments();
+    }
+
+    // Añadir comentario a primeras 10 letras
+    async function addCommentFirst10Letters() {
+      const text = quill.getText();
+
+      const response = await fetch("/add_comment_first_line", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+
+
+      const data = await response.json();
+      let id;
+      let text1;
+      let start;
+      let len;
+      let suggestion;
+
+      data.forEach(item => {
+                id  = item.id;
+                text1 = item.text;
+                start = item.start;
+                len = item.end -item.start;
+                suggestion = item.suggestion;
+
+                comments.push({ id, text: text1, index: start, length:len, suggestion: suggestion });
+      });
+
+
+
+<!--      const id = data.id;-->
+<!--      const text1 = data.text;-->
+<!--      const start = data.start;-->
+<!--      const len = data.end - data.start;-->
+<!--      const suggestion = data.suggestion;-->
+
+<!--      comments.push({ id, text: text1, index: start, length:len, suggestion: suggestion });-->
+      renderComments();
+    }
+
+    // Panel lateral
+    function renderComments() {
+  const panel = document.getElementById("commentsList");
+  panel.innerHTML = "";
+
+  comments.forEach((c, index) => {
+    const div = document.createElement("div");
+    div.className = "comment-item";
+
+    // Cabecera (texto del comentario)
+    const title = document.createElement("div");
+    title.innerText = c.text;
+    title.style.fontWeight = "bold";
+    title.style.cursor = "pointer";
+
+    // Descripción / sugerencia (oculta al inicio)
+    const desc = document.createElement("div");
+    desc.innerText = c.suggestion
+      ? "Sugerencia: " + c.suggestion
+      : "Sin sugerencia disponible.";
+    desc.style.display = "none";
+    desc.style.fontSize = "0.9em";
+    desc.style.color = "#444";
+    desc.style.marginTop = "4px";
+
+    // Botón aceptar sugerencia (oculto al inicio)
+    const btn = document.createElement("button");
+    btn.innerText = "Aceptar sugerencia";
+    btn.style.marginTop = "6px";
+    btn.style.display = "none";
+
+    btn.onclick = () => {
+      applySuggestion(c);
+<!--      comments.splice(index, 1);-->
+      renderComments();
+    };
+
+    // Evento click en título → abre este, cierra los demás
+    title.onclick = () => {
+      quill.setSelection(c.index, c.length);
+
+      // Cerrar todo
+      document.querySelectorAll("#commentsList .comment-item div:nth-child(2)")
+        .forEach(d => d.style.display = "none");
+      document.querySelectorAll("#commentsList .comment-item button")
+        .forEach(b => b.style.display = "none");
+
+      // Mostrar este
+      desc.style.display = "block";
+      if (c.suggestion && c.suggestion.trim() !== "") {
+        btn.style.display = "inline-block";
+      }
+    };
+
+    div.appendChild(title);
+    div.appendChild(desc);
+    div.appendChild(btn);
+    panel.appendChild(div);
+  });
+}
+
+
+    function applySuggestion(comment) {
+  if (!comment.suggestion) return;
+
+  // 1. Longitud inicial
+  const oldLength = comment.length;
+  const newLength = comment.suggestion.length;
+  const delta = newLength - oldLength;
+
+  // 2. Reemplazar texto en el editor
+  quill.deleteText(comment.index, oldLength);
+  quill.insertText(comment.index, comment.suggestion);
+
+  // 3. Actualizar índices de comentarios posteriores
+  comments.forEach(c => {
+    if (c.index > comment.index) {
+      c.index += delta;
+    }
+  });
+
+  // 4. Eliminar el comentario aceptado
+  comments = comments.filter(c => c.id !== comment.id);
+}
+
+
+    // Botón analizar (simulación)
+    function analyzeText() {
+      const text = quill.getText();
+      document.getElementById("result").innerText = "Resultado del análisis: " + text.length + " caracteres";
+    }
+
+    // Botón prepend
+    function prependHola() {
+      quill.insertText(0, "Hola desde FastAPI ");
+    }
+</script>
+</body>
+</html>
