@@ -6,42 +6,8 @@
     <!-- Quill CSS -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="static/styles.css">
 
-    <style>
-        html, body {
-          margin: 0;
-          height: 100%;
-          font-family: Arial, sans-serif;
-        }
-
-        .container {
-          display: grid;
-          grid-template-columns: 1fr 300px; /* Editor + panel lateral */
-          height: 100vh;
-          gap: 10px;
-        }
-
-        .panel {
-          border: 1px solid #ccc;
-          padding: 10px;
-          box-sizing: border-box;
-          overflow-y: auto;
-        }
-
-        .center { background: #fff; }
-        .right { background: #f7f7f7; }
-
-        .comment-item {
-          border-bottom: 1px solid #ddd;
-          margin-bottom: 8px;
-          padding-bottom: 5px;
-          cursor: pointer;
-        }
-
-        .comment-item:hover {
-          background: #eee;
-        }
-    </style>
 </head>
 <body>
 <div class="container">
@@ -119,9 +85,10 @@
     </div>
 
     <!-- Panel de comentarios -->
-    <div class="panel right">
-        <h3>Comentarios</h3>
-        <div id="commentsList"></div>
+    <div id="commentsPanel">
+      <label for="filterType">Comentarios. Filtro por tipo:</label>
+      <select id="filterType"></select>
+      <div id="commentsList"></div>
     </div>
 </div>
 
@@ -150,7 +117,7 @@
 
 
     // Botones
-    document.getElementById("addCommentBtn").onclick = addComment;
+<!--    document.getElementById("addCommentBtn").onclick = addComment;-->
     document.getElementById("analyzeBtn").onclick = analyzeText;
     document.getElementById("prependBtn").onclick = prependHola;
     document.getElementById("addCommentFirst10Btn").onclick = addCommentFirst10Letters;
@@ -170,13 +137,15 @@
 
       quill.formatText(range.index, range.length, { background: "yellow" });
 
-      comments.push({ id, text: userComment, index: range.index, length: range.length, suggestion: "Texto sugerido" });
+      comments.push({ id, text: userComment, index: range.index, length: range.length, suggestion: "Texto sugerido",description: "prueba",type:"prueba" });
+      updateFilterOptions();
       renderComments();
     }
 
     // Añadir comentario a primeras 10 letras
     async function addCommentFirst10Letters() {
       const text = quill.getText();
+      comments = [];
 
       const response = await fetch("/add_comment_first_line", {
         method: "POST",
@@ -197,9 +166,12 @@
                 text1 = item.text;
                 start = item.start;
                 len = item.end -item.start;
+                description = item.description;
+                type = item.type;
                 suggestion = item.suggestion;
 
-                comments.push({ id, text: text1, index: start, length:len, suggestion: suggestion });
+                comments.push({ id, text: text1, index: start, length:len, description: description,
+                type: type, suggestion: suggestion });
       });
 
 
@@ -211,93 +183,146 @@
 <!--      const suggestion = data.suggestion;-->
 
 <!--      comments.push({ id, text: text1, index: start, length:len, suggestion: suggestion });-->
+      updateFilterOptions();
       renderComments();
     }
 
-    // Panel lateral
-    function renderComments() {
-  const panel = document.getElementById("commentsList");
-  panel.innerHTML = "";
-
-  comments.forEach((c, index) => {
-    const div = document.createElement("div");
-    div.className = "comment-item";
-
-    // Cabecera (texto del comentario)
-    const title = document.createElement("div");
-    title.innerText = c.text;
-    title.style.fontWeight = "bold";
-    title.style.cursor = "pointer";
-
-    // Descripción / sugerencia (oculta al inicio)
-    const desc = document.createElement("div");
-    desc.innerText = c.suggestion
-      ? "Sugerencia: " + c.suggestion
-      : "Sin sugerencia disponible.";
-    desc.style.display = "none";
-    desc.style.fontSize = "0.9em";
-    desc.style.color = "#444";
-    desc.style.marginTop = "4px";
-
-    // Botón aceptar sugerencia (oculto al inicio)
-    const btn = document.createElement("button");
-    btn.innerText = "Aceptar sugerencia";
-    btn.style.marginTop = "6px";
-    btn.style.display = "none";
-
-    btn.onclick = () => {
-      applySuggestion(c);
-<!--      comments.splice(index, 1);-->
-      renderComments();
-    };
-
-    // Evento click en título → abre este, cierra los demás
-    title.onclick = () => {
-      quill.setSelection(c.index, c.length);
-
-      // Cerrar todo
-      document.querySelectorAll("#commentsList .comment-item div:nth-child(2)")
-        .forEach(d => d.style.display = "none");
-      document.querySelectorAll("#commentsList .comment-item button")
-        .forEach(b => b.style.display = "none");
-
-      // Mostrar este
-      desc.style.display = "block";
-      if (c.suggestion && c.suggestion.trim() !== "") {
-        btn.style.display = "inline-block";
-      }
-    };
-
-    div.appendChild(title);
-    div.appendChild(desc);
-    div.appendChild(btn);
-    panel.appendChild(div);
-  });
+function showCommentsPanel() {
+  const panel = document.getElementById("commentsPanel");
+  panel.style.visibility = "visible";
+  panel.style.opacity = "1";
 }
+
+function hideCommentsPanel() {
+  const panel = document.getElementById("commentsPanel");
+  panel.style.visibility = "hidden";
+  panel.style.opacity = "0";
+}
+
+
+    // Panel lateral
+function renderComments() {
+      const filter = document.getElementById("filterType").value;
+      const panel = document.getElementById("commentsList");
+
+
+
+      panel.innerHTML = "";
+
+      const filtered = comments.filter(c => filter === "all" || c.type === filter);
+
+      if (filtered.length === 0) {
+        hideCommentsPanel();
+        return;
+      } else {
+        showCommentsPanel();
+      }
+
+      filtered.forEach((c, index) => {
+          const div = document.createElement("div");
+          div.className = "comment-item";
+
+          // Cabecera (texto + etiqueta tipo)
+          const title = document.createElement("div");
+          title.className = "comment-title";
+          title.style.cursor = "pointer";
+
+          const textSpan = document.createElement("span");
+          textSpan.innerText = c.text;
+
+          const typeSpan = document.createElement("span");
+          typeSpan.className = `comment-type comment-type-${c.type.toLowerCase()}`;
+          typeSpan.innerText = c.type;
+
+          title.appendChild(textSpan);
+          title.appendChild(typeSpan);
+
+          // Descripción
+          const desc = document.createElement("div");
+          desc.className = "comment-desc";
+          desc.innerText = "Descripción: " + c.description;
+          desc.style.display = "none";
+
+          // Sugerencia
+          const sugg = document.createElement("div");
+          sugg.className = "comment-sugg";
+          sugg.innerText = c.suggestion
+            ? "Sugerencia: " + c.suggestion
+            : "Sin sugerencia disponible.";
+          sugg.style.display = "none";
+
+          // Botón aceptar sugerencia
+          const btn = document.createElement("button");
+          btn.innerText = "Aceptar sugerencia";
+          btn.className = "comment-accept-btn";
+          btn.style.display = "none";
+
+          btn.onclick = () => {
+            applySuggestion(c);
+            renderComments();
+          };
+
+          // Evento click en cabecera
+          title.onclick = () => {
+            quill.setSelection(c.index, c.length);
+
+            // Cerrar todo
+            document.querySelectorAll("#commentsList .comment-desc")
+              .forEach(d => d.style.display = "none");
+            document.querySelectorAll("#commentsList .comment-sugg")
+              .forEach(s => s.style.display = "none");
+            document.querySelectorAll("#commentsList .comment-accept-btn")
+              .forEach(b => b.style.display = "none");
+
+            // Abrir este
+            desc.style.display = "block";
+            sugg.style.display = "block";
+            if (c.suggestion && c.suggestion.trim() !== "") {
+              btn.style.display = "inline-block";
+            }
+          };
+
+          div.appendChild(title);
+          div.appendChild(desc);
+          div.appendChild(sugg);
+          div.appendChild(btn);
+          panel.appendChild(div);
+        });
+
+      // Asegurar que el filtro se aplique al cambiar
+      document
+        .getElementById("filterType")
+        .removeEventListener("change", renderComments);
+      document
+        .getElementById("filterType")
+        .addEventListener("change", renderComments);
+    }
+
+
 
 
     function applySuggestion(comment) {
-  if (!comment.suggestion) return;
+      if (!comment.suggestion) return;
 
-  // 1. Longitud inicial
-  const oldLength = comment.length;
-  const newLength = comment.suggestion.length;
-  const delta = newLength - oldLength;
+      // 1. Longitud inicial
+      const oldLength = comment.length;
+      const newLength = comment.suggestion.length;
+      const delta = newLength - oldLength;
 
-  // 2. Reemplazar texto en el editor
-  quill.deleteText(comment.index, oldLength);
-  quill.insertText(comment.index, comment.suggestion);
+      // 2. Reemplazar texto en el editor
+      quill.deleteText(comment.index, oldLength);
+      quill.insertText(comment.index, comment.suggestion);
 
-  // 3. Actualizar índices de comentarios posteriores
-  comments.forEach(c => {
-    if (c.index > comment.index) {
-      c.index += delta;
+      // 3. Actualizar índices de comentarios posteriores
+      comments.forEach(c => {
+        if (c.index > comment.index) {
+          c.index += delta;
+        }
+      });
+
+      // 4. Eliminar el comentario aceptado
+      comments = comments.filter(c => c.id !== comment.id);
     }
-  });
-
-  // 4. Eliminar el comentario aceptado
-  comments = comments.filter(c => c.id !== comment.id);
-}
 
 
     // Botón analizar (simulación)
@@ -310,6 +335,30 @@
     function prependHola() {
       quill.insertText(0, "Hola desde FastAPI ");
     }
+
+    function updateFilterOptions() {
+      const select = document.getElementById("filterType");
+      const types = [...new Set(comments.map(c => c.type))]; // tipos únicos
+
+      select.innerHTML = "";
+      // opción "todos"
+      const optAll = document.createElement("option");
+      optAll.value = "all";
+      optAll.textContent = "Todos";
+      select.appendChild(optAll);
+
+      // añadir opciones únicas
+      types.forEach(type => {
+        const option = document.createElement("option");
+        option.value = type;
+        option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+        select.appendChild(option);
+      });
+    }
+
+
+
+
 </script>
 </body>
 </html>

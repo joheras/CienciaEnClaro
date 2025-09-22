@@ -1,0 +1,155 @@
+/* ===== Reset y layout general ===== */
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, sans-serif;
+}
+
+/* Contenedor de 2 columnas: editor + panel lateral */
+.container {
+  display: grid;
+  grid-template-columns: 1fr 300px; /* editor a la izquierda, panel a la derecha */
+  height: 100vh;
+  gap: 10px;
+}
+
+/* ===== Panel central con Quill ===== */
+.panel.center {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+#toolbar {
+  flex: none;
+  border-bottom: 1px solid #ddd;
+}
+
+#editor {
+  flex: 1;
+  height: 100%;
+  background: #fff;
+  overflow-y: auto;
+}
+
+/* ===== Panel lateral de comentarios ===== */
+#commentsPanel {
+  visibility: hidden;   /* Oculto pero mantiene el espacio en el grid */
+  opacity: 0;           /* Totalmente transparente */
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  background: #f9f9fb;
+  border-left: 2px solid #ddd;
+  padding: 12px;
+  height: 100%;
+}
+
+/* Selector de filtro */
+#filterType {
+  margin: 0 0 12px 0;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 0.9em;
+  background: #fff;
+}
+
+/* Lista de comentarios */
+#commentsList {
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 6px;
+}
+
+/* Cada comentario en tarjeta */
+.comment-item {
+  background: #fff;
+  border: 1px solid #e2e2e2;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.comment-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Cabecera clicable */
+.comment-item > div:first-child {
+  font-weight: bold;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Etiqueta del tipo de comentario */
+.comment-type {
+  font-size: 0.75em;
+  background: #e0e7ff;
+  color: #3740ff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  text-transform: capitalize;
+}
+
+/* Colores distintos según tipo */
+.comment-type-longitud {
+  background: #ffe0e0;
+  color: #c62828;
+}
+
+.comment-type-prueba {
+  background: #fff4e5;
+  color: #e65100;
+}
+
+.comment-type-style {
+  background: #e0f7fa;
+  color: #006064;
+}
+
+.comment-type-grammar {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+/* Botón aceptar sugerencia */
+.comment-item button {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #4cafef;
+  color: white;
+  font-size: 0.85em;
+  transition: background 0.2s;
+}
+
+.comment-item button:hover {
+  background: #369bd6;
+}
+
+/* ===== Quill (Snow theme) ===== */
+.ql-toolbar.ql-snow {
+  border: 1px solid #ccc;
+  border-bottom: none;
+}
+
+.ql-container.ql-snow {
+  border: 1px solid #ccc;
+  border-radius: 0 0 6px 6px;
+}
+
+.ql-editor {
+  font-size: 1rem;
+  line-height: 1.6;
+  padding: 12px;
+}

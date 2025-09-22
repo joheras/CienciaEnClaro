@@ -54,7 +54,8 @@ async def add_comment_first_line(request: Request):
             comment_id = str(uuid.uuid4())  # ID único
             start = pos
             end = pos+len(texto)
-            result.append({"id": comment_id,"start": start,"end": end,"text": "Texto demasiado largo","suggestion":"versión corta"})
+            result.append({"id": comment_id,"start": start,"end": end,"text": "Texto demasiado largo",
+                           "description":"El texto es demasiado largo", "suggestion":"versión corta","type":"longitud"})
         if len(texto)==0:
             pos = pos + 2
         else:
