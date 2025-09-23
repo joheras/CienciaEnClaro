@@ -150,7 +150,7 @@
       const text = quill.getText();
       comments = [];
 
-      const response = await fetch("/add_comment_first_line", {
+      const response = await fetch("/analyse_text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text })
@@ -235,7 +235,7 @@ function renderComments() {
 
           const typeSpan = document.createElement("span");
           typeSpan.className = `comment-type comment-type-${c.type.toLowerCase()}`;
-          typeSpan.innerText = c.type;
+          typeSpan.innerText = c.type.replace(/-/g, " ");;
 
           title.appendChild(textSpan);
           title.appendChild(typeSpan);
@@ -354,7 +354,8 @@ function renderComments() {
       types.forEach(type => {
         const option = document.createElement("option");
         option.value = type;
-        option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+        const cleanLabel = type.replace(/-/g, " ");
+        option.textContent = cleanLabel.charAt(0).toUpperCase() + cleanLabel.slice(1);
         select.appendChild(option);
       });
     }

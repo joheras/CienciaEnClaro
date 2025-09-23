@@ -4,6 +4,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
+from modules.longitud import analisis_longitud
+from modules.orden_sintactico import analisis_orden_sintactico
 
 app = FastAPI()
 
@@ -32,8 +34,8 @@ async def add_hola(request: Request):
     modified_text = "Hola desde FastAPI " + text
     return JSONResponse({"modified_text": modified_text})
 
-@app.post("/add_comment_first_line")
-async def add_comment_first_line(request: Request):
+@app.post("/analyse_text")
+async def analyse_text(request: Request):
     """
     Añade un comentario a la primera línea del texto y devuelve:
     - text: el texto original
@@ -43,23 +45,10 @@ async def add_comment_first_line(request: Request):
     data = await request.json()
     text = data.get("text", "")
 
-    textos = text.split("\n")
+    # 1. Análisis longitud frases
+    result = analisis_longitud(text)
+    result.extend(analisis_orden_sintactico(text))
 
-    pos = 0
-    result = []
-
-
-    for texto in textos:
-        if len(texto.split(" "))>20:
-            comment_id = str(uuid.uuid4())  # ID único
-            start = pos
-            end = pos+len(texto)
-            result.append({"id": comment_id,"start": start,"end": end,"text": "Texto demasiado largo",
-                           "description":"El texto es demasiado largo", "suggestion":"versión corta","type":"longitud"})
-        if len(texto)==0:
-            pos = pos + 2
-        else:
-            pos = pos + len(texto)
 
     return JSONResponse(
         content = result
