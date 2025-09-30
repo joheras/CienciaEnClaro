@@ -4,8 +4,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
-from modules.longitud import analisis_longitud
+from modules.longitud import analisis_longitud_frase
+from modules.longitud import analisis_longitud_parrafo
 from modules.orden_sintactico import analisis_orden_sintactico
+from modules.legibility import fernandezHuerta
+import nltk
 
 app = FastAPI()
 
@@ -45,9 +48,36 @@ async def analyse_text(request: Request):
     data = await request.json()
     text = data.get("text", "")
 
-    # 1. Análisis longitud frases
-    result = analisis_longitud(text)
-    result.extend(analisis_orden_sintactico(text))
+    # 1. Análisis a nivel de texto
+    # 1.1 Fernández-Huerta
+    result = fernandezHuerta(text)
+
+    # 2. Análisis a nivel de párrafo
+    parrafos = text.split("\n")
+    pos = 0 # Posición de los párrafos
+    for parrafo in parrafos:
+        pos2 = pos
+        # 2.1 Longitud de párrafos
+        res_parrafo, pos = analisis_longitud_parrafo(parrafo, pos)
+        result.extend(res_parrafo)
+
+
+
+        # 3. Análisis a nivel de frase
+        frases = nltk.sent_tokenize(parrafo)
+        for frase in frases:
+            posFrases = pos2
+            # 3.1 Longitud de frases
+            res_frase, pos2 = analisis_longitud_frase(frase, posFrases)
+            result.extend(res_frase)
+            pos2 = pos2 + 1
+
+            # 3.2 Orden sintáctico
+            res_orden_sintactico = analisis_orden_sintactico(frase, posFrases)
+            result.extend(res_orden_sintactico)
+
+
+
 
 
     return JSONResponse(
