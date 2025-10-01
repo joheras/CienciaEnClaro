@@ -37,7 +37,7 @@ def analisis_longitud_parrafo(parrafo, pos_inicial):
 def analisis_longitud_frase(frase, pos_inicial):
     result = []
     pos = pos_inicial
-    palabras = [w for w in nltk.word_tokenize(frase) if w.isalpha()]
+    palabras = [w for w in nltk.word_tokenize(frase, language = "spanish") if w.isalpha()]
     if (len(palabras) > 20):
         comment_id = str(uuid.uuid4())  # ID único
         start = pos

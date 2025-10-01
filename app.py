@@ -7,7 +7,7 @@ import uvicorn
 from modules.longitud import analisis_longitud_frase
 from modules.longitud import analisis_longitud_parrafo
 from modules.orden_sintactico import analisis_orden_sintactico
-from modules.legibility import fernandezHuerta
+from modules.legibility import fernandezHuerta, longFrases_promedio, silabasPalabra, palabraComplejas
 import nltk
 
 app = FastAPI()
@@ -51,6 +51,10 @@ async def analyse_text(request: Request):
     # 1. Análisis a nivel de texto
     # 1.1 Fernández-Huerta
     result = fernandezHuerta(text)
+    # 1.2 longitud promedio de frases
+    result.extend(longFrases_promedio(text))
+    # 1.3 promedio de sílabas por palabra
+    result.extend(silabasPalabra(text))
 
     # 2. Análisis a nivel de párrafo
     parrafos = text.split("\n")
@@ -64,7 +68,7 @@ async def analyse_text(request: Request):
 
 
         # 3. Análisis a nivel de frase
-        frases = nltk.sent_tokenize(parrafo)
+        frases = nltk.sent_tokenize(parrafo, language = "spanish")
         for frase in frases:
             posFrases = pos2
             # 3.1 Longitud de frases
@@ -77,6 +81,15 @@ async def analyse_text(request: Request):
             result.extend(res_orden_sintactico)
 
 
+            # 4. Análisis a nivel de palabra
+            palabras = [w for w in frase.split() if w.isalpha()]
+            posPalabras = posFrases
+            for pal in palabras:
+                while not text[posPalabras:posPalabras+1].isalpha():
+                    posPalabras = posPalabras + 1 # para contar uno por cada caracter no alfanumérico
+
+                res_palabra, posPalabras = palabraComplejas(pal, posPalabras)
+                result.extend(res_palabra)
 
 
 
