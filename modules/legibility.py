@@ -15,9 +15,22 @@ def fernandezHuerta(texto):
     end = pos + len(texto)
 
     indice = textstat.fernandez_huerta(texto)
-    if indice<60:
+
+    if indice<30:
         result.append({"id": comment_id, "start": start, "end": end, "text": "Contenido poco legible",
-                   "description": "Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(
+                       "description": "Es un texto muy difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(
+                           indice) + ")",
+                       "suggestion": "",
+                       "type": "legibilidad"})
+    elif indice < 50:
+        result.append({"id": comment_id, "start": start, "end": end, "text": "Contenido poco legible",
+                       "description": "Es un texto difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(
+                           indice) + ")",
+                       "suggestion": "",
+                       "type": "legibilidad"})
+    elif indice<60:
+        result.append({"id": comment_id, "start": start, "end": end, "text": "Contenido poco legible",
+                   "description": "Es un texto algo difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(
                        indice) + ")",
                    "suggestion": "",
                    "type": "legibilidad"})
@@ -81,14 +94,35 @@ a = pyphen.Pyphen(lang='es')
     silabas = sum(len(a.inserted(palabra).split("-")) for palabra in palabras)
     promedio = silabas/len(palabras) if palabras else 0
     """
+def palabra_en_txt(palabra, archivo): # Me devuelve true si la palabra está en el archivo, false si no
+    with open("mazyvan/"+archivo, "r", encoding="utf-8") as f:
+        contenido = f.read().splitlines()
+    return palabra in contenido
 
 def palabraComplejas(palabra, pos_inicial):
+    # Lista de palabras comunes sacadas de: https://github.com/mazyvan/most-common-spanish-words/
     pos = pos_inicial
     result = []
     comment_id = str(uuid.uuid4)  # ID único
     start = pos
     end = pos + len(palabra)
 
+    archivos = ["most-common-spanish-words.txt", "most-common-spanish-words-v2.txt", "most-common-spanish-words-v3.txt",
+                "most-common-spanish-words-v4.txt", "most-common-spanish-words-v5.txt"]
+
+    esta = False
+    for archivo in archivos:
+        if palabra_en_txt(palabra, archivo):
+            esta = True
+    if esta == False and textstat.is_difficult_word(palabra):
+        result.append({"id": comment_id, "start": start, "end": end, "text": "Palabra complicada",
+                       "description": "La palabra " + palabra + " es complicada.",
+                       "suggestion": "",
+                       "type": "legibilidad"})
+    return result, end
+
+
+"""
     if textstat.is_difficult_word(palabra):
         result.append({"id": comment_id, "start": start, "end": end, "text": "Palabra complicada",
                        "description": "La palabra " + palabra + " es complicada." ,
@@ -96,3 +130,4 @@ def palabraComplejas(palabra, pos_inicial):
                        "type": "legibilidad"})
 
     return result, end
+"""
