@@ -10,6 +10,8 @@ from modules.orden_sintactico import analisis_orden_sintactico
 from modules.legibility import fernandezHuerta, longFrases_promedio, silabasPalabra, palabraComplejas
 import nltk
 
+import time
+
 app = FastAPI()
 
 # Servir estáticos
@@ -45,6 +47,9 @@ async def analyse_text(request: Request):
     - comment_text: el comentario
     - comment_id: un identificador único
     """
+
+    inicio = time.time()
+
     data = await request.json()
     text = data.get("text", "")
 
@@ -65,8 +70,6 @@ async def analyse_text(request: Request):
         res_parrafo, pos = analisis_longitud_parrafo(parrafo, pos)
         result.extend(res_parrafo)
 
-
-
         # 3. Análisis a nivel de frase
         frases = nltk.sent_tokenize(parrafo, language = "spanish")
         for frase in frases:
@@ -82,16 +85,24 @@ async def analyse_text(request: Request):
 
 
             # 4. Análisis a nivel de palabra
-            palabras = [w for w in frase.split() if w.isalpha()]
+            palabras = [w for w in nltk.word_tokenize(frase, language="spanish") if w.isalpha()]
             posPalabras = posFrases
+            while not text[posPalabras:posPalabras + 1].isalpha():
+                posPalabras = posPalabras + 1  # para contar uno por cada caracter no alfanumérico
+
             for pal in palabras:
                 while not text[posPalabras:posPalabras+1].isalpha():
                     posPalabras = posPalabras + 1 # para contar uno por cada caracter no alfanumérico
 
-                res_palabra, posPalabras = palabraComplejas(pal, posPalabras)
+                res_palabra, posPalabras = palabraComplejas(frase, pal, posPalabras)
                 result.extend(res_palabra)
 
+                print(pal)
 
+
+
+    final = time.time()
+    print(final-inicio)
 
     return JSONResponse(
         content = result
