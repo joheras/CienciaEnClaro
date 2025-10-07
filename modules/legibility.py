@@ -168,8 +168,8 @@ def obtenerSinonimo(frase, palabra):
     Devuelve solo el sinónimo, sin explicaciones.
     """
 
-    #response: ChatResponse = chat(model = "nichonauta/pepita-2-2b-it-v5", messages=[
-    response: ChatResponse = chat(model="jobautomation/OpenEuroLLM-Spanish", messages=[
+    response: ChatResponse = chat(model = "nichonauta/pepita-2-2b-it-v5", messages=[
+    #response: ChatResponse = chat(model="jobautomation/OpenEuroLLM-Spanish", messages=[
         {
             'role': 'user',
             'content': instruccion,

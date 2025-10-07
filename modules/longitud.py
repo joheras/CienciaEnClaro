@@ -47,7 +47,7 @@ def analisis_longitud_frase(frase, pos_inicial):
         start = pos
         end = pos + len(frase)
         generar = generate_prompt(frase)
-        response: ChatResponse = chat(model="mistral", messages=[
+        response: ChatResponse = chat(model="nichonauta/pepita-2-2b-it-v5", messages=[
             {
                 'role': 'user',
                 'content': generar,
@@ -67,7 +67,7 @@ def analisis_longitud_frase(frase, pos_inicial):
         #response: ChatResponse = chat(model="gemma3:27b", messages=[
         #response: ChatResponse = chat(model="llama2", messages=[
         #response: ChatResponse = chat(model="mistral", messages=[
-        response: ChatResponse = chat(model="mistral", messages=[
+        response: ChatResponse = chat(model="nichonauta/pepita-2-2b-it-v5", messages=[
             {
                 'role': 'user',
                 'content': generar,
