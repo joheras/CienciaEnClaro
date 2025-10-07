@@ -97,7 +97,6 @@ async def analyse_text(request: Request):
                 res_palabra, posPalabras = palabraComplejas(frase, pal, posPalabras)
                 result.extend(res_palabra)
 
-                print(pal)
 
 
 
