@@ -22,7 +22,7 @@ def analisis_longitud_parrafo(parrafo, pos_inicial):
             end = pos + len(parrafo)
             result.append({"id": comment_id, "start": start, "end": end, "text": "Parrafo demasiado corto",
                            "description": "Un párrafo debería contener entre 2 y 5 frases", "suggestion": "",
-                           "type": "longitud"})
+                           "type": "longitud", "original": parrafo, "error": "longParrafoC"})  # Error longitud párrafo corto
 
         elif(len(frases) > 5):
             comment_id = str(uuid.uuid4())  # ID único
@@ -30,7 +30,7 @@ def analisis_longitud_parrafo(parrafo, pos_inicial):
             end = pos + len(parrafo)
             result.append({"id": comment_id, "start": start, "end": end, "text": "Parrafo demasiado largo",
                            "description": "Un párrafo debería contener entre 2 y 5 frases", "suggestion": "",
-                           "type": "longitud"})
+                           "type": "longitud", "original": parrafo, "error": "longParrafoL"}) # Error longitud párrafo largo
 
         else:
             end = pos + len(parrafo)
@@ -46,45 +46,55 @@ def analisis_longitud_frase(frase, pos_inicial):
         comment_id = str(uuid.uuid4())  # ID único
         start = pos
         end = pos + len(frase)
-        generar = generate_prompt(frase)
-        response: ChatResponse = chat(model="nichonauta/pepita-2-2b-it-v5", messages=[
-            {
-                'role': 'user',
-                'content': generar,
-            },
-        ])
-        sugerencia = response.message.content
+
+        sugerencia = "¿Quieres una sugerencia?"
         result.append({"id": comment_id, "start": start, "end": end, "text": "Frase demasiado larga",
                        "description": "Una frase debe contener menos de 30 palabras (palabras actuales: " + str(
                            len(palabras)) + ")",
                        "suggestion": sugerencia,
-                       "type": "longitud"})
+                       "type": "longitud",
+                       "original": frase,
+                       "error": "longFrase"}) # Error longitud de frase
     elif (len(palabras)>20):
         comment_id = str(uuid.uuid4())  # ID único
         start = pos
         end = pos + len(frase)
-        generar = generate_prompt(frase)
+        #generar = generate_prompt(frase)
         #response: ChatResponse = chat(model="gemma3:27b", messages=[
         #response: ChatResponse = chat(model="llama2", messages=[
         #response: ChatResponse = chat(model="mistral", messages=[
         #response: ChatResponse = chat(model="jobautomation/OpenEuroLLM-Spanish", messages=[
-        response: ChatResponse = chat(model="nichonauta/pepita-2-2b-it-v5", messages=[
-            {
-                'role': 'user',
-                'content': generar,
-            },
-        ])
-        sugerencia = response.message.content
+        #response: ChatResponse = chat(model="nichonauta/pepita-2-2b-it-v5", messages=[
+        #    {
+        #        'role': 'user',
+        #        'content': generar,
+        #    },
+        #])
+        #sugerencia = response.message.content
+        sugerencia = "¿Quieres una sugerencia?"
         result.append({"id": comment_id, "start": start, "end": end, "text": "Frase demasiado larga",
                        "description": "Es recomendable que una frase contenga menos de 20 palabras (palabras actuales: " + str(
                            len(palabras)) + ")",
                        "suggestion": sugerencia,
-                       "type": "longitud"})
+                       "type": "longitud",
+                       "original": frase,
+                       "error": "longFrase"})
     else:
         end = pos + len(frase)
 
-
     return result, end
+
+def sugerenciaFrase(result):
+    frase = result["original"]
+    generar = generate_prompt(frase)
+    response: ChatResponse = chat(model="nichonauta/pepita-2-2b-it-v5", messages=[
+        {
+            'role': 'user',
+            'content': generar,
+        },
+    ])
+    sugerencia = response.message.content
+    return sugerencia
 
 def generate_prompt(frase): # Función para, dada una frase, generar una versión más corta de esta por medio de LLMs
     instruction = f"""Eres un experto en recortar las frases manteniendo el significado en español. 

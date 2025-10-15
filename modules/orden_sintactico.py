@@ -26,7 +26,9 @@ def analisis_orden_sintactico(frase, pos_inicial):
             result.append({"id": comment_id, "start": start, "end": end, "text": "Orden sintáctico incorrecto",
                            "description": "La oración no sigue el orden natural del español (sujeto + verbo + complementos)",
                            "suggestion": "Recorta la frase",
-                           "type": "orden-sintáctico"})
+                           "type": "orden-sintáctico",
+                           "original": frase,
+                           "error": "orden"})
 
     else:
         end = pos + len(frase)

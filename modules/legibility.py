@@ -27,19 +27,25 @@ def fernandezHuerta(texto):
                        "description": "Es un texto muy difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(
                            indice) + ")",
                        "suggestion": "",
-                       "type": "legibilidad"})
+                       "type": "legibilidad",
+                       "original": texto,
+                       "error": "fern"})
     elif indice < 50:
         result.append({"id": comment_id, "start": start, "end": end, "text": "Contenido poco legible",
                        "description": "Es un texto difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(
                            indice) + ")",
                        "suggestion": "",
-                       "type": "legibilidad"})
+                       "type": "legibilidad",
+                       "original": texto,
+                       "error": "fern"})
     elif indice<60:
         result.append({"id": comment_id, "start": start, "end": end, "text": "Contenido poco legible",
                    "description": "Es un texto algo difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(
                        indice) + ")",
                    "suggestion": "",
-                   "type": "legibilidad"})
+                   "type": "legibilidad",
+                       "original": texto,
+                       "error": "fern"})
     return result
 
 
@@ -60,7 +66,9 @@ def longFrases_promedio(text):
                    "description": "Las oraciones deben tener menos de 30 palabras, a ser posible no más de 20. La longitud promedio de las frases actuales es de  " + str(
                        promedio),
                    "suggestion": "",
-                   "type": "legibilidad"})
+                   "type": "legibilidad",
+                   "original": text,
+                   "error": "longFra"})
 
     return result
 """
@@ -92,8 +100,11 @@ def silabasPalabra(text):
                    "description": "La media de sílabas por palabra actual es de:  " + str(
                        promedio),
                    "suggestion": "",
-                   "type": "legibilidad"})
+                   "type": "legibilidad",
+                   "original": text,
+                   "error": "longsil"})
     return result
+
 
 """
 a = pyphen.Pyphen(lang='es')
@@ -147,18 +158,15 @@ def palabraComplejas(frase, palabra, pos_inicial):
     if esta == False:
         # sinonimos = obtenerSinonimos(palabra)
         # sinonimos_filtrados = [s for s in sinonimos if s.lower()!=palabra.lower()]
-        sinonimo = obtenerSinonimo(frase, palabra)
-        if sinonimo.lower() != palabra.lower():
-            result.append({"id": comment_id, "start": start, "end": end, "text": "Palabra complicada",
+        sugerencia = "¿Quieres una sugerencia?"
+        result.append({"id": comment_id, "start": start, "end": end, "text": "Palabra complicada",
                            "description": "La palabra " + palabra + " es complicada.",
-                           "suggestion": sinonimo,
-                           "type": "legibilidad"})
-        else:
-            result.append({"id": comment_id, "start": start, "end": end, "text": "Palabra complicada",
-                           "description": "La palabra " + palabra + " es complicada.",
-                           "suggestion": "",
-                           "type": "legibilidad"})
+                           "suggestion": sugerencia,
+                           "type": "legibilidad",
+                           "original": [frase, palabra],
+                           "error": "sinonimo"})
     return result, end
+
 
 def obtenerSinonimo(frase, palabra):
     instruccion = f"""

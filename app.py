@@ -4,10 +4,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
-from modules.longitud import analisis_longitud_frase
+from modules.longitud import analisis_longitud_frase, sugerenciaFrase
 from modules.longitud import analisis_longitud_parrafo
 from modules.orden_sintactico import analisis_orden_sintactico
-from modules.legibility import fernandezHuerta, longFrases_promedio, silabasPalabra, palabraComplejas
+from modules.legibility import fernandezHuerta, longFrases_promedio, silabasPalabra, obtenerSinonimo, palabraComplejas
 import nltk
 
 import time
@@ -102,7 +102,6 @@ async def analyse_text(request: Request):
 
     final = time.time()
     print(final-inicio)
-
     return JSONResponse(
         content = result
 
@@ -111,9 +110,21 @@ async def analyse_text(request: Request):
     #     "start": start,
     #     "end": end,
     #     "text": "comentario fastapi",
-    #     "suggestion":"prueba"
+    #     "suggestion":"prueba",
+    #     "original": texto marcado
     # }
     )
+
+@app.post("/generar_sugerencia")
+async def generar_sugerencia(request: Request):
+    data = await request.json()
+    if data['comment']['error'] == "longFrase":
+        frase = data['comment']['original'][data['comment']['index']:data['comment']['length']]
+        result = sugerenciaFrase(data['comment'])
+    elif data['comment']['error'] == 'sinonimo':
+        result = obtenerSinonimo(data['comment']['original'][0], data['comment']['original'][1])
+    sugerencia = result
+    return JSONResponse({"sugerencia": result})
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

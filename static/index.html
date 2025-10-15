@@ -145,6 +145,8 @@
       renderComments();
     }
 
+
+
     // Añadir comentario a primeras 10 letras
     async function addCommentFirst10Letters() {
       const text = quill.getText();
@@ -163,6 +165,8 @@
       let start;
       let len;
       let suggestion;
+      let error;
+      let original;
 
       data.forEach(item => {
                 id  = item.id;
@@ -172,8 +176,11 @@
                 description = item.description;
                 type = item.type;
                 suggestion = item.suggestion;
+                error = item.error;
+                original = item.original;
 
-                comments.push({ id, text: text1, index: start, length:len, description: description,
+
+                comments.push({ id, text: text1, index: start, length:len, description: description, error: error, original: original,
                 type: type, suggestion: suggestion });
       });
 
@@ -256,39 +263,93 @@ function renderComments() {
 
           // Botón aceptar sugerencia
           const btn = document.createElement("button");
-          btn.innerText = "Aceptar sugerencia";
+          btn.innerText = "Quitar comentario";
           btn.className = "comment-accept-btn";
           btn.style.display = "none";
 
           btn.onclick = () => {
-            applySuggestion(c);
+            acceptSuggestion(c);
+            // applySuggestion(c);
             renderComments();
+          };
+
+          // Botón generar sugerencia
+          const gensug = document.createElement("button");
+          gensug.innerText = "Generar sugerencia";
+          gensug.className = "comment-sugges-btn";
+          gensug.style.display = "none";
+
+          gensug.onclick = () => {
+              generateSuggestion(c);
+              btn.style.display = "none";
+              gensug.style.display = "none";
+              renderComments();
+          };
+
+          // Botón aplicar sugerencia
+          const apsug = document.createElement("button");
+          apsug.innerText = "Aplicar sugerencia";
+          apsug.className = "comment-aplicar-btn";
+          apsug.style.display = "none";
+
+          apsug.onclick = () => {
+              applySuggestion(c);
+              renderComments();
+          };
+
+          // Nueva sugerencia
+          const nusug = document.createElement("button");
+          nusug.innerText = "Otra sugerencia";
+          nusug.className = "comment-nusug-btn";
+          nusug.style.display = "none";
+
+          nusug.onclick = () => {
+              generateSuggestion(c);
+              btn.style.display = "none";
+              gensug.style.display = "none";
+              renderComments();
           };
 
           // Evento click en cabecera
           title.onclick = () => {
-            quill.setSelection(c.index, c.length);
+              quill.setSelection(c.index, c.length);
 
-            // Cerrar todo
-            document.querySelectorAll("#commentsList .comment-desc")
-              .forEach(d => d.style.display = "none");
-            document.querySelectorAll("#commentsList .comment-sugg")
-              .forEach(s => s.style.display = "none");
-            document.querySelectorAll("#commentsList .comment-accept-btn")
-              .forEach(b => b.style.display = "none");
+              // Cerrar todo
+              document.querySelectorAll("#commentsList .comment-desc")
+                  .forEach(d => d.style.display = "none");
+              document.querySelectorAll("#commentsList .comment-sugg")
+                  .forEach(s => s.style.display = "none");
+              document.querySelectorAll("#commentsList .comment-accept-btn")
+                  .forEach(b => b.style.display = "none");
+              document.querySelectorAll("#commentsList .comment-sugges-btn")
+                  .forEach(b => b.style.display = "none");
+              document.querySelectorAll("#commentsList .comment-accept-btn")
+                  .forEach(b => b.style.display = "none");
+              document.querySelectorAll("#commentsList .comment-nusug-btn")
+                  .forEach(b => b.style.display = "none");
 
-            // Abrir este
-            desc.style.display = "block";
-            sugg.style.display = "block";
-            if (c.suggestion && c.suggestion.trim() !== "") {
-              btn.style.display = "inline-block";
-            }
+              // Abrir este
+              desc.style.display = "block";
+              sugg.style.display = "block";
+              console.log(c.suggestion);
+              if (c.suggestion && c.suggestion == "¿Quieres una sugerencia?") {
+                  btn.style.display = "inline-block";
+                  gensug.style.display = "inline-block";
+              } else if (c.suggestion.trim() != "" && c.suggestion != "¿Quieres una sugerencia?") {
+                  btn.style.display = "inline-block";
+                  nusug.style.display = "inline-block";
+                  apsug.style.display = "inline-block";
+
+              }
           };
 
           div.appendChild(title);
           div.appendChild(desc);
           div.appendChild(sugg);
           div.appendChild(btn);
+          div.appendChild(gensug);
+          div.appendChild(apsug);
+          div.appendChild(nusug);
           panel.appendChild(div);
         });
 
@@ -327,6 +388,32 @@ function renderComments() {
       comments = comments.filter(c => c.id !== comment.id);
     }
 
+    function acceptSuggestion(comment) {
+      if (!comment.suggestion) return;
+
+      comments = comments.filter(c => c.id !== comment.id);
+    }
+
+    async function generateSuggestion(comment){
+          if (!comment.suggestion) return;
+          // Generamos la sugerencia
+          const response = await fetch("/generar_sugerencia", {
+              method: "POST",
+              headers: {"Content-Type": "application/json"},
+              body: JSON.stringify({comment})
+          });
+          const data = await response.json();
+          // Mostramos la sugerencia en el cuadro
+          comments.forEach(comen => {
+            if (comen.id == comment.id){
+                comment['suggestion'] = data['sugerencia'];
+            }
+        });
+        renderComments();
+    }
+
+
+
 
     // Botón analizar (simulación)
     function analyzeText() {
@@ -359,6 +446,8 @@ function renderComments() {
         select.appendChild(option);
       });
     }
+
+
 
 
 
