@@ -119,11 +119,9 @@ async def analyse_text(request: Request):
 async def generar_sugerencia(request: Request):
     data = await request.json()
     if data['comment']['error'] == "longFrase":
-        frase = data['comment']['original'][data['comment']['index']:data['comment']['length']]
         result = sugerenciaFrase(data['comment'])
     elif data['comment']['error'] == 'sinonimo':
         result = obtenerSinonimo(data['comment']['original'][0], data['comment']['original'][1])
-    sugerencia = result
     return JSONResponse({"sugerencia": result})
 
 if __name__ == "__main__":

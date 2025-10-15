@@ -261,7 +261,7 @@ function renderComments() {
             : "Sin sugerencia disponible.";
           sugg.style.display = "none";
 
-          // Botón aceptar sugerencia
+          // Botón quitar sugerencia
           const btn = document.createElement("button");
           btn.innerText = "Quitar comentario";
           btn.className = "comment-accept-btn";
@@ -281,8 +281,6 @@ function renderComments() {
 
           gensug.onclick = () => {
               generateSuggestion(c);
-              btn.style.display = "none";
-              gensug.style.display = "none";
               renderComments();
           };
 
@@ -305,8 +303,6 @@ function renderComments() {
 
           nusug.onclick = () => {
               generateSuggestion(c);
-              btn.style.display = "none";
-              gensug.style.display = "none";
               renderComments();
           };
 
@@ -331,15 +327,13 @@ function renderComments() {
               // Abrir este
               desc.style.display = "block";
               sugg.style.display = "block";
-              console.log(c.suggestion);
-              if (c.suggestion && c.suggestion == "¿Quieres una sugerencia?") {
+              if (c.suggestion == "¿Quieres una sugerencia?") {
                   btn.style.display = "inline-block";
                   gensug.style.display = "inline-block";
-              } else if (c.suggestion.trim() != "" && c.suggestion != "¿Quieres una sugerencia?") {
+              } else if (c.suggestion && c.suggestion.trim() !== "") {
                   btn.style.display = "inline-block";
                   nusug.style.display = "inline-block";
                   apsug.style.display = "inline-block";
-
               }
           };
 
@@ -368,6 +362,10 @@ function renderComments() {
     function applySuggestion(comment) {
       if (!comment.suggestion) return;
 
+      console.log(comment);
+      console.log(comment.suggestion);
+      console.log(comment.length);
+
       // 1. Longitud inicial
       const oldLength = comment.length;
       const newLength = comment.suggestion.length;
@@ -390,7 +388,7 @@ function renderComments() {
 
     function acceptSuggestion(comment) {
       if (!comment.suggestion) return;
-
+      // Eliminar el comentario aceptado
       comments = comments.filter(c => c.id !== comment.id);
     }
 
@@ -407,6 +405,7 @@ function renderComments() {
           comments.forEach(comen => {
             if (comen.id == comment.id){
                 comment['suggestion'] = data['sugerencia'];
+                comen['suggestion'] = data['sugerencia'];
             }
         });
         renderComments();
