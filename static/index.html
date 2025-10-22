@@ -90,6 +90,24 @@
       <select id="filterType"></select>
       <div id="commentsList"></div>
     </div>
+
+    <!-- Overlay de carga -->
+    <div id="loadingOverlay">
+        <div class="loadingContent">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <span>En proceso...</span>
+        </div>
+    </div>
+
+    <!-- popup para mostrar el análisis -->
+    <div id="analysisPopup" class="popup-overlay" aria-hidden="true">
+        <div class="poppup-content" role="dialog" aria-modal="true" aria-labelledby="analysisTitle">
+            <h3 id="analysisTitle">Resultado del análisis</h3>
+            <p id="analysisText"></p>
+            <button id="closePopupBtn">Cerrar</button>
+        </div>
+    </div>
+
 </div>
 
 <!-- Quill JS -->
@@ -149,6 +167,10 @@
 
     // Añadir comentario a primeras 10 letras
     async function addCommentFirst10Letters() {
+      // Mostrar overlay de bloqueo
+      const overlay = document.getElementById("loadingOverlay");
+      overlay.style.display = "flex";
+
       const text = quill.getText();
       comments = [];
 
@@ -195,6 +217,9 @@
 <!--      comments.push({ id, text: text1, index: start, length:len, suggestion: suggestion });-->
       updateFilterOptions();
       renderComments();
+
+      //Ocultar overlay
+        overlay.style.display="None";
     }
 
 function showCommentsPanel() {
@@ -408,6 +433,11 @@ function renderComments(openCommentId = null) {
 
     async function generateSuggestion(comment){
           if (!comment.suggestion) return;
+
+          //Mostrar overlay de bloqueo
+          const overlay = document.getElementById("loadingOverlay");
+          overlay.style.display ="flex";
+
           // Generamos la sugerencia
           const response = await fetch("/generar_sugerencia", {
               method: "POST",
@@ -422,6 +452,7 @@ function renderComments(openCommentId = null) {
             }
         });
         renderComments(comment.id);
+        overlay.style.display="none";
     }
 
 
@@ -430,23 +461,43 @@ function renderComments(openCommentId = null) {
     // Botón analizar (simulación)
     function analyzeText() {
       const range = quill.getSelection();
-        let text;
-        let index, length, description;
+      let text;
+      let index, length, description;
 
-        // Si hay texto seleccionado
-        if (range && range.length > 0) {
-            text = quill.getText(range.index, range.length);
-            description = "Información sobre el texto seleccionado.";
-            index = range.index;
-            length = range.length;
-        } else {
-            // Si no hay texto seleccionado
-            text = quill.getText().trim();
-            description = "Información general sobre todo el texto.";
-            index = 0;
-            length = textToAnalyze.length;
-        }
-      document.getElementById("result").innerText = "Resultado del análisis: " + text.length + " caracteres";
+      // Si hay texto seleccionado
+      if (range && range.length > 0) {
+          text = quill.getText(range.index, range.length).trim();
+          description = "Información sobre el texto seleccionado.";
+          index = range.index;
+          length = range.length;
+      } else {
+          // Si no hay texto seleccionado
+          text = quill.getText().trim();
+          description = "Información general sobre todo el texto.";
+          index = 0;
+          length = text.length;
+      }
+
+      // Mostrar resultado en el popup
+      const popup = document.getElementById("analysisPopup");
+      const textElem = document.getElementById("analysisText");
+      textElem.innerText = `${description}\n\nLongitud del texto: ${text.length} caracteres.`;
+      popup.style.display = "flex";
+      popup.setAttribute('aria-hidden', 'false');
+
+      // Cerrar popup al hacer clic en el botón
+      document.getElementById("closePopupBtn").onclick = () => {
+          popup.style.display = "none";
+          popup.setAttribute('aria-hidden', 'true');
+      };
+
+      // También cerrar si se hace clic fuera del cuadro
+      popup.onclick = (e) => {
+          if (e.target === popup) {
+              popup.style.display = "none";
+              popup.setAttribute('aria-hidden', 'true');
+          };
+      };
     }
 
     // Botón prepend
