@@ -211,7 +211,7 @@ function hideCommentsPanel() {
 
 
     // Panel lateral
-function renderComments() {
+function renderComments(openCommentId = null) {
       const filter = document.getElementById("filterType").value;
       const panel = document.getElementById("commentsList");
 
@@ -231,6 +231,7 @@ function renderComments() {
       filtered.forEach((c, index) => {
           const div = document.createElement("div");
           div.className = "comment-item";
+          div.dataset.id = c.id;
 
           // Cabecera (texto + etiqueta tipo)
           const title = document.createElement("div");
@@ -255,10 +256,17 @@ function renderComments() {
 
           // Sugerencia
           const sugg = document.createElement("div");
-          sugg.className = "comment-sugg";
-          sugg.innerText = c.suggestion
-            ? "Sugerencia: " + c.suggestion
-            : "Sin sugerencia disponible.";
+          if (c.suggestion==="¿Quieres una sugerencia?") {
+              sugg.className = "comment-sugg";
+              sugg.innerText = c.suggestion
+                  ? "" + c.suggestion
+                  : "Sin sugerencia disponible.";
+          } else{
+              sugg.className = "comment-sugg";
+              sugg.innerText = c.suggestion
+                  ? "Sugerencia: " + c.suggestion
+                  : "Sin sugerencia disponible.";
+          }
           sugg.style.display = "none";
 
           // Botón quitar sugerencia
@@ -327,7 +335,7 @@ function renderComments() {
               // Abrir este
               desc.style.display = "block";
               sugg.style.display = "block";
-              if (c.suggestion == "¿Quieres una sugerencia?") {
+              if (c.suggestion === "¿Quieres una sugerencia?") {
                   btn.style.display = "inline-block";
                   gensug.style.display = "inline-block";
               } else if (c.suggestion && c.suggestion.trim() !== "") {
@@ -336,6 +344,15 @@ function renderComments() {
                   apsug.style.display = "inline-block";
               }
           };
+
+          if (openCommentId && c.id === openCommentId) {
+            desc.style.display = "block";
+            sugg.style.display = "block";
+            gensug.style.display="none";
+            btn.style.display = "inline-block";
+            apsug.style.display = "inline-block";
+            nusug.style.display = "inline-block";
+        }
 
           div.appendChild(title);
           div.appendChild(desc);
@@ -362,10 +379,6 @@ function renderComments() {
     function applySuggestion(comment) {
       if (!comment.suggestion) return;
 
-      console.log(comment);
-      console.log(comment.suggestion);
-      console.log(comment.length);
-
       // 1. Longitud inicial
       const oldLength = comment.length;
       const newLength = comment.suggestion.length;
@@ -384,6 +397,7 @@ function renderComments() {
 
       // 4. Eliminar el comentario aceptado
       comments = comments.filter(c => c.id !== comment.id);
+
     }
 
     function acceptSuggestion(comment) {
@@ -404,11 +418,10 @@ function renderComments() {
           // Mostramos la sugerencia en el cuadro
           comments.forEach(comen => {
             if (comen.id == comment.id){
-                comment['suggestion'] = data['sugerencia'];
                 comen['suggestion'] = data['sugerencia'];
             }
         });
-        renderComments();
+        renderComments(comment.id);
     }
 
 
@@ -416,7 +429,23 @@ function renderComments() {
 
     // Botón analizar (simulación)
     function analyzeText() {
-      const text = quill.getText();
+      const range = quill.getSelection();
+        let text;
+        let index, length, description;
+
+        // Si hay texto seleccionado
+        if (range && range.length > 0) {
+            text = quill.getText(range.index, range.length);
+            description = "Información sobre el texto seleccionado.";
+            index = range.index;
+            length = range.length;
+        } else {
+            // Si no hay texto seleccionado
+            text = quill.getText().trim();
+            description = "Información general sobre todo el texto.";
+            index = 0;
+            length = textToAnalyze.length;
+        }
       document.getElementById("result").innerText = "Resultado del análisis: " + text.length + " caracteres";
     }
 
@@ -444,9 +473,10 @@ function renderComments() {
         option.textContent = cleanLabel.charAt(0).toUpperCase() + cleanLabel.slice(1);
         select.appendChild(option);
       });
+
+
+
     }
-
-
 
 
 

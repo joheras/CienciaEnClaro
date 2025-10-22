@@ -15,7 +15,6 @@ textstat.set_lang(lang="es")
 def fernandezHuerta(texto):
     pos = 0
     result = []
-    comment_id = str(uuid.uuid4())  # ID único
     start = pos
     end = pos #+ len(texto)
 
@@ -23,7 +22,7 @@ def fernandezHuerta(texto):
     indice = round(indice, 2)
 
     if indice<30:
-        result.append({"id": comment_id, "start": start, "end": end, "text": "Contenido poco legible",
+        result.append({"id": str(uuid.uuid4()), "start": start, "end": end, "text": "Contenido poco legible",
                        "description": "Es un texto muy difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(
                            indice) + ")",
                        "suggestion": "",
@@ -31,7 +30,7 @@ def fernandezHuerta(texto):
                        "original": texto,
                        "error": "fern"})
     elif indice < 50:
-        result.append({"id": comment_id, "start": start, "end": end, "text": "Contenido poco legible",
+        result.append({"id": str(uuid.uuid4()), "start": start, "end": end, "text": "Contenido poco legible",
                        "description": "Es un texto difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(
                            indice) + ")",
                        "suggestion": "",
@@ -39,7 +38,7 @@ def fernandezHuerta(texto):
                        "original": texto,
                        "error": "fern"})
     elif indice<60:
-        result.append({"id": comment_id, "start": start, "end": end, "text": "Contenido poco legible",
+        result.append({"id": str(uuid.uuid4()), "start": start, "end": end, "text": "Contenido poco legible",
                    "description": "Es un texto algo difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(
                        indice) + ")",
                    "suggestion": "",
@@ -52,7 +51,6 @@ def fernandezHuerta(texto):
 def longFrases_promedio(text):
     pos = 0
     result = []
-    comment_id = str(uuid.uuid4) # ID único
     start =  pos
     end = pos #+ len(text)
 
@@ -62,7 +60,7 @@ def longFrases_promedio(text):
     promedio = numPal / numFrases
     promedio = round(promedio, 2)
 
-    result.append({"id": comment_id, "start": start, "end": end, "text": "Longitud promedio de frases",
+    result.append({"id": str(uuid.uuid4()), "start": start, "end": end, "text": "Longitud promedio de frases",
                    "description": "Las oraciones deben tener menos de 30 palabras, a ser posible no más de 20. La longitud promedio de las frases actuales es de  " + str(
                        promedio),
                    "suggestion": "",
@@ -87,7 +85,6 @@ def longFrases_promedio(text):
 def silabasPalabra(text):
     pos = 0
     result = []
-    comment_id = str(uuid.uuid4)  # ID único
     start = pos
     end = pos #+ len(text)
 
@@ -96,7 +93,7 @@ def silabasPalabra(text):
     promedio = numSilabas/numPal
     promedio = round(promedio, 2)
 
-    result.append({"id": comment_id, "start": start, "end": end, "text": "Media de sílabas por palabra",
+    result.append({"id": str(uuid.uuid4()), "start": start, "end": end, "text": "Media de sílabas por palabra",
                    "description": "La media de sílabas por palabra actual es de:  " + str(
                        promedio),
                    "suggestion": "",
@@ -136,7 +133,6 @@ def palabraComplejas(frase, palabra, pos_inicial):
     # Lista de palabras comunes sacadas de: https://github.com/mazyvan/most-common-spanish-words/
     pos = pos_inicial
     result = []
-    comment_id = str(uuid.uuid4)  # ID único
     start = pos
     end = pos + len(palabra)
 
@@ -159,7 +155,7 @@ def palabraComplejas(frase, palabra, pos_inicial):
         # sinonimos = obtenerSinonimos(palabra)
         # sinonimos_filtrados = [s for s in sinonimos if s.lower()!=palabra.lower()]
         sugerencia = "¿Quieres una sugerencia?"
-        result.append({"id": comment_id, "start": start, "end": end, "text": "Palabra complicada",
+        result.append({"id": str(uuid.uuid4()), "start": start, "end": end, "text": "Palabra complicada",
                            "description": "La palabra " + palabra + " es complicada.",
                            "suggestion": sugerencia,
                            "type": "legibilidad",

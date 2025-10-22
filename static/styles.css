@@ -43,6 +43,10 @@ html, body {
   border-left: 2px solid #ddd;
   padding: 12px;
   height: 100%;
+
+  max-height: 100vh; /* Altura máxima del panel */
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Selector de filtro */
@@ -57,9 +61,11 @@ html, body {
 
 /* Lista de comentarios */
 #commentsList {
-  overflow-y: auto;
   flex: 1;
+  overflow-y: auto;
   padding-right: 6px;
+
+  max-height: calc(100% - 60px); /* Deja espacio para label y select */
 }
 
 /* Cada comentario en tarjeta */
