@@ -9,6 +9,7 @@ from modules.longitud import analisis_longitud_parrafo
 from modules.orden_sintactico import analisis_orden_sintactico
 from modules.legibility import fernandezHuerta, longFrases_promedio, silabasPalabra, obtenerSinonimo, palabraComplejas
 import nltk
+import textstat
 
 import time
 
@@ -55,12 +56,12 @@ async def analyse_text(request: Request):
 
     # 1. Análisis a nivel de texto
     # 1.1 Fernández-Huerta
-    result = fernandezHuerta(text)
+    #result = fernandezHuerta(text)
     # 1.2 longitud promedio de frases
-    result.extend(longFrases_promedio(text))
+    #result.extend(longFrases_promedio(text))
     # 1.3 promedio de sílabas por palabra
-    result.extend(silabasPalabra(text))
-
+    #result.extend(silabasPalabra(text))
+    result = []
     # 2. Análisis a nivel de párrafo
     parrafos = text.split("\n")
     pos = 0 # Posición de los párrafos
@@ -123,6 +124,28 @@ async def generar_sugerencia(request: Request):
     elif data['comment']['error'] == 'sinonimo':
         result = obtenerSinonimo(data['comment']['original'][0], data['comment']['original'][1])
     return JSONResponse({"sugerencia": result})
+
+@app.post("/resumen")
+async def resumen(request: Request):
+    data = await request.json()
+    data = data['text']
+    caracteres = len(data)
+    silabas = textstat.syllable_count(data, lang="es")
+    palabras = textstat.lexicon_count(data, removepunct=True)
+    frases = textstat.sentence_count(data)
+
+
+    texto = "Número de caracteres: " + str(caracteres)
+    texto = texto + '\n' + 'Número de sílabas: ' + str(silabas)
+    texto = texto + '\n' + 'Número de palabras: '+ str(palabras)
+    texto = texto + '\n' + 'Número de frases: ' + str(frases)
+    texto = texto + '\n' + 'Media de caracteres por palabra: ' + str(round(caracteres/palabras, 2))
+    texto = texto + '\n' + 'Media de sílabas por palabra: ' + str(round(silabas/palabras, 2))
+    texto = texto + '\n' + 'Media de palabras por frase: ' + str(round(palabras/frases, 2))
+    texto = texto + '\n' + "Índice de Fernández-Huerta: " + str(round(textstat.fernandez_huerta(data), 2))
+
+    return JSONResponse(
+        content = texto)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

@@ -459,7 +459,7 @@ function renderComments(openCommentId = null) {
 
 
     // Botón analizar (simulación)
-    function analyzeText() {
+    async function analyzeText() {
       const range = quill.getSelection();
       let text;
       let index, length, description;
@@ -482,7 +482,16 @@ function renderComments(openCommentId = null) {
       const popup = document.getElementById("analysisPopup");
       const closeBtn = document.getElementById("closePopupBtn");
       const textElem = document.getElementById("analysisText");
-      textElem.innerText = `${description}\n\nLongitud del texto: ${text.length} caracteres.`;
+
+      const info = await fetch("/resumen", {
+          method:"POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({text})
+      });
+      const datos = await info.json();
+
+      description = description + '\n\n' + datos;
+      textElem.innerText = description;
       popup.style.display = "flex";
       popup.setAttribute('aria-hidden', 'false');
 
