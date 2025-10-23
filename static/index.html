@@ -102,9 +102,9 @@
     <!-- popup para mostrar el análisis -->
     <div id="analysisPopup" class="popup-overlay" aria-hidden="true">
         <div class="poppup-content" role="dialog" aria-modal="true" aria-labelledby="analysisTitle">
+            <button id="closePopupBtn" class="close-btn" aria-label="Cerrar ventana">&times;</button>
             <h3 id="analysisTitle">Resultado del análisis</h3>
             <p id="analysisText"></p>
-            <button id="closePopupBtn">Cerrar</button>
         </div>
     </div>
 
@@ -480,16 +480,17 @@ function renderComments(openCommentId = null) {
 
       // Mostrar resultado en el popup
       const popup = document.getElementById("analysisPopup");
+      const closeBtn = document.getElementById("closePopupBtn");
       const textElem = document.getElementById("analysisText");
       textElem.innerText = `${description}\n\nLongitud del texto: ${text.length} caracteres.`;
       popup.style.display = "flex";
       popup.setAttribute('aria-hidden', 'false');
 
       // Cerrar popup al hacer clic en el botón
-      document.getElementById("closePopupBtn").onclick = () => {
+      closeBtn.addEventListener('click', () => {
           popup.style.display = "none";
           popup.setAttribute('aria-hidden', 'true');
-      };
+      });
 
       // También cerrar si se hace clic fuera del cuadro
       popup.onclick = (e) => {
