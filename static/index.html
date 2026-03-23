@@ -2,546 +2,174 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Quill con comentarios y layout fijo</title>
+    <title>CienciaEnClaro</title>
     <!-- Quill CSS -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css">
 
 </head>
 <body>
 <div class="container">
-    <!-- Editor con toolbar -->
-    <div class="panel center">
-        <div id="toolbar">
-            <!-- Formato básico -->
-            <span class="ql-formats">
-    <button class="ql-bold"></button>
-    <button class="ql-italic"></button>
-    <button class="ql-underline"></button>
-    <button class="ql-strike"></button>
-  </span>
 
-            <!-- Fuente y tamaño -->
-            <span class="ql-formats">
-    <select class="ql-font"></select>
-    <select class="ql-size"></select>
-  </span>
 
-            <!-- Color y fondo -->
-            <span class="ql-formats">
-    <select class="ql-color"></select>
-    <select class="ql-background"></select>
-  </span>
+<!-- Editor con toolbar -->
+<div class="panel center">
+    <div id="toolbar">
+    <!-- Formato básico -->
 
-            <!-- Listas y alineación -->
-            <span class="ql-formats">
-    <button class="ql-list" value="ordered"></button>
-    <button class="ql-list" value="bullet"></button>
-    <button class="ql-align" value=""></button>
-    <button class="ql-align" value="center"></button>
-    <button class="ql-align" value="right"></button>
-    <button class="ql-align" value="justify"></button>
-  </span>
+            <!-- NUEVOS BOTONES: Cargar y Descargar -->
+        <span class="ql-formats">
+            <button id="loadFileBtn" title="Cargar archivo"><i class="fa-solid fa-file-import"></i></button>
+            <button id="downloadBtn" title="Descargar"><i class="fa-solid fa-download"></i></button>
+            <span class="toolbar-separator"></span>
+        </span>
 
-            <!-- Links, imágenes y videos -->
-            <span class="ql-formats">
-    <button class="ql-link"></button>
-    <button class="ql-image"></button>
-    <button class="ql-video"></button>
-  </span>
+        <span class="ql-formats">
+            <button class="ql-bold"></button>
+            <button class="ql-italic"></button>
+            <button class="ql-underline"></button>
+            <button class="ql-strike"></button>
+        </span>
 
-            <span class="ql-formats">
-  <select class="ql-header">
-    <option selected value="0">Normal</option>
-    <option value="1">Título 1</option>
-    <option value="2">Título 2</option>
-    <option value="3">Título 3</option>
-  </select>
-  <select class="ql-align">
-    <option selected value=""></option>
-    <option value="center"></option>
-    <option value="right"></option>
-    <option value="justify"></option>
-  </select>
-</span>
+        <!-- Fuente y tamaño -->
+        <span class="ql-formats">
+            <select class="ql-font"></select>
+            <select class="ql-size"></select>
+        </span>
 
-            <!-- Deshacer / Rehacer -->
-            <span class="ql-formats">
-    <button class="ql-undo"><i class="fa-solid fa-rotate-left"></i></button>
-    <button class="ql-redo"><i class="fa-solid fa-rotate-right"></i></button>
-  </span>
+        <!-- Color y fondo -->
+        <span class="ql-formats">
+            <select class="ql-color"></select>
+            <select class="ql-background"></select>
+          </span>
 
-            <!-- Botones personalizados con iconos -->
-            <span class="ql-formats">
-    <button class="ql-addComment" title="Añadir comentario"><i class="fa-solid fa-comment"></i></button>
-    <button class="ql-analyze" title="Analizar texto"><i class="fa-solid fa-magnifying-glass"></i></button>
-    <button class="ql-prepend" title="Añadir Hola"><i class="fa-solid fa-plus"></i></button>
-    <button class="ql-comment10" title="Comentar 10 letras"><i class="fa-solid fa-microchip"></i></button>
-  </span>
-        </div>
-        <div id="editor"></div>
-        <div id="result" style="margin-top:10px; color:#444;"></div>
+        <!-- Listas y alineación -->
+        <span class="ql-formats">
+            <button class="ql-list" value="ordered"></button>
+            <button class="ql-list" value="bullet"></button>
+            <button class="ql-align" value=""></button>
+            <button class="ql-align" value="center"></button>
+            <button class="ql-align" value="right"></button>
+            <button class="ql-align" value="justify"></button>
+          </span>
+
+        <!-- Links, imágenes y videos -->
+        <span class="ql-formats">
+            <button class="ql-link"></button>
+            <button class="ql-image"></button>
+            <button class="ql-video"></button>
+          </span>
+
+        <span class="ql-formats">
+          <select class="ql-header">
+            <option selected value="0">Normal</option>
+            <option value="1">Título 1</option>
+            <option value="2">Título 2</option>
+            <option value="3">Título 3</option>
+          </select>
+        </span>
+
+        <!-- Deshacer / Rehacer -->
+        <span class="ql-formats">
+            <button class="ql-undo"><i class="fa-solid fa-rotate-left"></i></button>
+            <button class="ql-redo"><i class="fa-solid fa-rotate-right"></i></button>
+        </span>
+
+
     </div>
-
-    <!-- Panel de comentarios -->
-    <div id="commentsPanel">
-      <label for="filterType">Comentarios. Filtro por tipo:</label>
-      <select id="filterType"></select>
-      <div id="commentsList"></div>
+    <div class="editor-wrapper">
+      <div id="paragraphNumbers"></div>
+      <div id="editor"></div>
     </div>
-
-    <!-- Overlay de carga -->
-    <div id="loadingOverlay">
-        <div class="loadingContent">
-            <i class="fa-solid fa-spinner fa-spin"></i>
-            <span>En proceso...</span>
-        </div>
-    </div>
-
-    <!-- popup para mostrar el análisis -->
-    <div id="analysisPopup" class="popup-overlay" aria-hidden="true">
-        <div class="poppup-content" role="dialog" aria-modal="true" aria-labelledby="analysisTitle">
-            <button id="closePopupBtn" class="close-btn" aria-label="Cerrar ventana">&times;</button>
-            <h3 id="analysisTitle">Resultado del análisis</h3>
-            <p id="analysisText"></p>
-        </div>
-    </div>
-
 </div>
+
+<!-- Panel de comentarios -->
+<div class="leftPanel">
+    <!-- Imagen logo -->
+    <div id="logoContainer">
+        <img id="panelLogo" src="/static/logo.png" alt="Logo">
+    </div>
+    <div id="commentsPanel">
+        <div id="modeButtons">
+            <button id="writeModeBtn" class="mode-btn active">Escribir</button>
+            <button id="feedbackModeBtn" class="mode-btn">Feedback</button>
+            <button id = "analysisModeBtn" class ="mode-btn">Análisis</button>
+        </div>
+      <!-- <label for="filterType">Comentarios. Filtro por tipo:</label> -->
+        <div id="filterContainer">
+            <label for="filterType">Índice:</label>
+            <select id="filterType"></select>
+        </div>
+        <!--- otro filtro para filtrar por párrafos --->
+        <div id="filterText">
+            <label for="filterParagraph">Texto:</label>
+            <select id="filterParagraph"></select>
+        </div>
+        <!-- Botones personalizados con iconos -->
+        <span class="ql-formats">
+            <button id="paragraphBtn" class="ql-paragraph" title="Analizar párrafo"> Analizar párrafo</button>
+            <button id="addCommentFirst10Btn" class="ql-comment10" title="Analizar texto"> Analizar texto</button>
+        </span>
+        <!-- Botón recalcular -->
+        <div id="result"></div>
+        <button id="recalculateBtn">Recalcular comentarios</button>
+        <div id="commentsList"></div>
+
+        <button id="generateSuggestionBtn" class="generate-btn">Generar sugerencia</button>
+
+        <!-- Análisis -->
+        <div id="analysisContainer"> Análisis del texto </div>
+        <button id="analyzeBtn" class="ql-analyze" title="Resumen texto"><i class="fa-solid fa-magnifying-glass"></i></button>
+    </div>
+</div>
+
+<!-- Overlay de carga -->
+<div id="loadingOverlay">
+    <div class="loadingContent">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>En proceso...</span>
+    </div>
+</div>
+
+
+<!-- popup para mostrar el análisis -->
+<!--
+<div id="analysisPopup" class="popup-overlay" aria-hidden="true">
+    <div class="poppup-content" role="dialog" aria-modal="true" aria-labelledby="analysisTitle">
+        <button id="closePopupBtn" class="close-btn" aria-label="Cerrar ventana">&times;</button>
+        <h3 id="analysisTitle">Resultado del análisis</h3>
+        <p id="analysisText"></p>
+    </div>
+</div>
+-->
+
+    <!-- popup para la sugerencia del párrafo -->
+    <div id="suggestionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Generar sugerencia</h2>
+            </div>
+            <div class="modal-body">
+                <div class="panel">
+                    <h3>Texto original</h3>
+                    <textarea id="originalText" readonly></textarea>
+                </div>
+                <div class="panel">
+                    <h3>Sugerencia</h3>
+                    <textarea id="suggestedText" readonly></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="closeModalBtn">Cerrar</button>
+                <button id="newSuggestionBtn">Generar otra sugerencia</button>
+                <button id="useSuggestionBtn">Usar sugerencia</button>
+            </div>
+        </div>
+    </div>
 
 <!-- Quill JS -->
 <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-<script>
-    let quill;
-    let comments = [];
-    let commentIdCounter = 1;
-
-    // Inicializar Quill
-    quill = new Quill('#editor', {
-      theme: 'snow',
-      modules: {
-        toolbar: {
-          container: "#toolbar",
-          handlers: {
-            addComment: addComment,
-            analyze: analyzeText,
-            prepend: prependHola,
-            comment10: addCommentFirst10Letters
-          }
-        }
-      }
-    });
-
-    document.querySelector(".ql-editor").setAttribute("spellcheck", "true");
-
-
-
-    // Botones
-<!--    document.getElementById("addCommentBtn").onclick = addComment;-->
-    document.getElementById("analyzeBtn").onclick = analyzeText;
-    document.getElementById("prependBtn").onclick = prependHola;
-    document.getElementById("addCommentFirst10Btn").onclick = addCommentFirst10Letters;
-
-    // Añadir comentario manual
-    function addComment() {
-      const range = quill.getSelection();
-      if (!range || range.length === 0) {
-        alert("Selecciona un texto para comentar.");
-        return;
-      }
-
-      const userComment = prompt("Escribe tu comentario:");
-      if (!userComment) return;
-
-      const id = "comment-" + commentIdCounter++;
-
-      quill.formatText(range.index, range.length, { background: "yellow" });
-
-      comments.push({ id, text: userComment, index: range.index, length: range.length, suggestion: "Texto sugerido",description: "prueba",type:"prueba" });
-      updateFilterOptions();
-      renderComments();
-    }
-
-
-
-    // Añadir comentario a primeras 10 letras
-    async function addCommentFirst10Letters() {
-      // Mostrar overlay de bloqueo
-      const overlay = document.getElementById("loadingOverlay");
-      overlay.style.display = "flex";
-
-      const text = quill.getText();
-      comments = [];
-
-      const response = await fetch("/analyse_text", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
-      });
-
-
-      const data = await response.json();
-      let id;
-      let text1;
-      let start;
-      let len;
-      let suggestion;
-      let error;
-      let original;
-
-      data.forEach(item => {
-                id  = item.id;
-                text1 = item.text;
-                start = item.start;
-                len = item.end -item.start;
-                description = item.description;
-                type = item.type;
-                suggestion = item.suggestion;
-                error = item.error;
-                original = item.original;
-
-
-                comments.push({ id, text: text1, index: start, length:len, description: description, error: error, original: original,
-                type: type, suggestion: suggestion });
-      });
-
-
-
-<!--      const id = data.id;-->
-<!--      const text1 = data.text;-->
-<!--      const start = data.start;-->
-<!--      const len = data.end - data.start;-->
-<!--      const suggestion = data.suggestion;-->
-
-<!--      comments.push({ id, text: text1, index: start, length:len, suggestion: suggestion });-->
-      updateFilterOptions();
-      renderComments();
-
-      //Ocultar overlay
-        overlay.style.display="None";
-    }
-
-function showCommentsPanel() {
-  const panel = document.getElementById("commentsPanel");
-  panel.style.visibility = "visible";
-  panel.style.opacity = "1";
-}
-
-function hideCommentsPanel() {
-  const panel = document.getElementById("commentsPanel");
-  panel.style.visibility = "hidden";
-  panel.style.opacity = "0";
-}
-
-
-    // Panel lateral
-function renderComments(openCommentId = null) {
-      const filter = document.getElementById("filterType").value;
-      const panel = document.getElementById("commentsList");
-
-
-
-      panel.innerHTML = "";
-
-      const filtered = comments.filter(c => filter === "all" || c.type === filter);
-
-      if (filtered.length === 0) {
-        hideCommentsPanel();
-        return;
-      } else {
-        showCommentsPanel();
-      }
-
-      filtered.forEach((c, index) => {
-          const div = document.createElement("div");
-          div.className = "comment-item";
-          div.dataset.id = c.id;
-
-          // Cabecera (texto + etiqueta tipo)
-          const title = document.createElement("div");
-          title.className = "comment-title";
-          title.style.cursor = "pointer";
-
-          const textSpan = document.createElement("span");
-          textSpan.innerText = c.text;
-
-          const typeSpan = document.createElement("span");
-          typeSpan.className = `comment-type comment-type-${c.type.toLowerCase()}`;
-          typeSpan.innerText = c.type.replace(/-/g, " ");;
-
-          title.appendChild(textSpan);
-          title.appendChild(typeSpan);
-
-          // Descripción
-          const desc = document.createElement("div");
-          desc.className = "comment-desc";
-          desc.innerText = "Descripción: " + c.description;
-          desc.style.display = "none";
-
-          // Sugerencia
-          const sugg = document.createElement("div");
-          if (c.suggestion==="¿Quieres una sugerencia?") {
-              sugg.className = "comment-sugg";
-              sugg.innerText = c.suggestion
-                  ? "" + c.suggestion
-                  : "Sin sugerencia disponible.";
-          } else{
-              sugg.className = "comment-sugg";
-              sugg.innerText = c.suggestion
-                  ? "Sugerencia: " + c.suggestion
-                  : "Sin sugerencia disponible.";
-          }
-          sugg.style.display = "none";
-
-          // Botón quitar sugerencia
-          const btn = document.createElement("button");
-          btn.innerText = "Quitar comentario";
-          btn.className = "comment-accept-btn";
-          btn.style.display = "none";
-
-          btn.onclick = () => {
-            acceptSuggestion(c);
-            // applySuggestion(c);
-            renderComments();
-          };
-
-          // Botón generar sugerencia
-          const gensug = document.createElement("button");
-          gensug.innerText = "Generar sugerencia";
-          gensug.className = "comment-sugges-btn";
-          gensug.style.display = "none";
-
-          gensug.onclick = () => {
-              generateSuggestion(c);
-              renderComments();
-          };
-
-          // Botón aplicar sugerencia
-          const apsug = document.createElement("button");
-          apsug.innerText = "Aplicar sugerencia";
-          apsug.className = "comment-aplicar-btn";
-          apsug.style.display = "none";
-
-          apsug.onclick = () => {
-              applySuggestion(c);
-              renderComments();
-          };
-
-          // Nueva sugerencia
-          const nusug = document.createElement("button");
-          nusug.innerText = "Otra sugerencia";
-          nusug.className = "comment-nusug-btn";
-          nusug.style.display = "none";
-
-          nusug.onclick = () => {
-              generateSuggestion(c);
-              renderComments();
-          };
-
-          // Evento click en cabecera
-          title.onclick = () => {
-              quill.setSelection(c.index, c.length);
-
-              // Cerrar todo
-              document.querySelectorAll("#commentsList .comment-desc")
-                  .forEach(d => d.style.display = "none");
-              document.querySelectorAll("#commentsList .comment-sugg")
-                  .forEach(s => s.style.display = "none");
-              document.querySelectorAll("#commentsList .comment-accept-btn")
-                  .forEach(b => b.style.display = "none");
-              document.querySelectorAll("#commentsList .comment-sugges-btn")
-                  .forEach(b => b.style.display = "none");
-              document.querySelectorAll("#commentsList .comment-accept-btn")
-                  .forEach(b => b.style.display = "none");
-              document.querySelectorAll("#commentsList .comment-nusug-btn")
-                  .forEach(b => b.style.display = "none");
-
-              // Abrir este
-              desc.style.display = "block";
-              sugg.style.display = "block";
-              if (c.suggestion === "¿Quieres una sugerencia?") {
-                  btn.style.display = "inline-block";
-                  gensug.style.display = "inline-block";
-              } else if (c.suggestion && c.suggestion.trim() !== "") {
-                  btn.style.display = "inline-block";
-                  nusug.style.display = "inline-block";
-                  apsug.style.display = "inline-block";
-              }
-          };
-
-          if (openCommentId && c.id === openCommentId) {
-            desc.style.display = "block";
-            sugg.style.display = "block";
-            gensug.style.display="none";
-            btn.style.display = "inline-block";
-            apsug.style.display = "inline-block";
-            nusug.style.display = "inline-block";
-        }
-
-          div.appendChild(title);
-          div.appendChild(desc);
-          div.appendChild(sugg);
-          div.appendChild(btn);
-          div.appendChild(gensug);
-          div.appendChild(apsug);
-          div.appendChild(nusug);
-          panel.appendChild(div);
-        });
-
-      // Asegurar que el filtro se aplique al cambiar
-      document
-        .getElementById("filterType")
-        .removeEventListener("change", renderComments);
-      document
-        .getElementById("filterType")
-        .addEventListener("change", renderComments);
-    }
-
-
-
-
-    function applySuggestion(comment) {
-      if (!comment.suggestion) return;
-
-      // 1. Longitud inicial
-      const oldLength = comment.length;
-      const newLength = comment.suggestion.length;
-      const delta = newLength - oldLength;
-
-      // 2. Reemplazar texto en el editor
-      quill.deleteText(comment.index, oldLength);
-      quill.insertText(comment.index, comment.suggestion);
-
-      // 3. Actualizar índices de comentarios posteriores
-      comments.forEach(c => {
-        if (c.index > comment.index) {
-          c.index += delta;
-        }
-      });
-
-      // 4. Eliminar el comentario aceptado
-      comments = comments.filter(c => c.id !== comment.id);
-
-    }
-
-    function acceptSuggestion(comment) {
-      if (!comment.suggestion) return;
-      // Eliminar el comentario aceptado
-      comments = comments.filter(c => c.id !== comment.id);
-    }
-
-    async function generateSuggestion(comment){
-          if (!comment.suggestion) return;
-
-          //Mostrar overlay de bloqueo
-          const overlay = document.getElementById("loadingOverlay");
-          overlay.style.display ="flex";
-
-          // Generamos la sugerencia
-          const response = await fetch("/generar_sugerencia", {
-              method: "POST",
-              headers: {"Content-Type": "application/json"},
-              body: JSON.stringify({comment})
-          });
-          const data = await response.json();
-          // Mostramos la sugerencia en el cuadro
-          comments.forEach(comen => {
-            if (comen.id == comment.id){
-                comen['suggestion'] = data['sugerencia'];
-            }
-        });
-        renderComments(comment.id);
-        overlay.style.display="none";
-    }
-
-
-
-
-    // Botón analizar (simulación)
-    async function analyzeText() {
-      const range = quill.getSelection();
-      let text;
-      let index, length, description;
-
-      // Si hay texto seleccionado
-      if (range && range.length > 0) {
-          text = quill.getText(range.index, range.length).trim();
-          description = "Información sobre el texto seleccionado.";
-          index = range.index;
-          length = range.length;
-      } else {
-          // Si no hay texto seleccionado
-          text = quill.getText().trim();
-          description = "Información general sobre todo el texto.";
-          index = 0;
-          length = text.length;
-      }
-
-      // Mostrar resultado en el popup
-      const popup = document.getElementById("analysisPopup");
-      const closeBtn = document.getElementById("closePopupBtn");
-      const textElem = document.getElementById("analysisText");
-
-      const info = await fetch("/resumen", {
-          method:"POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({text})
-      });
-      const datos = await info.json();
-
-      description = description + '\n\n' + datos;
-      textElem.innerText = description;
-      popup.style.display = "flex";
-      popup.setAttribute('aria-hidden', 'false');
-
-      // Cerrar popup al hacer clic en el botón
-      closeBtn.addEventListener('click', () => {
-          popup.style.display = "none";
-          popup.setAttribute('aria-hidden', 'true');
-      });
-
-      // También cerrar si se hace clic fuera del cuadro
-      popup.onclick = (e) => {
-          if (e.target === popup) {
-              popup.style.display = "none";
-              popup.setAttribute('aria-hidden', 'true');
-          };
-      };
-    }
-
-    // Botón prepend
-    function prependHola() {
-      quill.insertText(0, "Hola desde FastAPI ");
-    }
-
-    function updateFilterOptions() {
-      const select = document.getElementById("filterType");
-      const types = [...new Set(comments.map(c => c.type))]; // tipos únicos
-
-      select.innerHTML = "";
-      // opción "todos"
-      const optAll = document.createElement("option");
-      optAll.value = "all";
-      optAll.textContent = "Todos";
-      select.appendChild(optAll);
-
-      // añadir opciones únicas
-      types.forEach(type => {
-        const option = document.createElement("option");
-        option.value = type;
-        const cleanLabel = type.replace(/-/g, " ");
-        option.textContent = cleanLabel.charAt(0).toUpperCase() + cleanLabel.slice(1);
-        select.appendChild(option);
-      });
-
-
-
-    }
-
-
-
-
-</script>
+<script src="/static/app.js"></script>
 </body>
 </html>

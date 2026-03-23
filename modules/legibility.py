@@ -1,203 +1,31 @@
+from modules.auxiliares_legibility import *
 import textstat
-import uuid
-import nltk
-#nltk.download('omw-1.4')
-#nltk.download('wordnet')
-from nltk.corpus import wordnet as wn
-from nltk.tokenize import sent_tokenize, word_tokenize
-import pyphen
-import textstat
-from ollama import chat
-from ollama import ChatResponse
 
-textstat.set_lang(lang="es")
-
-def fernandezHuerta(texto):
-    pos = 0
-    result = []
-    start = pos
-    end = pos #+ len(texto)
-
-    indice = textstat.fernandez_huerta(texto)
-    indice = round(indice, 2)
-
+# Para que un texto se considere legible dentro de la divulgación científica se considera
+# que debe extraer una puntuación de entre 60 y 70 en el text de Fernández-Huerta
+def indice_fernandezHuerta(texto):
+    """Dado un texto, devuelve un real con el resultado del test y un string con la explicación a dicho número."""
+    indice = round(fernandez_huerta(texto), 2)
     if indice<30:
-        result.append({"id": str(uuid.uuid4()), "start": start, "end": end, "text": "Contenido poco legible",
-                       "description": "Es un texto muy difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(
-                           indice) + ")",
-                       "suggestion": "",
-                       "type": "legibilidad",
-                       "original": texto,
-                       "error": "fern"})
-    elif indice < 50:
-        result.append({"id": str(uuid.uuid4()), "start": start, "end": end, "text": "Contenido poco legible",
-                       "description": "Es un texto difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(
-                           indice) + ")",
-                       "suggestion": "",
-                       "type": "legibilidad",
-                       "original": texto,
-                       "error": "fern"})
+        resultado = "Es un texto muy difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(indice) + ")"
+    elif indice<50:
+        resultado = "Es un texto difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(indice) + ")"
     elif indice<60:
-        result.append({"id": str(uuid.uuid4()), "start": start, "end": end, "text": "Contenido poco legible",
-                   "description": "Es un texto algo difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(
-                       indice) + ")",
-                   "suggestion": "",
-                   "type": "legibilidad",
-                       "original": texto,
-                       "error": "fern"})
-    return result
+        resultado = "Es un texto algo difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(indice) + ")"
+    else:
+        resultado = "El texto se considera legible dentro de la divulgación científica."
+    return indice, resultado
 
+def media_palabras_frases(texto):
+    """Dado un texto devuelve la longitud media de sus frases"""
+    numPal = textstat.lexicon_count(texto)
+    numFrases = textstat.sentence_count(texto)
+    return round(numPal/numFrases, 2)
 
-def longFrases_promedio(text):
-    pos = 0
-    result = []
-    start =  pos
-    end = pos #+ len(text)
+def media_silabas_palabras(texto):
+    """Dado un texto devuelve la media de las sílabas por palabra"""
+    numPal = textstat.lexicon_count(texto)
+    numSilabas = textstat.syllable_count(texto, lang="es")
+    return round(numSilabas/numPal, 2)
 
-
-    numPal = textstat.lexicon_count(text, removepunct=True)
-    numFrases = textstat.sentence_count(text)
-    promedio = numPal / numFrases
-    promedio = round(promedio, 2)
-
-    result.append({"id": str(uuid.uuid4()), "start": start, "end": end, "text": "Longitud promedio de frases",
-                   "description": "Las oraciones deben tener menos de 30 palabras, a ser posible no más de 20. La longitud promedio de las frases actuales es de  " + str(
-                       promedio),
-                   "suggestion": "",
-                   "type": "legibilidad",
-                   "original": text,
-                   "error": "longFra"})
-
-    return result
-"""
-    frases = nltk.sent_tokenize(text, language = "spanish")
-    frases = [frase.strip() for frase in frases if frase.strip()] # Eliminar frases vacías
-    totalPalabras = 0
-
-    for frase in frases:
-        palabras = [w for w in word_tokenize(frase, language="spanish") if w.isalpha()]
-        totalPalabras += len(palabras)
-
-    promedio = totalPalabras/len(frases) if frases else 0
-    """
-
-
-def silabasPalabra(text):
-    pos = 0
-    result = []
-    start = pos
-    end = pos #+ len(text)
-
-    numPal = textstat.lexicon_count(text, removepunct=True)
-    numSilabas = textstat.syllable_count(text, lang="es")
-    promedio = numSilabas/numPal
-    promedio = round(promedio, 2)
-
-    result.append({"id": str(uuid.uuid4()), "start": start, "end": end, "text": "Media de sílabas por palabra",
-                   "description": "La media de sílabas por palabra actual es de:  " + str(
-                       promedio),
-                   "suggestion": "",
-                   "type": "legibilidad",
-                   "original": text,
-                   "error": "longsil"})
-    return result
-
-
-"""
-a = pyphen.Pyphen(lang='es')
-    palabras = [w for w in text.split() if w.isalpha()]
-
-    silabas = sum(len(a.inserted(palabra).split("-")) for palabra in palabras)
-    promedio = silabas/len(palabras) if palabras else 0
-    """
-def palabrasComunes(archivos): # Me devuelve true si la palabra está en el archivo, false si no
-    contenido = set()
-    todas = set()
-
-    for archivo in archivos:
-        with open("mazyvan/" + archivo, "r", encoding="utf-8") as f:
-            contenido.update(f.read().splitlines())
-            for cont in contenido:
-                todas.update(cont.split('|'))
-    return todas
-
-archivos = ["most-common-spanish-words.txt", "most-common-spanish-words-v2.txt", "most-common-spanish-words-v3.txt",
-                "most-common-spanish-words-v4.txt", "most-common-spanish-words-v5.txt"]
-contenido = palabrasComunes(archivos)
-for con in contenido:
-   con.split('|')
-aparecen = set()
-
-
-def palabraComplejas(frase, palabra, pos_inicial):
-    # Lista de palabras comunes sacadas de: https://github.com/mazyvan/most-common-spanish-words/
-    pos = pos_inicial
-    result = []
-    start = pos
-    end = pos + len(palabra)
-
-    esta = False
-    if palabra in aparecen:
-        esta = True
-    elif textstat.syllable_count(palabra, lang="es")<2:
-        esta = True
-        aparecen.add(palabra)
-    elif palabra in contenido:
-        esta = True
-        aparecen.add(palabra)
-    elif not textstat.is_difficult_word(palabra):
-        esta = True
-        aparecen.add(palabra)
-
-
-
-    if esta == False:
-        # sinonimos = obtenerSinonimos(palabra)
-        # sinonimos_filtrados = [s for s in sinonimos if s.lower()!=palabra.lower()]
-        sugerencia = "¿Quieres una sugerencia?"
-        result.append({"id": str(uuid.uuid4()), "start": start, "end": end, "text": "Palabra complicada",
-                           "description": "La palabra " + palabra + " es complicada.",
-                           "suggestion": sugerencia,
-                           "type": "legibilidad",
-                           "original": [frase, palabra],
-                           "error": "sinonimo"})
-    return result, end
-
-
-def obtenerSinonimo(frase, palabra):
-    instruccion = f"""
-    En el siguiente texto: '{frase}'
-    Dame un sinónimo más simple y natural en español para la palabra '{palabra}',
-    manteniendo el mismo sentido.
-    Devuelve solo el sinónimo, sin explicaciones.
-    """
-
-    response: ChatResponse = chat(model = "nichonauta/pepita-2-2b-it-v5", messages=[
-    #response: ChatResponse = chat(model="jobautomation/OpenEuroLLM-Spanish", messages=[
-        {
-            'role': 'user',
-            'content': instruccion,
-        },
-    ])
-    sugerencia = response.message.content
-    return sugerencia
-
-"""
-def obtenerSinonimos(palabra):
-    sinonimos = set()
-    for synset in wn.synsets(palabra, lang='spa'):
-        for lemma in synset.lemmas('spa'):
-            sinonimos.add(lemma.name().replace('_', ' '))
-    return list(sinonimos)
-"""
-
-
-"""
-    if textstat.is_difficult_word(palabra):
-        result.append({"id": comment_id, "start": start, "end": end, "text": "Palabra complicada",
-                       "description": "La palabra " + palabra + " es complicada." ,
-                       "suggestion": "",
-                       "type": "legibilidad"})
-
-    return result, end
-"""
+#def palabra_compleja

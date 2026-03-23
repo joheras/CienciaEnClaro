@@ -58,10 +58,9 @@
     <!-- Panel izquierdo: botones -->
     <div class="panel left">
       <button id="addCommentBtn">Añadir comentario</button>
-      <button id="analyzeBtn">Analizar texto</button>
-      <button id="prependBtn">Añadir "Hola desde FastAPI"</button>
-      <button id="addCommentFirst10Btn">Comentar primeras 10 letras</button>
-      <button id="addCommentFastAPI">Comentario FastAPI</button>
+      <button id="analyzeBtn">Resumen texto</button>
+      <button id="paragraphBtn"> Analizar párrafo</button>
+      <button id="addCommentFirst10Btn">Analizar texto </button>
       <div id="result"></div>
     </div>
 
@@ -96,10 +95,9 @@
         } })
       .then(newEditor => { editor = newEditor;
         document.getElementById("addCommentBtn").onclick = addComment;
-        document.getElementById("analyzeBtn").onclick = analyzeText;
-        document.getElementById("prependBtn").onclick = prependHola;
+        //document.getElementById("analyzeBtn").onclick = analyzeText;
+        document.getElementById("paragraphBtn").onclick = addCommentParagraph;
         document.getElementById("addCommentFirst10Btn").onclick = addCommentFirst10Letters;
-        document.getElementById("addCommentFastAPI").onclick = addCommentFirstLineFromFastAPI;
       })
       .catch(error => console.error(error));
 
@@ -126,41 +124,6 @@
       comments.push({ id, text: userComment, description: "Comentario manual", suggestion: "Texto sugerido" });
       renderComments();
     }
-
-    // Añadir comentario a las primeras 10 letras
-    function addCommentFirst10Letters() {
-      if (!editor) return;
-      const text = editor.getData();
-      if (!text) { alert("El editor está vacío."); return; }
-
-      const comment_id = "comment-" + (commentIdCounter++);
-      const comment_text = "Comentario primeras 10 letras";
-
-      editor.model.change(writer => {
-        const root = editor.model.document.getRoot();
-        let firstParagraph;
-        if (root.childCount === 0) {
-          firstParagraph = writer.createElement("paragraph");
-          writer.insert(firstParagraph, root, 0);
-          writer.insertText(text, firstParagraph, 0);
-        } else { firstParagraph = root.getChild(0); }
-
-        const endIndex = Math.min(10, firstParagraph.maxOffset);
-        const start = writer.createPositionAt(firstParagraph, 0);
-        const end = writer.createPositionAt(firstParagraph, endIndex);
-        const range = writer.createRange(start, end);
-        writer.setAttribute("commentId", comment_id, range);
-
-        comments.push({
-          id: comment_id,
-          text: comment_text,
-          description: "Resalta las primeras 10 letras",
-          suggestion: "Sugerencia de reemplazo"
-        });
-      });
-      renderComments();
-    }
-
     // Panel lateral
     function renderComments() {
       const panel = document.getElementById("commentsList");
@@ -238,17 +201,9 @@
       });
     }
 
-    async function analyzeText() {
+    async function analyzeText2() {
       const text = editor.getData();
       document.getElementById("result").innerText = "Resultado del análisis: (simulado) " + text.length + " caracteres";
-    }
-
-    async function prependHola() {
-      const text = editor.getData();
-      editor.setData("<span data-comment-id=\"0\">" + text+"</span>");
-      comments.push({ id: "0", text: "prueba" });
-      renderComments();
-
     }
 
     async function addCommentFirstLineFromFastAPI() {
@@ -294,9 +249,16 @@
 
 
 
+
+
+
      // comments.push({ id: data.comment_id, text: data.comment_text });
      // renderComments();
 }
+
+
+
+
   </script>
 </body>
 </html>

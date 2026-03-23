@@ -4,129 +4,234 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
-from modules.longitud import analisis_longitud_frase, sugerenciaFrase
-from modules.longitud import analisis_longitud_parrafo
-from modules.orden_sintactico import analisis_orden_sintactico
-from modules.legibility import fernandezHuerta, longFrases_promedio, silabasPalabra, obtenerSinonimo, palabraComplejas
-import nltk
-import textstat
+import asyncio
 
-import time
+# Importamos los módulos
+from modules.morfosintaxis import *
+from modules.legibility import *
+from modules.models import *
 
 app = FastAPI()
-
-# Servir estáticos
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
 
-@app.post("/analyze")
-async def analyze(request: Request):
+# Servir estáticos
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+#Cuando nos pidan analizar el texto completo lo que vamos a hacer es dividir el texto en
+# párrafos y hacer el análisis de cada uno de esos párrafos.
+def dividir_parrafos(texto):
+    return texto.split("\n")
+
+
+# Nos analiza todos los índices para un párrafo dado
+async def analizar_parrafo(texto, inicioParrafo):
+    result = []
+    resultado = await morfosintaxis_paragraph(texto, inicioParrafo)
+    result.extend(resultado)
+    #result.extend(legibility_paragraph(texto, inicioParrafo))
+    return result
+
+@app.post("/analyse_paragraph")
+async def analyse_paragraph(request: Request):
+    """ Dado un párrafo devuelve un resumen de dicho párrafo con los índices que no cumplen las características deseadas"""
     data = await request.json()
-    print(data)
-    text = data.get("text", "")
+    texto = data['parrafo']
+    inicioParrafo = data['start']
+    result = await analizar_parrafo(texto, inicioParrafo)
+    return JSONResponse(content=result)
 
-    # Ejemplo: contar palabras
-    word_count = len(text.split())
 
-    return JSONResponse({"result": f"El texto tiene {word_count} palabras."})
-
-@app.post("/add-hola")
-async def add_hola(request: Request):
-    data = await request.json()
-    text = data.get("text", "")
-    modified_text = "Hola desde FastAPI " + text
-    return JSONResponse({"modified_text": modified_text})
-
+# Nos analiza todos los índices para todo el texto
 @app.post("/analyse_text")
 async def analyse_text(request: Request):
-    """
-    Añade un comentario a la primera línea del texto y devuelve:
-    - text: el texto original
-    - comment_text: el comentario
-    - comment_id: un identificador único
-    """
-
-    inicio = time.time()
-
+    """ Dado un texto devuelve un resumen de dicho texto con los índices que no cumplen las características deseadas"""
     data = await request.json()
-    text = data.get("text", "")
+    texto = data.get("text", "")
 
-    # 1. Análisis a nivel de texto
-    # 1.1 Fernández-Huerta
-    #result = fernandezHuerta(text)
-    # 1.2 longitud promedio de frases
-    #result.extend(longFrases_promedio(text))
-    # 1.3 promedio de sílabas por palabra
-    #result.extend(silabasPalabra(text))
+    parrafos = dividir_parrafos(texto)
+    resultados = {} # Aquí voy a almacenar todos los comentarios por parrafo
+
+    inicio = 0
+    for i, parrafo in enumerate(parrafos, start=1):
+        resultados[i] = await analizar_parrafo(parrafo, inicio)
+        inicio = inicio + len(parrafo) + 1 # +1 por el salto de línea
+    return JSONResponse(content=resultados)
+
+
+async def morfosintaxis_paragraph(texto, inicioParrafo):
+    """ Dado un párrafo devuelve un resumen de dicho párrafo con los índices morfosintácticos que no cumplen las características deseadas"""
     result = []
-    # 2. Análisis a nivel de párrafo
-    parrafos = text.split("\n")
-    pos = 0 # Posición de los párrafos
-    for parrafo in parrafos:
-        pos2 = pos
-        # 2.1 Longitud de párrafos
-        res_parrafo, pos = analisis_longitud_parrafo(parrafo, pos)
-        result.extend(res_parrafo)
+    if texto != '\n' and texto!='':
+        finParrafo = inicioParrafo + len(texto)
+        inicioFrase = inicioParrafo
 
-        # 3. Análisis a nivel de frase
-        frases = nltk.sent_tokenize(parrafo, language = "spanish")
-        for frase in frases:
-            posFrases = pos2
-            # 3.1 Longitud de frases
-            res_frase, pos2 = analisis_longitud_frase(frase, posFrases)
-            result.extend(res_frase)
-            pos2 = pos2 + 1
+        parrafoCorto = parrafo_corto(texto)
+        if parrafoCorto[0]:
+            resumen = {
+                "id": str(uuid.uuid4()),
+                "start": inicioParrafo,
+                "end": finParrafo,
+                "text": "Párrafo corto",
+                "description": f"El párrafo es demasiado corto, debería tener mínimo dos oraciones y tiene {parrafoCorto[1]}.",
+                "type": "morfosintaxis",
+                "name": "parrafoCorto"
+            }
+            result.append(resumen)
+        parrafoLargo = parrafo_largo(texto)
+        if parrafoLargo[0]:
+            resumen = {
+                "id": str(uuid.uuid4()),
+                "start": inicioParrafo,
+                "end": finParrafo,
+                "text": "Párrafo largo",
+                "description": f"El párrafo es demasiado largo, debería tener máximo cinco oraciones y tiene {parrafoLargo[1]}.",
+                "type": "morfosintaxis",
+                "name": "parrafoLargo"
+            }
+            result.append(resumen)
 
-            # 3.2 Orden sintáctico
-            res_orden_sintactico = analisis_orden_sintactico(frase, posFrases)
-            result.extend(res_orden_sintactico)
+        frases = nltk.sent_tokenize(texto, language="spanish")
+
+        CHUNK_SIZE = 2 # Procesamos 5 frases por vez
+        for i in range(0, len(frases), CHUNK_SIZE):
+            chunk = frases[i:i+CHUNK_SIZE]
+            for frase in chunk:
+                finFrase = inicioFrase + len(frase)
+                oracionLarga = oracion_larga(frase)
+                if oracionLarga[0]:
+                    resumen = {
+                        "id": str(uuid.uuid4()),
+                        "start": inicioFrase,
+                        "end": finFrase,
+                        "text": "Oración larga",
+                        "description": f"La oración es demasiado larga, debería tener máximo 20 palabras y tiene {oracionLarga[1]}.",
+                        "type": "morfosintaxis",
+                        "name": "oracionLarga"
+                    }
+                    result.append(resumen)
+                orden = orden_incorrecto(frase)
+                if orden:
+                    resumen = {
+                        "id": str(uuid.uuid4()),
+                        "start": inicioFrase,
+                        "end": finFrase,
+                        "text": "Orden sintáctico incorrecto",
+                        "description": f"La oración no sigue el orden sintáctico adecuado, debería seguir la estructura sujeto-verbo-complementos.",
+                        "type": "morfosintaxis",
+                        "name": "orden"
+                    }
+                    result.append(resumen)
+                coordinada = oracion_coordinada(frase)
+                if coordinada:
+                    resumen = {
+                        "id": str(uuid.uuid4()),
+                        "start": inicioFrase,
+                        "end": finFrase,
+                        "text": "Oración coordinada",
+                        "description": f"Se debe evitar el abuso de oraciones coordinadas.",
+                        "type": "morfosintaxis",
+                        "name": "coordinada"
+                    }
+                    result.append(resumen)
+                yuxtapuesta = oracion_yuxtapuesta(frase)
+                if yuxtapuesta:
+                    resumen = {
+                        "id": str(uuid.uuid4()),
+                        "start": inicioFrase,
+                        "end": finFrase,
+                        "text": "Oración yuxtapuesta",
+                        "description": f"Se debe evitar el abuso de oraciones yuxtapuestas.",
+                        "type": "morfosintaxis",
+                        "name": "yuxtapuesta"
+                    }
+                    result.append(resumen)
+
+                inicioFrase = finFrase + 1  # Para seguir en la siguiente frase
+
+    return result
 
 
-            # 4. Análisis a nivel de palabra
-            palabras = [w for w in nltk.word_tokenize(frase, language="spanish") if w.isalpha()]
-            posPalabras = posFrases
-            while not text[posPalabras:posPalabras + 1].isalpha():
-                posPalabras = posPalabras + 1  # para contar uno por cada caracter no alfanumérico
-
-            for pal in palabras:
-                while not text[posPalabras:posPalabras+1].isalpha():
-                    posPalabras = posPalabras + 1 # para contar uno por cada caracter no alfanumérico
-
-                res_palabra, posPalabras = palabraComplejas(frase, pal, posPalabras)
-                result.extend(res_palabra)
-
-
-
-
-    final = time.time()
-    print(final-inicio)
-    return JSONResponse(
-        content = result
-
-    #     {
-    #     "id": comment_id,
-    #     "start": start,
-    #     "end": end,
-    #     "text": "comentario fastapi",
-    #     "suggestion":"prueba",
-    #     "original": texto marcado
-    # }
-    )
-
-@app.post("/generar_sugerencia")
-async def generar_sugerencia(request: Request):
+async def morfosintaxis_text(request: Request):
+    """ Dado un texto devuelve un resumen de dicho texto con los índices morfosintácticos que no cumplen las características deseadas"""
     data = await request.json()
-    if data['comment']['error'] == "longFrase":
-        result = sugerenciaFrase(data['comment'])
-    elif data['comment']['error'] == 'sinonimo':
-        result = obtenerSinonimo(data['comment']['original'][0], data['comment']['original'][1])
-    return JSONResponse({"sugerencia": result})
+    texto = data.get("text", "")
 
+    parrafos = dividir_parrafos(texto)
+    resultados = {} # Aquí voy a almacenar todos los comentarios por parrafo
+
+    inicio = 0
+    for i, parrafo in enumerate(parrafos, start=1):
+        resultados[i] = morfosintaxis_paragraph(parrafo, inicio)
+        inicio = inicio + len(parrafo) + 1
+    return resultados
+
+"""
+def legibility_paragraph(texto, inicioParrafo):
+    " Dado un párrafo devuelve un resumen de dicho párrafo con los índices de legibilidad que no cumplen las características deseadas"
+    result = []
+    finParrafo = inicioParrafo + len(texto)
+    inicioFrase = inicioParrafo
+    fernandezHuerta = indice_fernandezHuerta(texto)
+    if fernandezHuerta[0]<60:
+        resumen = {
+            "id": str(uuid.uuid4()),
+            "start": inicioParrafo,
+            "end": finParrafo,
+            "text": "Fernández-Huerta",
+            "description": fernandezHuerta[1],
+            "type": "legibility",
+            "name": "fernandezHuerta"
+        }
+        result.append(resumen)
+    frases = nltk.sent_tokenize(texto, language="spanish")
+    for frase in frases:
+        finFrase = inicioFrase + len(frase)
+        palabrasFrase = media_palabras_frases(frase)
+        resumen = {
+            "id": str(uuid.uuid4()),
+            "start": inicioFrase,
+            "end": finFrase,
+            "text": "Media palabras-frase",
+            "description": f"El párrafo contiene una media de {palabrasFrase} palabras por frase",
+            "type": "legibility",
+            "name": "palabrasFrase"
+        }
+        result.append(resumen)
+        silabasPalabra = media_silabas_palabras(frase)
+        resumen = {
+            "id": str(uuid.uuid4()),
+            "start": inicioFrase,
+            "end": finFrase,
+            "text": "Media sílabas-palabra",
+            "description": f"El párrafo contiene una media de {silabasPalabra} sílabas por palabra",
+            "type": "legibility",
+            "name": "silabasPalabra"
+        }
+        result.append(resumen)
+
+    return result
+
+
+async def legibility_text(request: Request):
+    " Dado un texto devuelve un resumen de dicho texto con los índices de legibilidad que no cumplen las características deseadas"
+    data = await request.json()
+    texto = data.get("text", "")
+
+    parrafos = dividir_parrafos(texto)
+    resultados = {} # Aquí voy a almacenar todos los comentarios por parrafo
+
+    inicio = 0
+    for i, parrafo in enumerate(parrafos, start=1):
+        resultados[i] = legibility_paragraph(parrafo, inicio)
+        inicio = inicio + len(parrafo) + 1
+    return resultados
+"""
 @app.post("/resumen")
-async def resumen(request: Request):
+async def summary(request: Request):
     data = await request.json()
     data = data['text']
     caracteres = len(data)
@@ -134,18 +239,23 @@ async def resumen(request: Request):
     palabras = textstat.lexicon_count(data, removepunct=True)
     frases = textstat.sentence_count(data)
 
-
     texto = "Número de caracteres: " + str(caracteres)
     texto = texto + '\n' + 'Número de sílabas: ' + str(silabas)
-    texto = texto + '\n' + 'Número de palabras: '+ str(palabras)
+    texto = texto + '\n' + 'Número de palabras: ' + str(palabras)
     texto = texto + '\n' + 'Número de frases: ' + str(frases)
-    texto = texto + '\n' + 'Media de caracteres por palabra: ' + str(round(caracteres/palabras, 2))
-    texto = texto + '\n' + 'Media de sílabas por palabra: ' + str(round(silabas/palabras, 2))
-    texto = texto + '\n' + 'Media de palabras por frase: ' + str(round(palabras/frases, 2))
+    texto = texto + '\n' + 'Media de caracteres por palabra: ' + str(round(caracteres / palabras, 2))
+    texto = texto + '\n' + 'Media de sílabas por palabra: ' + str(round(silabas / palabras, 2))
+    texto = texto + '\n' + 'Media de palabras por frase: ' + str(round(palabras / frases, 2))
     texto = texto + '\n' + "Índice de Fernández-Huerta: " + str(round(textstat.fernandez_huerta(data), 2))
 
-    return JSONResponse(
-        content = texto)
+    return JSONResponse(content=texto)
 
-if __name__ == "__main__":
+@app.post("/generar_sugerencia")
+async def generar_sugerencia(request: Request):
+    data = await request.json()
+    comment = data.get("comment")
+    result = obtenerSugerencia(comment)
+    return JSONResponse({"sugerencia": result})
+
+if __name__ == '__main__':
     uvicorn.run(app, host="127.0.0.1", port=8000)

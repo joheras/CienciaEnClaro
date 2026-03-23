@@ -9,7 +9,7 @@ html, body {
 .container {
   display: grid;
   grid-template-columns: 1fr 300px; /* editor a la izquierda, panel a la derecha */
-  height: 100vh;
+  min-height: 100vh;
   gap: 10px;
 }
 
@@ -18,6 +18,8 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 #toolbar {
@@ -26,25 +28,34 @@ html, body {
 }
 
 #editor {
-  flex: 1;
-  height: 100%;
-  background: #fff;
-  overflow-y: auto;
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+#result {
+  margin-top: 10px;
+  color: #444;
 }
 
 /* ===== Panel lateral de comentarios ===== */
+.leftPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
 #commentsPanel {
-  visibility: hidden;   /* Oculto pero mantiene el espacio en el grid */
-  opacity: 0;           /* Totalmente transparente */
+     /*visibility: hidden; Oculto pero mantiene el espacio en el grid */
+             /* opacity: 0;Totalmente transparente */
   transition: opacity 0.3s ease, visibility 0.3s ease;
   display: flex;
+  flex: 1;
   flex-direction: column;
   background: #f9f9fb;
   border-left: 2px solid #ddd;
   padding: 12px;
   height: 100%;
-
-  max-height: 100vh; /* Altura máxima del panel */
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -59,13 +70,21 @@ html, body {
   background: #fff;
 }
 
+/* Selector de filtro */
+#filterParagraph {
+  margin: 0 0 12px 0;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 0.9em;
+  background: #fff;
+}
+
 /* Lista de comentarios */
 #commentsList {
   flex: 1;
   overflow-y: auto;
-  padding-right: 6px;
-
-  max-height: calc(100% - 60px); /* Deja espacio para label y select */
+  min-height: 0;
 }
 
 #loadingOverlay {
@@ -169,21 +188,24 @@ html, body {
 
 /* ===== Quill (Snow theme) ===== */
 .ql-toolbar.ql-snow {
+  position: sticky;
   border: 1px solid #ccc;
   border-bottom: none;
+  top: 0;
+  z-index: 10;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
 }
 
-.ql-container.ql-snow {
-  border: 1px solid #ccc;
-  border-radius: 0 0 6px 6px;
+.ql-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  overflow-y: visible; /* ültimo añadido */
+  height: 100%;
 }
-
-.ql-editor {
-  font-size: 1rem;
-  line-height: 1.6;
-  padding: 12px;
-}
-
 
 
 
@@ -267,4 +289,256 @@ html, body {
 
 .close-btn:hover {
     color: #000;
+}
+
+
+/* Número de párrafo */
+.editor-wrapper {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+#paragraphNumbers {
+  padding: 10px 5px;
+  background: #f7f7f7;
+  color: #888;
+  text-align: right;
+  user-select: none;
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 3%;
+  box-sizing: border-box;
+  left: 0;
+  overflow: hidden;
+}
+
+#paragraphNumbers div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  height: auto;
+}
+
+.ql-editor {
+  flex: 1;
+  min-height: 0;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  font-size: 1rem;
+  line-height: 1.6;
+  padding: 12px;
+  overflow-y: visible; /* último añadido */
+  height: auto; /* Último añadido */
+}
+
+/* ===== Comentarios bloqueados ===== */
+.comment-item.locked {
+  opacity: 0.45;
+  filter: grayscale(100%);
+  pointer-events: none;
+}
+
+.comment-item.locked .recalculate-btn {
+  pointer-events: auto;
+  opacity: 1;
+  filter: none;
+}
+#recalculateBtn {
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: #ff9800;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  display: none;
+}
+
+.paragraph-number-row{
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-right: 6px;
+  box-sizing: border-box;
+}
+
+#recalculateBtn:hover {
+  background: #e68900;
+}
+
+/* Todos los párrafos gris */
+.ql-editor p {
+  color: #aaa;
+  transition: color 0.15s ease;
+}
+/* Párrafo activo */
+.ql-editor p.active-paragraph {
+  color: #000;
+}
+
+/* Estilo del popup de sugerencias */
+#suggestionPopup {
+    position: absolute;
+    background: #fff8c4;
+    border: 1px solid #ccc;
+    padding: 6px 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 1000;
+    max-width: 300px;       /* Evita que sea demasiado ancho */
+    word-wrap: break-word;   /* Que el texto se ajuste */
+    display: none;           /* Inicialmente oculto */
+}
+
+.paragraph-suggestion-popup{
+  position: absolute;
+  background: #fff8c4;
+  border: 1px solid #ccc;
+  padding: 6px 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  z-index: 1000;
+  display: none;
+}
+
+/* Número de párrafo marcado (analizado) */
+.paragraph-number-active {
+    /*background-color: #fffa8c;*/
+    border-radius: 6px;
+    font-weight: 700;
+    color: #000;
+}
+
+.active-paragraph-number {
+  /*background-color: #ffe082; */
+  font-weight: bold;
+  border-radius: 4px;
+  color: #000;
+}
+
+/* Logo */
+#logoContainer {
+    text-align: center;
+    margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+#panelLogo {
+    max-width: 100%;
+    height: auto;
+}
+
+
+/* Separador vertical entre botones */
+.toolbar-separator {
+    display: inline-block;
+    width: 2px;          /* Ancho de la línea */
+    background-color: #000000; /* Color negro */
+    margin: 0 8px;       /* Espacio a izquierda y derecha */
+    height: 24px;        /* Altura del separador */
+    vertical-align: middle;
+}
+
+#modeButtons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  flex-shrink: 0;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    background-color: #e0e0e0;
+    cursor: pointer;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.mode-btn.active {
+    background-color: #369bd6;
+    color: white;
+}
+
+.generate-btn {
+    background-color: #369bd6;
+    color: white;
+  font-size: 18px;
+  padding: 8px 16px
+}
+
+/* Análisis estadístico del texto */
+#analysisContainer {
+  flex-shrink: 0;
+  padding: 10px;
+  border-top: 1px solid #ddd;
+}
+
+/* Popup con la sugerencia */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content{
+  background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    width: 80%;
+    max-width: 1000px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.modal-body {
+    display: flex;
+    gap: 10px;
+}
+
+.panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.panel textarea {
+    width: 100%;
+    height: 200px;
+    resize: none;
+    padding: 8px;
+    font-size: 16px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.generate-btn {
+    background-color: #369bd6;
+    color: white;
+    font-size: 18px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
 }
