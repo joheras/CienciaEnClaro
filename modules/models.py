@@ -4,7 +4,7 @@ from ollama import ChatResponse
 def obtenerSugerencia(comment):
     texto = comment.get("texto", "")
     instruccion = (f"""
-    Reescribe el siguiente párrafo manteniendo toda la información. Cambia lo mínimo posible.
+    Reescribe en castellano el siguiente párrafo manteniendo toda la información. Cambia lo mínimo posible.
     REGLAS:
     - Frases de menos de 20 palabras.
     - Orden sujeto-verbo-complementos.
@@ -18,7 +18,8 @@ def obtenerSugerencia(comment):
     """)
 
     response: ChatResponse = chat(
-        model = "nichonauta/pepita-2-2b-it-v5",
+        #model = "nichonauta/pepita-2-2b-it-v5",
+        model = "mistral",
         messages = [
             {
                 "role": "user",

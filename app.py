@@ -30,10 +30,41 @@ def dividir_parrafos(texto):
 # Nos analiza todos los índices para un párrafo dado
 async def analizar_parrafo(texto, inicioParrafo):
     result = []
+    total_oraciones = 0
+    oraciones_largas = 0
+
     resultado = await morfosintaxis_paragraph(texto, inicioParrafo)
+
+    # Contar métricas
+    frases = nltk.sent_tokenize(texto, language="Spanish")
+    total_oraciones = len(frases)
+
+    for frase in frases:
+        if oracion_larga(frase)[0]:
+            oraciones_largas += 1
+
     result.extend(resultado)
+    errores_por_tipo = {}
+    for item in resultado:
+        tipo = item["name"]
+        if tipo not in errores_por_tipo:
+            errores_por_tipo[tipo] = set()
+        errores_por_tipo[tipo].add(item["start"]) # Para saber qué oracion es
+
+    porcentajes = {}
+    for tipo, errores in errores_por_tipo.items():
+        if total_oraciones > 0:
+            porcentajes[tipo] = round((len(errores) / total_oraciones) * 100, 1)
+        else:
+            porcentajes[tipo] = 0
     #result.extend(legibility_paragraph(texto, inicioParrafo))
-    return result
+    return {
+        "comentarios": result,
+        "stats": {
+            "total_oraciones": total_oraciones,
+            "porcentajes": porcentajes
+        }
+    }
 
 @app.post("/analyse_paragraph")
 async def analyse_paragraph(request: Request):
@@ -57,7 +88,11 @@ async def analyse_text(request: Request):
 
     inicio = 0
     for i, parrafo in enumerate(parrafos, start=1):
-        resultados[i] = await analizar_parrafo(parrafo, inicio)
+        data_parrafo = await analizar_parrafo(parrafo, inicio)
+        resultados[i] = {
+            "comentarios": data_parrafo["comentarios"],
+            "stats": data_parrafo["stats"]
+        }
         inicio = inicio + len(parrafo) + 1 # +1 por el salto de línea
     return JSONResponse(content=resultados)
 
@@ -134,7 +169,7 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                         "text": "Oración coordinada",
                         "description": f"Se debe evitar el abuso de oraciones coordinadas.",
                         "type": "morfosintaxis",
-                        "name": "coordinada"
+                        "name": "coordinada",
                     }
                     result.append(resumen)
                 yuxtapuesta = oracion_yuxtapuesta(frase)

@@ -1,5 +1,5 @@
 # pip install spacy==3.7.5
-#python -m spacy download es_core_news_sm
+# python -m spacy download es_core_news_sm
 import nltk
 import spacy
 import re
@@ -14,22 +14,24 @@ def longitud_parrafo(texto):
     else:
         # Si el párrafo no está vacío lo partimos en frases
         frases = nltk.sent_tokenize(texto)
-        return len(frases) # Devolvemos el número de frases que tiene
+        return len(frases)  # Devolvemos el número de frases que tiene
+
 
 def longitud_frase(texto):
     "Dada una oración devuelve el número de palabras que tiene"
     palabras = [w for w in nltk.word_tokenize(texto, language="spanish") if w.isalpha()]
     return len(palabras)
 
+
 def orden_sintactico(texto):
     "Dada una oración devuelve TRUE si sigue la estructura sujeto-vebo-complementos y FALSE en caso contrario"
     doc = nlp(texto)
     sujeto = [t for t in doc if t.dep_ in ("nsubj", "nsubj_pass")]
-    verbo = [t for t in doc if t.dep_ == "ROOT" and t.pos_=="VERB"]
+    verbo = [t for t in doc if t.dep_ == "ROOT" and t.pos_ == "VERB"]
     objeto = [t for t in doc if t.dep_ in ("obj", "iobj")]
 
     if sujeto and verbo and objeto:
-        if not(sujeto[0].i < verbo[0].i < objeto[0].i):
+        if not (sujeto[0].i < verbo[0].i < objeto[0].i):
             return False
     return True
 
@@ -62,165 +64,237 @@ def oracion_valida(texto):
     )
     return tiene_predicacion
 
-def coordinada(texto):
+
+def coordinada(texto, t):
     """Dada una oración, devuelve TRUE si es una oración coordinada, y FALSE en caso contrario.
     Además, devuelve la frase partida en los trozos correspondientes para que sea simple.
     """
-    posiblesCortes = []
-    cortes = []
-    resultado = ''
-    booleanos = [] # Cuando valga False es porque esa frase no está completa
+    if t < 5:
+        posiblesCortes = []
+        cortes = []
+        resultado = ''
+        booleanos = []  # Cuando valga False es porque esa frase no está completa
 
-    doc = nlp(texto)
-    for token in doc:
-        if token.dep_ == "cc":
-            if str(doc[token.i])!='o':
-                posiblesCortes.append(token.i)
-    if posiblesCortes == []:
-        return False, texto
-    else:
-        final = posiblesCortes[-1]
-        for i in range(len(posiblesCortes)):
-            if (i==0 and posiblesCortes[i]!=final):
-                cortes.append(doc[:posiblesCortes[i]])
-            elif (i==0 and posiblesCortes[i]==final):
-                cortes.append(doc[:posiblesCortes[i]])
-                cortes.append(doc[posiblesCortes[i]+1:])
-            elif posiblesCortes[i]==final:
-                cortes.append(doc[posiblesCortes[i-1]+1:posiblesCortes[i]])
-                cortes.append(doc[posiblesCortes[i]+1:])
-            else:
-                cortes.append(doc[posiblesCortes[i-1]+1:posiblesCortes[i]])
-
-        # Comprobamos si cada trozo está completo o no y almacenamos la información en "booleanos"
-        for trozo in cortes:
-            booleanos.append(oracion_valida(str(trozo)))
-
-        # Si algún trozo falla vamos a comprobar si se puede unir con el anterior o con el siguiente
-        contador = 0 # Para recorrernos el vector booleanos
-        ni = 0 # El contador de nuevos_cortes
-        j = 0 # El contador de posiblesCortes
-        i = 0
-        nuevos_cortes = []
-        while((False in booleanos) and (contador<len(booleanos) and j<len(posiblesCortes))): # Hay algún falso y todavía quedan cortes
-            for x in range(len(booleanos)):
-                if i!=x: # Si gusiona una frase con la siguiente, avanza en Cortes pero no en booleano, así que con este if lo hacemos avanzar uno para igualarlos.
-                    continue
-                # Si es True añade la información como estaba
-                if booleanos[i]:
-                    nuevos_cortes.append(cortes[i])
-                    ni = len(nuevos_cortes)
-                    contador = contador + 1
-                    i = i+1
+        doc = nlp(texto)
+        for token in doc:
+            if token.dep_ == "cc":
+                if str(doc[token.i]) != 'o':
+                    posiblesCortes.append(token.i)
+        if posiblesCortes == []:
+            return False, texto
+        else:
+            final = posiblesCortes[-1]
+            for i in range(len(posiblesCortes)):
+                if (i == 0 and posiblesCortes[i] != final):
+                    cortes.append(doc[:posiblesCortes[i]])
+                elif (i == 0 and posiblesCortes[i] == final):
+                    cortes.append(doc[:posiblesCortes[i]])
+                    cortes.append(doc[posiblesCortes[i] + 1:])
+                elif posiblesCortes[i] == final:
+                    cortes.append(doc[posiblesCortes[i - 1] + 1:posiblesCortes[i]])
+                    cortes.append(doc[posiblesCortes[i] + 1:])
                 else:
-                    # Intenta fusionar con el anterior
-                    if ni>0:
-                        combinado = str(nuevos_cortes[ni-1]) + ' ' + str(doc[posiblesCortes[j]]) + ' ' + str(cortes[i])
-                        # Si es frase
-                        if oracion_valida(combinado):
-                          nuevos_cortes[ni-1] = combinado
-                          j = j+1
-                          i = i+1
-                          continue
-                    # Si no es frase intenta fusionar con el siguiente
-                    if (i<len(cortes)-1 and j<len(posiblesCortes)):
-                        combinado = str(cortes[i]) + ' ' + str(doc[posiblesCortes[j]]) + ' ' + str(cortes[i+1])
-                        if oracion_valida(combinado):
-                            nuevos_cortes.append(combinado)
-                            ni = len(nuevos_cortes)
-                            i = i+2
-                            j = j+1
-                            continue
+                    cortes.append(doc[posiblesCortes[i - 1] + 1:posiblesCortes[i]])
 
-            cortes = nuevos_cortes
-            booleanos = []
+            # Comprobamos si cada trozo está completo o no y almacenamos la información en "booleanos"
             for trozo in cortes:
                 booleanos.append(oracion_valida(str(trozo)))
 
-        if not(False in booleanos):
+            # Si algún trozo falla vamos a comprobar si se puede unir con el anterior o con el siguiente
+            contador = 0  # Para recorrernos el vector booleanos
+            ni = 0  # El contador de nuevos_cortes
+            j = 0  # El contador de posiblesCortes
+            i = 0
+            nuevos_cortes = []
+            while ((False in booleanos) and (
+                    contador < len(booleanos) and j < len(posiblesCortes))):  # Hay algún falso y todavía quedan cortes
+                for x in range(len(booleanos)):
+                    if i != x:  # Si gusiona una frase con la siguiente, avanza en Cortes pero no en booleano, así que con este if lo hacemos avanzar uno para igualarlos.
+                        continue
+                    # Si es True añade la información como estaba
+                    if booleanos[i]:
+                        nuevos_cortes.append(cortes[i])
+                        ni = len(nuevos_cortes)
+                        contador = contador + 1
+                        i = i + 1
+                    else:
+                        # Intenta fusionar con el anterior
+                        if ni > 0:
+                            combinado = str(nuevos_cortes[ni - 1]) + ' ' + str(doc[posiblesCortes[j]]) + ' ' + str(
+                                cortes[i])
+                            # Si es frase
+                            if oracion_valida(combinado):
+                                nuevos_cortes[ni - 1] = combinado
+                                j = j + 1
+                                i = i + 1
+                                continue
+                        # Si no es frase intenta fusionar con el siguiente
+                        if (i < len(cortes) - 1 and j < len(posiblesCortes)):
+                            combinado = str(cortes[i]) + ' ' + str(doc[posiblesCortes[j]]) + ' ' + str(cortes[i + 1])
+                            if oracion_valida(combinado):
+                                nuevos_cortes.append(combinado)
+                                ni = len(nuevos_cortes)
+                                i = i + 2
+                                j = j + 1
+                                continue
+
+                cortes = nuevos_cortes
+                booleanos = []
+                for trozo in cortes:
+                    booleanos.append(oracion_valida(str(trozo)))
+
+            if not (False in booleanos):
+                for c in cortes:
+                    if resultado == '':
+                        resultado = str(c) + '.'
+                    else:
+                        resultado = resultado + ' ' + str(c)[0].upper() + str(c)[1:] + '.'
+                resultado = resultado.replace('..', '.').replace(',.', '.').replace('\n.', '\n').replace('\n\n',
+                                                                                                         '\n').replace(
+                    ';.', '.')
+            else:
+                i = 0
+                while i < len(cortes):
+                    if (i < len(cortes) - 1 and j < len(posiblesCortes)):
+                        combinado = str(cortes[i]) + ' ' + str(doc[posiblesCortes[j]]) + ' ' + str(cortes[i + 1])
+                        resultado += combinado
+                        if i + 1 < len(posiblesCortes):
+                            resultado += str(doc[posiblesCortes[j]]) + ' '
+                        i += 2
+                    else:
+                        resultado += str(cortes[i])
+                        i += 1
+            resultado = coordinada(resultado, t + 1)[1]
+
+
+    else:
+        return False, texto
+    return resultado != texto, resultado
+
+
+def yuxtapuesta(texto, t):
+    """Dada una oración, devuelve TRUE si es una oración yuxtapuesta, y FALSE en caso contrario.
+    Además, devuelve la frase partida en los trozos correspondientes para que sea simple.
+    """
+    if t < 5:
+        doc = nlp(texto)
+        posiblesCortes = []
+        resultado = ''
+        booleanos = []  # Cuando valga False es porque esa frase no estaba completa
+        puntuaciones = []
+        result = []
+
+        posiblesCortes = re.split(r'[,:;]', texto)
+        posiblesCortes = [parte.strip() for parte in posiblesCortes if parte.strip()]
+
+        if posiblesCortes == [] or len(posiblesCortes) < 2 or (len(posiblesCortes) == 2 and '' in posiblesCortes):
+            return False, texto
+        else:
+            # Comprobamos si cada trozo está completo o no y almacenamos la información en booleanos
+            for trozo in posiblesCortes:
+                booleanos.append(oracion_valida(str(trozo)))
+
+            for i in range(len(posiblesCortes) - 1):
+                puntuaciones.append(texto.split(posiblesCortes[i])[1][0])
+
+            # Si algún trozo falla vamos a comprobar si se puede unir con el anterio o el siguiente
+            ni = 0  # El contador de nuevos_cortes
+            j = 0  # el contador de posiblesCortes
+            x = 0  # el contador de booleanos
+            nuevos_cortes = []
+            if not (False in booleanos):
+                nuevos_cortes = posiblesCortes
+            while ((False in booleanos) and (
+                    x < len(booleanos) and j < len(posiblesCortes))):  # Hay algún falso y todavía quedan cortes
+                while x < len(booleanos):
+                    # Si es True añade la información como estaba
+                    if booleanos[x]:
+                        nuevos_cortes.append(posiblesCortes[j])
+                        ni = len(nuevos_cortes)
+                        j = j + 1
+                        x = x + 1
+                    else:
+                        # Intenta fusionar con el anterior
+                        if ni > 0:
+                            combinado = str(nuevos_cortes[ni - 1]) + puntuaciones[j - 1] + ' ' + posiblesCortes[j]
+                            # Si es frase
+                            if oracion_valida(combinado):
+                                nuevos_cortes[ni - 1] = combinado
+                                j = j + 1
+                                ni = len(nuevos_cortes)
+                                x = x + 1
+                                continue
+                        else:
+                            # Si no es frase intenta fusionar con el siguiente
+                            if (j < len(posiblesCortes) - 1):
+                                combinado = posiblesCortes[j] + puntuaciones[j] + ' ' + posiblesCortes[j + 1]
+                                if oracion_valida(combinado):
+                                    nuevos_cortes.append(combinado)
+                                    j = j + 2
+                                    ni = len(nuevos_cortes)
+                                    x = x + 2  # Porque hemos fusionado con el siguiente
+                                    continue
+                                else:
+                                    nuevos_cortes.append(posiblesCortes[j])
+                                    j = j + 1
+                                    x = x + 1
+                                    ni = len(nuevos_cortes)
+                            else:
+                                nuevos_cortes.append(posiblesCortes[j])
+                                x = x + 1
+                                j = j + 1
+                                ni = len(nuevos_cortes)
+                        if (j < len(posiblesCortes) - 1):
+                            combinado = posiblesCortes[j] + puntuaciones[j] + ' ' + posiblesCortes[j + 1]
+                            if oracion_valida(combinado):
+                                nuevos_cortes.append(combinado)
+                                j = j + 2
+                                ni = len(nuevos_cortes)
+                                x = x + 2  # Porque hemos fusionado con el siguiente
+                                continue
+                            else:
+                                nuevos_cortes.append(posiblesCortes[j])
+                                j = j + 1
+                                x = x + 1
+                                ni = len(nuevos_cortes)
+                        else:
+                            nuevos_cortes.append(posiblesCortes[j])
+                            x = x + 1
+                            j = j + 1
+                            ni = len(nuevos_cortes)
+
+        cortes = nuevos_cortes
+        booleanos = []
+        for trozo in cortes:
+            booleanos.append(oracion_valida(str(trozo)))
+
+        if not (False in booleanos):
             for c in cortes:
                 if resultado == '':
                     resultado = str(c) + '.'
                 else:
-                    resultado = resultado + ' ' + str(c)[0].upper()+str(c)[1:] + '.'
-            resultado = resultado.replace('..', '.').replace(',.', '.').replace('\n.', '\n').replace('\n\n', '\n').replace(';.', '.')
-
-    return resultado!=texto, resultado
-
-def yuxtapuesta(texto):
-    """Dada una oración, devuelve TRUE si es una oración yuxtapuesta, y FALSE en caso contrario.
-    Además, devuelve la frase partida en los trozos correspondientes para que sea simple.
-    """
-    doc = nlp(texto)
-    posiblesCortes = []
-    resultado = ''
-    booleanos = []  # Cuando valga False es porque esa frase no estaba completa
-    puntuaciones = []
-    result = []
-
-    posiblesCortes = re.split(r'[,:;]', texto)
-    posiblesCortes = [parte.strip() for parte in posiblesCortes]
-
-    if posiblesCortes == []:
-        return False, texto
-    else:
-        # Comprobamos si cada trozo está completo o no y almacenamos la información en booleanos
-        for trozo in posiblesCortes:
-            booleanos.append(oracion_valida(str(trozo)))
-
-        for i in range(len(posiblesCortes) - 1):
-            puntuaciones.append(texto.split(posiblesCortes[i])[1][0])
-
-        # Si algún trozo falla vamos a comprobar si se puede unir con el anterio o el siguiente
-        ni = 0  # El contador de nuevos_cortes
-        j = 0  # el contador de posiblesCortes
-        x = 0  # el contador de booleanos
-        nuevos_cortes = []
-        if not (False in booleanos):
-            nuevos_cortes = posiblesCortes
-        while ((False in booleanos) and (
-                x < len(booleanos) and j < len(posiblesCortes))):  # Hay algún falso y todavía quedan cortes
-            while x < len(booleanos):
-                # Si es True añade la información como estaba
-                if booleanos[x]:
-                    nuevos_cortes.append(posiblesCortes[j])
-                    ni = len(nuevos_cortes)
-                    j = j + 1
-                    x = x + 1
+                    resultado = resultado + ' ' + str(c)[0].upper() + str(c)[1:] + '.'
+            resultado = resultado.replace('..', '.').replace(',.', '.').replace('?.', '?').replace(';.', '.')
+        else:
+            i = 0
+            while i < len(cortes):
+                if i < len(cortes) - 1:
+                    combinado = str(cortes[i]) + puntuaciones[i] + ' ' + cortes[i + 1]
+                    resultado += combinado
+                    if i + 1 < len(puntuaciones):
+                        resultado += puntuaciones[i + 1] + ' '
+                    i += 2
                 else:
-                    # Intenta fusionar con el anterior
-                    if ni > 0:
-                        combinado = str(nuevos_cortes[ni - 1]) + puntuaciones[j - 1] + ' ' + posiblesCortes[j]
-                        # Si es frase
-                        if oracion_valida(combinado):
-                            nuevos_cortes[ni - 1] = combinado
-                            j = j + 1
-                            ni = len(nuevos_cortes)
-                            x = x + 1
-                            continue
-                        # Si no es frase intenta fusionar con el siguiente
-                    if (j < len(posiblesCortes) - 1):
-                        combinado = posiblesCortes[j] + puntuaciones[j] + ' ' + posiblesCortes[j + 1]
-                        if oracion_valida(combinado):
-                            nuevos_cortes.append(combinado)
-                            j = j + 2
-                            ni = len(nuevos_cortes)
-                            x = x + 2  # Porque hemos fusionado con el siguiente
-                            continue
-
-    cortes = nuevos_cortes
-    booleanos = []
-    for trozo in cortes:
-        booleanos.append(oracion_valida(str(trozo)))
-
-    if not (False in booleanos):
-        for c in cortes:
-            if resultado == '':
-                resultado = str(c) + '.'
+                    resultado += str(cortes[i])
+                    i += 1
+            if resultado != texto:
+                resultado = yuxtapuesta(resultado, t + 1)[1]
             else:
-                resultado = resultado + ' ' + str(c)[0].upper() + str(c)[1:] + '.'
-        resultado = resultado.replace('..', '.').replace(',.', '.').replace('?.', '?').replace(';.', '.')
+                return False, texto
+    else:
+        return False, texto
     return resultado != texto, resultado
+
 
 def concordancia(texto):
     """Dada una frase devuelve True si no tiene ningún fallo de concordancia, y False en caso contrario.
@@ -229,12 +303,12 @@ def concordancia(texto):
     doc = nlp(texto)
     for token in doc:
         # Determinante y sustantivo
-        if token.pos_=="DET":
-            if token.head.pos_=="ADJ":
+        if token.pos_ == "DET":
+            if token.head.pos_ == "ADJ":
                 head = "adjetivo"
-            elif token.head.pos_=="NOUN":
+            elif token.head.pos_ == "NOUN":
                 head = "sustantivo"
-            elif token.head.pos_=="VERB":
+            elif token.head.pos_ == "VERB":
                 head = "verbo"
             elif token.head.pos_ == "PRON":
                 head = "pronombre"
@@ -247,18 +321,18 @@ def concordancia(texto):
                 if token.morph.get("Number") != token.head.morph.get("Number"):
                     errores.append(f"Determinante ({token.text}) y {head} ({token.head.text}) no concordan en número")
 
-        #Adjetivo y sustantivo
-        elif token.pos_ == "ADJ" and (token.dep_=="amod" or token.dep_=="flat" or token.dep_=="ROOT"):
+        # Adjetivo y sustantivo
+        elif token.pos_ == "ADJ" and (token.dep_ == "amod" or token.dep_ == "flat" or token.dep_ == "ROOT"):
             # Para evitar que, por problemas de spacy, detecte un sustantivo como nombre propio
             # Comprobar si se trata de nombre propio
-            if token.head.pos_=="PROPN" and token.text.islower():
+            if token.head.pos_ == "PROPN" and token.text.islower():
                 errores.append(f"Posible error de concordancia con el {head} ({token.head.text})")
 
-            if token.head.pos_=="ADJ":
+            if token.head.pos_ == "ADJ":
                 head = "adjetivo"
-            elif token.head.pos_=="NOUN":
+            elif token.head.pos_ == "NOUN":
                 head = "sustantivo"
-            elif token.head.pos_=="VERB":
+            elif token.head.pos_ == "VERB":
                 head = "verbo"
             elif token.head.pos_ == "PRON":
                 head = "pronombre"
@@ -272,11 +346,11 @@ def concordancia(texto):
                     errores.append(f"Adjetivo ({token.text}) y {head} ({token.head.text}) no concordan en número")
 
         elif token.pos_ == "NOUN":
-            if token.head.pos_=="ADJ":
+            if token.head.pos_ == "ADJ":
                 head = "adjetivo"
-            elif token.head.pos_=="NOUN":
+            elif token.head.pos_ == "NOUN":
                 head = "sustantivo"
-            elif token.head.pos_=="VERB":
+            elif token.head.pos_ == "VERB":
                 head = "verbo"
             elif token.head.pos_ == "PRON":
                 head = "pronombre"
@@ -292,11 +366,11 @@ def concordancia(texto):
 
         # Sujeto y verbo
         elif token.dep_ == "nsubj":
-            if token.head.pos_=="ADJ":
+            if token.head.pos_ == "ADJ":
                 head = "adjetivo"
-            elif token.head.pos_=="NOUN":
+            elif token.head.pos_ == "NOUN":
                 head = "sustantivo"
-            elif token.head.pos_=="VERB":
+            elif token.head.pos_ == "VERB":
                 head = "verbo"
             elif token.head.pos_ == "PRON":
                 head = "pronombre"
@@ -314,6 +388,7 @@ def concordancia(texto):
     else:
         return False, errores
 
+
 def pasiva_perifrastica(texto):
     """Dada una frase devuelve True si es una pasiva perifrastica y False en caso contrario.
     Una pasiva es perifrástrica si está compuesta por el verbo "ser" conjugado y un participio.
@@ -323,9 +398,10 @@ def pasiva_perifrastica(texto):
         if token.morph.get("VerbForm") == ["Part"]:
             # Ver si tiene como auxiliar "ser"
             for child in token.children:
-                if child.lemma_ == "ser" and child.pos_=="AUX":
+                if child.lemma_ == "ser" and child.pos_ == "AUX":
                     return True
     return False
+
 
 def pasiva_refleja(texto):
     """Dada una frase devuelve True si es una pasiva refleja y False en caso contrario.
@@ -349,6 +425,7 @@ def infinitivo(texto):
                 return True
     return False
 
+
 def gerundio(texto):
     """Dada una frase devuelve True si tiene algún verbo en gerundio.
     En caso contrario devuelve False."""
@@ -356,10 +433,11 @@ def gerundio(texto):
     for token in doc:
         if token.pos_ == "VERB" and "Ger" in token.morph.get("VerbForm"):
             # Miramos si tiene auxiliar
-            tiene_aux = any(child.pos_ == "AUX" for child in token.children) or (token.head.pos_=="AUX")
+            tiene_aux = any(child.pos_ == "AUX" for child in token.children) or (token.head.pos_ == "AUX")
             if not tiene_aux:
                 return True
     return False
+
 
 def participio(texto):
     """Dada una frase devuelve True si tiene algún verbo en participio.
@@ -368,7 +446,7 @@ def participio(texto):
     for token in doc:
         if token.pos_ == "VERB" and "Part" in token.morph.get("VerbForm"):
             # Miramos si tiene auxiliar
-            tiene_aux = any(Child.pos_=="AUX" for Child in token.children) or (token.head.pos_=="AUX")
+            tiene_aux = any(Child.pos_ == "AUX" for Child in token.children) or (token.head.pos_ == "AUX")
             if not tiene_aux:
                 return True
     return False
@@ -376,4 +454,4 @@ def participio(texto):
 # def inciso(texto):
 
 
-#def negaciones(texto):
+# def negaciones(texto):

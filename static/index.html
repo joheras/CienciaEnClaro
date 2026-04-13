@@ -88,13 +88,13 @@
 <div class="leftPanel">
     <!-- Imagen logo -->
     <div id="logoContainer">
-        <img id="panelLogo" src="/static/logo.png" alt="Logo">
+        <img id="panelLogo" src="/static/logoUni.jpg" alt="Logo">
     </div>
     <div id="commentsPanel">
         <div id="modeButtons">
-            <button id="writeModeBtn" class="mode-btn active">Escribir</button>
-            <button id="feedbackModeBtn" class="mode-btn">Feedback</button>
-            <button id = "analysisModeBtn" class ="mode-btn">Análisis</button>
+            <button id="writeModeBtn" class="mode-btn active">Editar</button>
+            <button id="feedbackModeBtn" class="mode-btn">Analizar</button>
+            <button id = "analysisModeBtn" class ="mode-btn">Estadísticas</button>
         </div>
       <!-- <label for="filterType">Comentarios. Filtro por tipo:</label> -->
         <div id="filterContainer">
@@ -120,7 +120,7 @@
 
         <!-- Análisis -->
         <div id="analysisContainer"> Análisis del texto </div>
-        <button id="analyzeBtn" class="ql-analyze" title="Resumen texto"><i class="fa-solid fa-magnifying-glass"></i></button>
+        <button id="analyzeBtn" class="ql-analyze" title="Resumen texto"><i class="fa-solid fa-rotate"></i></button>
     </div>
 </div>
 
@@ -157,7 +157,7 @@
                 </div>
                 <div class="panel">
                     <h3>Sugerencia</h3>
-                    <textarea id="suggestedText" readonly></textarea>
+                    <textarea id="suggestedText"></textarea>
                 </div>
             </div>
             <div class="modal-footer">

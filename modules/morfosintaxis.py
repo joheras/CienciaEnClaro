@@ -41,7 +41,7 @@ def oracion_coordinada(texto):
     El booleano será True si la oración es coordinada. En ese caso, el string será la oración dividida para evitar la coordinación.
     El booleano será False si la oración no es coordinada. En este caso, el string será la oración original.
     """
-    return coordinada(texto)
+    return coordinada(texto,0)
 
 # Se debe evitar el uso de oraciones yuxtapuestas
 def oracion_yuxtapuesta(texto):
@@ -49,7 +49,7 @@ def oracion_yuxtapuesta(texto):
     El booleano será True si la oración es yuxtapuesta. En ese caso, el string será la oración dividida para evitar la yuxtaposición.
     El booleano será False si la oración no es yuxtapuesta. En este caso, el string será la oración original.
     """
-    return yuxtapuesta(texto)
+    return yuxtapuesta(texto,0)
 
 # Debe haber concordancia de persona, tiempo, género y número entre los elementos del texto
 def error_concordancia(texto):

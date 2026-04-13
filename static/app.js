@@ -10,6 +10,9 @@ let hasPendingChanges = false; // Para saber si ha cambiado el texto desde la ú
 let hasFullAnalysis = false;
 let hasParagraphAnalysis = false;
 let anaylizedParagraphNumber = null;
+let totalOracionesPorParrafo = {};
+let conteoErroresPorTipoParrafo = {};
+let porcentajesPorTipoParrafo = {};
 
 // Meter al css
 let popupDiv = document.createElement("div");
@@ -324,13 +327,13 @@ function renderComments(openCommentId = null){
 
     panel.innerHTML = "";
 
+    // Para filtrar
     let filtered = comments.filter(c => c.text !== "¿Quieres una saugerencia?");
     // Filtro por tipo
     if (filter != "todos") {
         filtered = filtered.filter(c => c.type === filter);
     }
     // Filtro por párrafo
-
     if (paragraphFilter !== "all") {
         const paragraphNum = Number(paragraphFilter)
         filtered = filtered.filter(c => c.paragraph === paragraphNum);
@@ -347,6 +350,8 @@ function renderComments(openCommentId = null){
     } else {
         panel.style.display = "block";
     }
+
+
     // Agrupar comentarios
     const grouped = filtered.reduce((acc, comment) => {
         const key = comment.name || comment.text;
@@ -357,8 +362,16 @@ function renderComments(openCommentId = null){
         return acc;
     }, {});
 
+    const tiposOracion = ["oracionLarga", "orden", "coordinada", "yuxtapuesta"];
+    const tiposParrafo = ["parrafoCorto", "parrafoLargo"]
+
+    const totalParagraphs = getTotalParagraphs();
+
+    // Renderizar comentarios
     Object.values(grouped).forEach(group  => {
         const first = group[0];  // Como todos los text deberían ser iguales, nos quedaremos con el del primero
+        const tipo = first.name;
+
         const div = document.createElement("div");
         div.className = "comment-item";
 
@@ -368,7 +381,43 @@ function renderComments(openCommentId = null){
         title.style.cursor = "pointer";
 
         const textSpan = document.createElement("span");
-        textSpan.innerText = first.text;
+
+        // A nivel oración
+        let porcentajeOracion = 0;
+        if (conteoErroresPorTipoParrafo[tipo]) {
+            let erroresTotales = 0;
+            let oracionesTotales = 0;
+            Object.entries(conteoErroresPorTipoParrafo[tipo]).forEach(([parrafo, errores]) => {
+                const erroresSet = errores.size;
+                erroresTotales += erroresSet;
+                oracionesTotales += totalOracionesPorParrafo[parrafo] || 0;
+            });
+            if (oracionesTotales > 0) {
+                porcentajeOracion = ((erroresTotales / oracionesTotales) * 100).toFixed(1);
+            } else {
+                porcentajeOracion = 0;
+            }
+        }
+        // A nivel párrafo
+        const affectedParagraphs = new Set(
+            group.map(c => c.paragraph).filter(p => p != null)
+        );
+
+        const porcentajeParrafo = totalParagraphs > 0
+            ? ((affectedParagraphs.size / totalParagraphs) * 100).toFixed(1)
+            : 0;
+
+        // Texto final
+        let label = first.text;
+        const paragraphFilter = document.getElementById("filterParagraph").value;
+
+        //if (porcentajeOracion > 0) {
+        //    label += `(${porcentajeOracion}%)`;
+        //} else if (porcentajeParrafo > 0) {
+        //    label += `(${porcentajeParrafo}%)`;
+        //}
+
+        textSpan.innerText = label;
         title.appendChild(textSpan);
 
         // Descripción
@@ -377,13 +426,17 @@ function renderComments(openCommentId = null){
         desc.style.display = "none";
 
         // Obtener párrafos únicos directamente
+        const sourceComments = paragraphFilter !== "all"
+        ? group.filter(c => c.paragraph === Number(paragraphFilter))
+            : group;
+
         const paragraphsNumbers = [...new Set(
-            group.map(c => c.paragraph).filter(n => n!=null)
+            sourceComments.map(c => c.paragraph).filter(n => n!=null)
         )].sort((a, b) => a-b);
         // Construir texto
         let paragraphText = "";
         if (paragraphsNumbers.length === 1) {
-            paragraphText = `El párrafo ${paragraphsNumbers[0]} contiene`;
+            paragraphText = `el párrafo ${paragraphsNumbers[0]} contiene`;
         } else if (paragraphsNumbers.length > 1) {
             const last = paragraphsNumbers.pop();
             paragraphText = `Los párrafos ${paragraphsNumbers.join(", ")} y ${last} contienen`;
@@ -397,8 +450,14 @@ function renderComments(openCommentId = null){
             coordinada: `${paragraphText} oraciones coordinadas.`,
             yuxtapuesta: `${paragraphText} oraciones yuxtapuestas.`
         };
-        // Asignar descripción
-        desc.innerText = "Descripción: " + (descriptionMap[first.name] || first.description || "Sin descripción disponible");
+        let extraDetalle = "";
+        //if (tiposOracion.includes(tipo)) {
+        //    const detalle = construirTextoPorParrafo(tipo, paragraphFilter);
+        //    if (detalle) {
+        //        extraDetalle = " Además, " + detalle + ".";
+        //    }
+        //}
+        desc.innerText = "Descripción: " + (descriptionMap[first.name] || first.description || "Sin descripción disponible") + extraDetalle;
 
         // Botón quitar sugerencia
         const btn = document.createElement("button");
@@ -434,9 +493,7 @@ function renderComments(openCommentId = null){
 
               // Abrir este
               desc.style.display = "block";
-              if (first.text === "¿Quieres una sugerencia?") {
-                  btn.style.display = "inline-block";
-              } else if (first.suggestion && first.suggestion.trim() !== "") {
+              if (first.suggestion && first.suggestion.trim() !== "") {
                   btn.style.display = "inline-block";
               }
         };
@@ -452,6 +509,31 @@ function renderComments(openCommentId = null){
         panel.appendChild(div);
     });
     document.getElementById("filterType");
+}
+
+// Esta función la hago para el contenido de los comentarios separados por párrafos
+function construirTextoPorParrafo(tipo, paragraphFilter) {
+    if (!conteoErroresPorTipoParrafo[tipo]) return "";
+    const partes = [];
+    Object.entries(conteoErroresPorTipoParrafo[tipo]).forEach(([parrafo, errores]) => {
+        if (paragraphFilter !== "all" && Number(parrafo) !== Number(paragraphFilter)) {
+            return;
+        }
+        const total = totalOracionesPorParrafo[parrafo] || 0;
+        if (total > 0) {
+            const erroresCount = errores.size || 0;
+            const porcentaje = ((erroresCount/total) * 100).toFixed(1);
+            partes.push(`El párrafo ${parrafo} tiene un ${porcentaje}%`);
+        } else {
+            const porcentaje = 0;
+        }
+    });
+    if (partes.length === 0) return "";
+    if (partes.length===1) {
+        return partes[0];
+    }
+    const last = partes.pop();
+    return partes.join(", ") + " y " + last;
 }
 function lockComments() {
   commentsLocked = true;
@@ -475,63 +557,73 @@ async function addCommentText() {
         return;
     }
     highlightParagraphs = false;
-    quill.root.querySelectorAll("p").forEach(p =>
-    p.classList.add("active-paragraph"));
 
     unlockComments();
     analyzedParagraphStart = null;
     updateParagraphNumbers();
     updateParagraphFilter();
 
+    comments = [];
+    let id;
+    let text1;
+    let start;
+    let length;
+    let description;
+    let suggestion;
+    let error;
+    let original;
+    let type;
+    let name;
+    let texto;
+    let paragraph;
+
     // Mostrar overlay de bloqueo
     const overlay = document.getElementById("loadingOverlay");
     overlay.style.display = "flex";
 
-    const text = quill.getText();
-    comments = [];
+    const paragraphs = quill.root.querySelectorAll("p");
+    let visibleIndex = 1;
 
-    const response = await fetch("/analyse_text", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({text})
-    });
+    for (let p of paragraphs) {
+        const text = p.textContent.replace(/\u200B/g, "").trim();
+        if (!text) continue;
 
+        const oraciones = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+        totalOracionesPorParrafo[visibleIndex] = oraciones.length;
 
-    const data = await response.json();
-    let id;
-    let text1;
-    let start;
-    let len;
-    let suggestion;
-    let error;
-    let original;
-    let description;
-    let type;
-    let name;
-
-
-    // Aquí comentarios se van a mostrar
-    Object.entries(data).forEach(([paragraph, group]) =>
-    {
-        group.forEach(item => {
-
-            id = item.id;
-            text1 = item.text;
-            start = item.start;
-            len = item.end - item.start;
-            description = item.description;
-            type = item.type;
-            suggestion = item.suggestion;
-            error = item.error;
-            original = item.original;
-            name = item.name;
-
-            comments.push({
-                id, text: text1, index: start, length: len, description: description, paragraph: getParagraphNumberFromIndex(start),
-                error: error, original: original, type: type, suggestion: suggestion, mode: "index", name: name
+        const start = quill.getIndex(Quill.find(p));
+        const data = await analyzeSingleParagraph(text, start);
+        data.forEach(item => {
+            comments.push({id: item.id,
+            text: item.text,
+            index: item.start,
+            length: item.end - item.start,
+            description: item.description,
+            error: item.error,
+            original: item.original,
+            type: item.type,
+            suggestion: item.suggestion,
+                mode: "paragraph",
+                texto: text,
+                paragraph: visibleIndex,
+            name: item.name
             });
+
+            const paragraphText = text;
+            const localIndex = item.start - start;
+            const sentenceId = getSentenceIndexInParagraph(paragraphText, localIndex);
+
+            if (!conteoErroresPorTipoParrafo[item.name]) {
+                conteoErroresPorTipoParrafo[item.name] = {};
+            }
+            if (!conteoErroresPorTipoParrafo[item.name][visibleIndex]) {
+                conteoErroresPorTipoParrafo[item.name][visibleIndex] = new Set();
+            }
+            conteoErroresPorTipoParrafo[item.name][visibleIndex].add(sentenceId);
         });
-    });
+        visibleIndex++;
+    }
+    calcularPorcentajesPorParrafo();
 
     updateFilterOptions();
     renderComments();
@@ -547,7 +639,7 @@ async function addCommentText() {
 async function addCommentParagraph() {
     hasFullAnalysis = false;
     hasParagraphAnalysis = true;
-    anaylizedParagraphNumber = currentParagraphNumber; // Para saber qué párrafo estoy analizando
+
     if (appMode === "write") {
         alert("Cambia a modo feedback para analizar el párrafo.");
         return;
@@ -589,9 +681,8 @@ async function addCommentParagraph() {
     let visibleIndex = 1;
 
     paragraphs.forEach((p) => {
-        const text = p.textContent.replace(/\u200B/g, "").trim();
-
-        if (text.length > 0) {
+        const pText = p.textContent.replace(/\u200B/g, "").trim();
+        if (pText.length > 0){
             if (quill.getIndex(Quill.find(p)) === start) {
                 currentParagraphNumber = visibleIndex;
                 p.classList.add("active-paragraph");
@@ -603,6 +694,8 @@ async function addCommentParagraph() {
             p.classList.remove("active-paragraph");
         }
     });
+
+    analyzedParagraphNumber = currentParagraphNumber;
 
 
     updateParagraphNumbers();
@@ -637,6 +730,7 @@ async function addCommentParagraph() {
     }
     // Procesamos comentarios por chunks para no bloquear el hilo
     const CHUNK_SIZE = 5;
+    data = Array.isArray(data) ? data : data.comentarios || [];
     for (let i = 0; i< data.length; i+=CHUNK_SIZE) {
         const chunk = data.slice(i, i + CHUNK_SIZE);
         chunk.forEach(item => {
@@ -945,11 +1039,12 @@ function highlightActiveParagraph(){
     // Solo va a funcionar si tenemos activada la variable highlighParagraphs
     if (!highlightParagraphs) return;
 
-    let currentParagraphNumber = getParagraphNumberFromIndex(index);
     const range = quill.getSelection();
     if (!range) return;
-
     const index = range.index;
+
+    let currentParagraphNumber = getParagraphNumberFromIndex(index);
+
     // Obtenemos el leaf en la posición del cursor
     const [leaf] = quill.getLeaf(index);
     if (!leaf) return;
@@ -1104,4 +1199,91 @@ function updateGenerateSuggestionButton() {
 
     const shouldShow = isFeedBack && (hasParagraphAnalysis || (hasFullAnalysis && isParagraphFiltered));
     btn.style.display = shouldShow ? "block" : "none";
+}
+
+function getTotalParagraphs() {
+    const paragraphs = quill.root.querySelectorAll("p");
+    let count = 0;
+
+    paragraphs.forEach(p => {
+        const text = p.textContent.replace(/\u200B/g, "").trim();
+        if (text.length > 0) count++;
+    });
+
+    return count;
+}
+
+function getSentenceIdFromIndex(index) {
+    const text = quill.getText();
+    // Buscar inicio de oración
+    let start = index;
+    while (start > 0 && !/[.!?]/.test(text[start-1])) {
+        start--;
+    }
+    // Buscar fin de oración
+    let end = index;
+    while(end < text.length && !/[.!?]/.test(text[end])) {
+        end++;
+    }
+
+    // Incluir el punto final
+    if(end < text.length) end++;
+    // ID único de la oración
+    return `${start} - ${end}`;
+}
+
+async function analyzeSingleParagraph(paragraphText, start) {
+    const response = await fetch("/analyse_paragraph", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ parrafo: paragraphText, start })
+    });
+
+    const data = await response.json();
+
+    if (Array.isArray(data)) return data;
+    if (data.comentarios) return data.comentarios;
+    console.error("Formato inesperado:", data);
+
+    return [];
+}
+
+function calcularPorcentajesPorParrafo() {
+    porcentajesPorTipoParrafo = {};
+
+    Object.keys(conteoErroresPorTipoParrafo).forEach(tipo => {
+        porcentajesPorTipoParrafo[tipo] = {};
+
+        Object.entries(conteoErroresPorTipoParrafo[tipo]).forEach(([parrafo, errores]) => {
+            const total = totalOracionesPorParrafo[parrafo] || 0;
+            const erroresCount = errores.size || 0;
+
+            let porcentaje = 0;
+            if (total > 0) {
+                porcentaje = ((erroresCount / total) * 100).toFixed(1);
+            }
+
+            porcentajesPorTipoParrafo[tipo][parrafo] = porcentaje;
+        });
+    });
+}
+
+function getSentenceIndexInParagraph(paragraphText, localIndex) {
+    const sentences = paragraphText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+
+    let currentIndex = 0;
+
+    for (let i = 0; i < sentences.length; i++) {
+        const sentence = sentences[i];
+        const start = paragraphText.indexOf(sentence, currentIndex);
+        const end = start + sentence.length;
+
+        if (localIndex >= start && localIndex <= end) {
+            return i; // ← índice de la oración
+        }
+
+        currentIndex = end;
+    }
+
+    return null;
 }
