@@ -76,6 +76,16 @@
             <button class="ql-redo"><i class="fa-solid fa-rotate-right"></i></button>
         </span>
 
+        <!-- Swtich editar -->
+        <span class="edit-switch">
+            <label class="switch">
+                <input type="checkbox" id="editToggle" checked>
+                <span class="slider"></span>
+            </label>
+            <span id="editLabel">Editar</span>
+        </span>
+
+
 
     </div>
     <div class="editor-wrapper">
@@ -88,17 +98,17 @@
 <div class="leftPanel">
     <!-- Imagen logo -->
     <div id="logoContainer">
-        <img id="panelLogo" src="/static/logoUni.jpg" alt="Logo">
+        <img id="panelLogo" src="/static/logo.png" alt="Logo">
     </div>
     <div id="commentsPanel">
         <div id="modeButtons">
-            <button id="writeModeBtn" class="mode-btn active">Editar</button>
+            <!--  <button id="writeModeBtn" class="mode-btn active">Editar</button> -->
             <button id="feedbackModeBtn" class="mode-btn">Analizar</button>
             <button id = "analysisModeBtn" class ="mode-btn">Estadísticas</button>
         </div>
       <!-- <label for="filterType">Comentarios. Filtro por tipo:</label> -->
         <div id="filterContainer">
-            <label for="filterType">Índice:</label>
+            <label for="filterType">Filtro:</label>
             <select id="filterType"></select>
         </div>
         <!--- otro filtro para filtrar por párrafos --->
@@ -108,7 +118,7 @@
         </div>
         <!-- Botones personalizados con iconos -->
         <span class="ql-formats">
-            <button id="paragraphBtn" class="ql-paragraph" title="Analizar párrafo"> Analizar párrafo</button>
+            <!--<button id="paragraphBtn" class="ql-paragraph" title="Analizar párrafo"> Analizar párrafo</button>-->
             <button id="addCommentFirst10Btn" class="ql-comment10" title="Analizar texto"> Analizar texto</button>
         </span>
         <!-- Botón recalcular -->

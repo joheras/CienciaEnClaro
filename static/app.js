@@ -46,13 +46,20 @@ quill = new Quill('#editor', {
     }
 });
 
+const editToggle = document.getElementById("editToggle");
+const editLabel = document.getElementById("editLabel");
+setEditMode(true);
+editToggle.addEventListener("change", () => {
+    setEditMode(editToggle.checked);
+})
+
 // para que la aplicación empiece en el modo escribir
 quill.enable(true);
 document.getElementById("filterContainer").style.display="none";
 document.getElementById("filterText").style.display="none";
 document.getElementById("analysisContainer").style.display="none";
 document.getElementById("analyzeBtn").style.display = "none";
-document.getElementById("paragraphBtn").style.display = "none";
+//document.getElementById("paragraphBtn").style.display = "none";
 document.getElementById("addCommentFirst10Btn").style.display = "none";
 document.getElementById("recalculateBtn").style.display = "none";
 document.getElementById("generateSuggestionBtn").style.display="none";
@@ -85,13 +92,13 @@ quill.on("text-change", (delta, oldDelta, source) => {
 //document.getElementById("addCommentBtn").onclick = addCom;
 document.getElementById("analyzeBtn").addEventListener("click", analyzeText);
 
-document.getElementById("paragraphBtn").onclick = () => {
-    if (quill.isEnabled()){
-        return;
-    } else {
-        addCommentParagraph();
-    }
-}
+//document.getElementById("paragraphBtn").onclick = () => {
+ //   if (quill.isEnabled()){
+//        return;
+//    } else {
+//        addCommentParagraph();
+//    }
+//}
 document.getElementById("recalculateBtn").onclick = () => {
     unlockComments();
     addCommentParagraph();
@@ -112,13 +119,18 @@ document.getElementById("filterType").addEventListener("change", () => {
 updateParagraphNumbers();
 updateParagraphFilter();
 
-const writeBtn = document.getElementById("writeModeBtn");
+//const writeBtn = document.getElementById("writeModeBtn");
 const feedBackBtn = document.getElementById("feedbackModeBtn");
 const analysisBtn = document.getElementById("analysisModeBtn");
-writeBtn.onclick = () => setMode("write");
-feedBackBtn.onclick = () => setMode("feedback");
+//writeBtn.onclick = () => setMode("write");
+feedBackBtn.onclick = () => {
+    setMode("feedback");
+    forceLockEditing();
+    addCommentText();
+}
 analysisBtn.onclick = () => {
     setMode("analysis");
+    forceLockEditing();
     analyzeText();
 }
 
@@ -209,20 +221,29 @@ useSuggestionBtn.addEventListener('click', () => {
 function setMode(mode) {
     appMode = mode;
 
-    const isWrite = mode === "write";
+    //const isWrite = mode === "write";
     const isFeedback = mode === "feedback";
     const isAnalysis = mode === "analysis";
 
-    writeBtn.classList.toggle("active", isWrite);
+    //writeBtn.classList.toggle("active", isWrite);
     feedBackBtn.classList.toggle("active", isFeedback);
     analysisBtn.classList.toggle("active", isAnalysis);
 
-    quill.enable(isWrite);
+    /*if (isWrite) {
+        editToggle.disabled = false;
+        setEditMode(editToggle.checked);
+    } else {
+        editToggle.checked = false;
+        editToggle.disabled = true;
+        setEditMode(false);
+    }
+
+     */
 
     document.getElementById("commentsList").style.display = isFeedback ? "block" : "none";
     document.getElementById("filterContainer").style.display = isFeedback ? "block" : "none";
     document.getElementById("filterText").style.display = isFeedback ? "block" : "none";
-    document.getElementById("paragraphBtn").style.display = isFeedback ? "block" : "none";
+    //document.getElementById("paragraphBtn").style.display = isFeedback ? "block" : "none";
     document.getElementById("addCommentFirst10Btn").style.display = isFeedback ? "block" : "none";
     document.getElementById("analysisContainer").style.display = isAnalysis ? "block" : "none";
     document.getElementById("analyzeBtn").style.display = isAnalysis ? "block" : "none";
@@ -477,6 +498,9 @@ function renderComments(openCommentId = null){
               //const end = group[group.length - 1].index + group[group.length -1].length;
               // quill.setSelection(start, end-start); // Seleccionaba el texto marcado, lo comento porque no quiero que se marque
 
+              // Resaltar las oraciones de ese comentario
+              highlightByType(first.name);
+
               // Cerrar todo
               document.querySelectorAll("#commentsList .comment-desc")
                   .forEach(d => d.style.display = "none");
@@ -550,6 +574,7 @@ function unlockComments() {
 
 // Añadir comentarios del texto completo
 async function addCommentText() {
+    quill.removeFormat(0, quill.getLength());
     hasFullAnalysis = true;
     hasParagraphAnalysis = false;
     if (appMode === "write") {
@@ -637,6 +662,7 @@ async function addCommentText() {
 
 // Añadir comentarios del párrafo seleccionado
 async function addCommentParagraph() {
+    quill.removeFormat(0, quill.getLength());
     hasFullAnalysis = false;
     hasParagraphAnalysis = true;
 
@@ -821,6 +847,7 @@ function getParagraphAtCursor() {
 }
 
 async function analyzeText() {
+    forceLockEditing();
     if (appMode !== "analysis") return;
     const range = quill.getSelection();
     let text;
@@ -1286,4 +1313,38 @@ function getSentenceIndexInParagraph(paragraphText, localIndex) {
     }
 
     return null;
+}
+
+// Para marcar las oraciones
+function highlightError(index, length, type) {
+    let color = "#fff3a0";
+    quill.formatText(index, length, {background: color});
+}
+function clearHighlights() {
+    quill.removeFormat(0, quill.getLength());
+}
+function highlightByType(type) {
+    clearHighlights();
+    const paragraphFilter = document.getElementById("filterParagraph").value;
+    comments.forEach(c => {
+        if (c.name !== type) return;
+        if (paragraphFilter!=="all") {
+            const selectedParagraph = Number(paragraphFilter);
+            if (c.paragraph!== selectedParagraph) return;
+
+        }
+    highlightError(c.index, c.length, c.name);
+    })
+}
+
+// Función para el switch
+function setEditMode(enabled) {
+    quill.enable(enabled);
+
+    editLabel.textContent = enabled ? "Editar" : "Bloqueado";
+    document.getElementById("toolbar").style.opacity = enabled ? "1" : "0.5";
+}
+function forceLockEditing() {
+    editToggle.checked = false;
+    setEditMode(false);
 }
