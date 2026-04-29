@@ -580,3 +580,12 @@ input:checked + .slider {
 input:checked + .slider:before {
   transform: translateX(20px);
 }
+
+.highlight-switch-block {
+    margin-top: 10px;  /* 👈 espacio vertical */
+}
+
+.switch {
+    display: inline-flex;
+    margin-top: 10px;
+}

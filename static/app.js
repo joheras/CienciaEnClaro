@@ -13,6 +13,9 @@ let anaylizedParagraphNumber = null;
 let totalOracionesPorParrafo = {};
 let conteoErroresPorTipoParrafo = {};
 let porcentajesPorTipoParrafo = {};
+let currentParagraphFilter = "all";
+let activeCommentId = null;
+let enableSentenceHighlight = true;
 
 // Meter al css
 let popupDiv = document.createElement("div");
@@ -30,6 +33,7 @@ document.body.appendChild(popupDiv);
 let highlightParagraphs = false;
 let currentParagraphComment = null;
 let currentModalComment = null; // mantener el comentario para el popup de la sugerencia
+let activeType = null;
 
 quill = new Quill('#editor', {
     theme: 'snow',
@@ -46,6 +50,18 @@ quill = new Quill('#editor', {
     }
 });
 
+document.getElementById("toggleHighlight").addEventListener("change", (e) => {
+    enableSentenceHighlight = e.target.checked;
+
+    // Si lo desactiva, limpia los resaltados
+    if(!enableSentenceHighlight) {
+        clearHighlights();
+    } else {
+        if (activeType) {
+            highlightByType(activeType);
+        }
+    }
+})
 const editToggle = document.getElementById("editToggle");
 const editLabel = document.getElementById("editLabel");
 setEditMode(true);
@@ -55,7 +71,7 @@ editToggle.addEventListener("change", () => {
 
 // para que la aplicación empiece en el modo escribir
 quill.enable(true);
-document.getElementById("filterContainer").style.display="none";
+//document.getElementById("filterContainer").style.display="none";
 document.getElementById("filterText").style.display="none";
 document.getElementById("analysisContainer").style.display="none";
 document.getElementById("analyzeBtn").style.display = "none";
@@ -64,11 +80,62 @@ document.getElementById("addCommentFirst10Btn").style.display = "none";
 document.getElementById("recalculateBtn").style.display = "none";
 document.getElementById("generateSuggestionBtn").style.display="none";
 document.getElementById("filterParagraph").addEventListener("change", () => {
-    renderComments();
+    clearHighlights();
+    renderComments(activeCommentId);
     highlightParagraphFromFilter();
+
+    if (activeType) {
+        highlightByType(activeType);
+    }
     updateGenerateSuggestionButton();
 })
 document.getElementById("commentsList").style.display="none";
+
+// Para que al hacer click en un párrafo se actualice el filtro automáticamente
+document.querySelector(".ql-editor").addEventListener("click", (e) => {
+    let p = e.target;
+
+    while (p && p.tagName !== "P") {
+        p = p.parentElement;
+    }
+    if (!p) return;
+
+    // Obtener índice del párrafo
+    const paragraphs = quill.root.querySelectorAll("p");
+    let visibleIndex = 1;
+    let targetIndex = null;
+
+    paragraphs.forEach(paragraph => {
+        const text = paragraph.textContent.replace(/\u200B/g, "").trim();
+        if (text.length > 0) {
+            if (paragraph === p) {
+                targetIndex = visibleIndex;
+            }
+            visibleIndex++;
+        }
+    });
+    if (targetIndex === null) return;
+
+    const select = document.getElementById("filterParagraph");
+
+    // Evitar asignar si ya está seleccionado
+    if(select.value === String(targetIndex)) return;
+
+    select.dispatchEvent(new Event("change"));
+});
+
+quill.on("selection-change", (range) => {
+    if (!range) return;
+    const paragraphNumber = getParagraphNumberFromIndex(range.index);
+    if (!paragraphNumber) return;
+
+    const select = document.getElementById("filterParagraph");
+
+    if (select.value !== String(paragraphNumber)) {
+        select.value = String(paragraphNumber);
+        select.dispatchEvent(new Event("change"));
+    }
+})
 
 quill.on("selection-change", highlightActiveParagraph);
 
@@ -113,7 +180,7 @@ document.getElementById("addCommentFirst10Btn").onclick = () => {
 
 document.querySelector(".ql-editor").setAttribute("spellcheck", "true");
 document.getElementById("filterType").addEventListener("change", () => {
-    renderComments();
+    renderComments(activeCommentId);
 })
 
 updateParagraphNumbers();
@@ -143,6 +210,7 @@ const useSuggestionBtn = document.getElementById('useSuggestionBtn');
 
 const originalTextArea = document.getElementById('originalText');
 const suggestedTextArea = document.getElementById('suggestedText');
+const highlightSwitch = document.getElementById("toggleHighlight");
 
 
 generateBtn.addEventListener('click', async () => {
@@ -240,13 +308,16 @@ function setMode(mode) {
 
      */
 
+    const showFilter = mode !== "analysis";
+
     document.getElementById("commentsList").style.display = isFeedback ? "block" : "none";
-    document.getElementById("filterContainer").style.display = isFeedback ? "block" : "none";
+    document.getElementById("filterContainer").style.display = showFilter ? "block" : "none";
     document.getElementById("filterText").style.display = isFeedback ? "block" : "none";
     //document.getElementById("paragraphBtn").style.display = isFeedback ? "block" : "none";
     document.getElementById("addCommentFirst10Btn").style.display = isFeedback ? "block" : "none";
     document.getElementById("analysisContainer").style.display = isAnalysis ? "block" : "none";
     document.getElementById("analyzeBtn").style.display = isAnalysis ? "block" : "none";
+    document.querySelector(".highlight-switch-block").style.display = isAnalysis ? "inline-flex" : "none";
 
     if (isFeedback && hasPendingChanges){
         document.getElementById("recalculateBtn").style.display="block";
@@ -313,6 +384,10 @@ function updateFilterOptions() {
 
 function updateParagraphFilter() {
     const select = document.getElementById("filterParagraph");
+
+    // Guardo el valor actual del filtro
+    const previousValue = select.value;
+
     const paragraph = quill.root.querySelectorAll("p");
 
     select.innerHTML = "";
@@ -335,7 +410,13 @@ function updateParagraphFilter() {
             count++;
         }
     });
-    select.value = "all";
+
+    // Si había un filtro previo, lo restauramos. Si no ponemos el texto completo
+    if([...select.options].some(opt => String(opt.value) === String(previousValue))) {
+        select.value = String(previousValue);
+    } else {
+        select.value = "all";
+    }
 }
 
 
@@ -500,9 +581,14 @@ function renderComments(openCommentId = null){
         btn.className = "comment-accept-btn";
         btn.style.display = "none";
 
+        const existsInFiltered = filtered.some(c => c.id === activeCommentId);
+        if (!existsInFiltered) {
+            activeCommentId = null;
+        }
+
         btn.onclick = () => {
             acceptSuggestion(first);
-            renderComments();
+            renderComments(activeCommentId);
         };
         title.onclick = () => {
               //Si está bloqueado no se puede clicar el comentario
@@ -513,7 +599,11 @@ function renderComments(openCommentId = null){
               // quill.setSelection(start, end-start); // Seleccionaba el texto marcado, lo comento porque no quiero que se marque
 
               // Resaltar las oraciones de ese comentario
-              highlightByType(first.name);
+              activeType = first.name;
+              activeCommentId = first.id;
+              if(enableSentenceHighlight) {
+                  highlightByType(first.name);
+              }
 
               // Cerrar todo
               document.querySelectorAll("#commentsList .comment-desc")
@@ -578,7 +668,7 @@ function lockComments() {
   if (appMode === "feedback") {
       document.getElementById("recalculateBtn").style.display = "block";
   }
-  renderComments();
+  renderComments(activeCommentId);
 }
 
 function unlockComments() {
@@ -665,7 +755,7 @@ async function addCommentText() {
     calcularPorcentajesPorParrafo();
 
     updateFilterOptions();
-    renderComments();
+    renderComments(activeCommentId);
 
     hasPendingChanges = false;
 
@@ -797,7 +887,7 @@ async function addCommentParagraph() {
 
 
     updateFilterOptions();
-    renderComments();
+    renderComments(activeCommentId);
     analyzingParagraph = false;
     hasPendingChanges = false;
 
@@ -1228,7 +1318,7 @@ function acceptSuggestion(comment){
     });
 
     // Refrescamos la lista de comentarios
-    renderComments();
+    renderComments(activeCommentId);
 }
 
 function updateGenerateSuggestionButton() {
@@ -1335,17 +1425,25 @@ function highlightError(index, length, type) {
     quill.formatText(index, length, {background: color});
 }
 function clearHighlights() {
-    quill.removeFormat(0, quill.getLength());
+    quill.formatText(0, quill.getLength(), {background: false});
 }
 function highlightByType(type) {
     clearHighlights();
+    if(!enableSentenceHighlight) return;
     const paragraphFilter = document.getElementById("filterParagraph").value;
+    const selectedParagraph = paragraphFilter !== "all" ? Number(paragraphFilter) : null;
     comments.forEach(c => {
         if (c.name !== type) return;
+        /*
         if (paragraphFilter!=="all") {
             const selectedParagraph = Number(paragraphFilter);
             if (c.paragraph!== selectedParagraph) return;
 
+        }
+
+         */
+        if (selectedParagraph !== null && Number(c.paragraph) !== selectedParagraph){
+            return;
         }
     highlightError(c.index, c.length, c.name);
     })
