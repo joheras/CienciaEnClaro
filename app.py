@@ -161,7 +161,7 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                     }
                     result.append(resumen)
                 coordinada = oracion_coordinada(frase)
-                if coordinada:
+                if coordinada[0]:
                     resumen = {
                         "id": str(uuid.uuid4()),
                         "start": inicioFrase,
@@ -173,7 +173,7 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                     }
                     result.append(resumen)
                 yuxtapuesta = oracion_yuxtapuesta(frase)
-                if yuxtapuesta:
+                if yuxtapuesta[0]:
                     resumen = {
                         "id": str(uuid.uuid4()),
                         "start": inicioFrase,

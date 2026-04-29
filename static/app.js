@@ -446,6 +446,8 @@ function renderComments(openCommentId = null){
         desc.className = "comment-desc";
         desc.style.display = "none";
 
+        /*
+
         // Obtener párrafos únicos directamente
         const sourceComments = paragraphFilter !== "all"
         ? group.filter(c => c.paragraph === Number(paragraphFilter))
@@ -479,6 +481,18 @@ function renderComments(openCommentId = null){
         //    }
         //}
         desc.innerText = "Descripción: " + (descriptionMap[first.name] || first.description || "Sin descripción disponible") + extraDetalle;
+
+         */
+        paragraphText = `Se han detectado `;
+        const descriptionMap = {
+            parrafoCorto: `los siguientes párrafos cortos. Cada párrafo debería tener mínimo dos oraciones.`,
+            parrafoLargo: `los siguientes párrafos largos. Cada párrafo debería tener máximo cinco oraciones.`,
+            oracionLarga: `las siguientes oraciones largas. Cada oración debería tener máximo 20 palabras.`,
+            orden: `las siguientes oraciones que no siguen el orden sintáctico sujeto-verbo-complementos.`,
+            coordinada: `las siguientes oraciones coordinadas.`,
+            yuxtapuesta: `las siguientes oraciones yuxtapuestas.`
+        };
+        desc.innerText = "Descripción: " + paragraphText + descriptionMap[first.name];
 
         // Botón quitar sugerencia
         const btn = document.createElement("button");
