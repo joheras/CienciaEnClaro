@@ -22,6 +22,7 @@
         <span class="ql-formats">
             <button id="loadFileBtn" title="Cargar archivo"><i class="fa-solid fa-file-import"></i></button>
             <button id="downloadBtn" title="Descargar"><i class="fa-solid fa-download"></i></button>
+            <button id="exampleTextBtn" title ="Texto de ejemplo"><i class="fa-solid fa-file-lines"></i></button>
             <span class="toolbar-separator"></span>
         </span>
 
@@ -103,18 +104,20 @@
     <div id="commentsPanel">
         <div id="modeButtons">
             <!--  <button id="writeModeBtn" class="mode-btn active">Editar</button> -->
-            <button id="feedbackModeBtn" class="mode-btn">Analizar</button>
+            <button id="feedbackModeBtn" class="mode-btn">Análisis</button>
             <button id = "analysisModeBtn" class ="mode-btn">Estadísticas</button>
         </div>
+        <div id="filtersRow">
       <!-- <label for="filterType">Comentarios. Filtro por tipo:</label> -->
-        <div id="filterContainer">
-            <label for="filterType">Filtro:</label>
-            <select id="filterType"></select>
-        </div>
-        <!--- otro filtro para filtrar por párrafos --->
-        <div id="filterText">
-            <label for="filterParagraph">Texto:</label>
-            <select id="filterParagraph"></select>
+            <div id="filterContainer">
+                <label for="filterType">Filtro:</label>
+                <select id="filterType"></select>
+            </div>
+            <!--- otro filtro para filtrar por párrafos --->
+            <div id="filterText">
+                <label for="filterParagraph">Párrafos:</label>
+                <select id="filterParagraph"></select>
+            </div>
         </div>
         <!-- Botones personalizados con iconos -->
         <span class="ql-formats">

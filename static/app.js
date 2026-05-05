@@ -9,7 +9,7 @@ let appMode = "write"; //Puede ser "write", "feedback" o "analysis"
 let hasPendingChanges = false; // Para saber si ha cambiado el texto desde la última vez que se ha analizado
 let hasFullAnalysis = false;
 let hasParagraphAnalysis = false;
-let anaylizedParagraphNumber = null;
+let analyzedParagraphNumber = null;
 let totalOracionesPorParrafo = {};
 let conteoErroresPorTipoParrafo = {};
 let porcentajesPorTipoParrafo = {};
@@ -50,6 +50,8 @@ quill = new Quill('#editor', {
     }
 });
 
+
+
 document.getElementById("toggleHighlight").addEventListener("change", (e) => {
     enableSentenceHighlight = e.target.checked;
 
@@ -79,6 +81,7 @@ document.getElementById("analyzeBtn").style.display = "none";
 document.getElementById("addCommentFirst10Btn").style.display = "none";
 document.getElementById("recalculateBtn").style.display = "none";
 document.getElementById("generateSuggestionBtn").style.display="none";
+document.querySelector(".highlight-switch-block").style.display = "none";
 document.getElementById("filterParagraph").addEventListener("change", () => {
     clearHighlights();
     renderComments(activeCommentId);
@@ -90,6 +93,23 @@ document.getElementById("filterParagraph").addEventListener("change", () => {
     updateGenerateSuggestionButton();
 })
 document.getElementById("commentsList").style.display="none";
+
+document.getElementById("exampleTextBtn").addEventListener("click", async() => {
+    try {
+        const response = await fetch("/static/ejemplo.txt");
+        if (!response.ok) throw new Error("No se pudo cargar el archivo");
+
+        const text = await response.text();
+
+        quill.setText(text);
+
+        updateParagraphNumbers();
+        updateParagraphFilter();
+    } catch (error) {
+        console.error(error);
+        alert("Error cargando el texto de ejemplo");
+    }
+});
 
 // Para que al hacer click en un párrafo se actualice el filtro automáticamente
 document.querySelector(".ql-editor").addEventListener("click", (e) => {
@@ -185,6 +205,7 @@ document.getElementById("filterType").addEventListener("change", () => {
 
 updateParagraphNumbers();
 updateParagraphFilter();
+updateFilterOptions();
 
 //const writeBtn = document.getElementById("writeModeBtn");
 const feedBackBtn = document.getElementById("feedbackModeBtn");
@@ -317,7 +338,7 @@ function setMode(mode) {
     document.getElementById("addCommentFirst10Btn").style.display = isFeedback ? "block" : "none";
     document.getElementById("analysisContainer").style.display = isAnalysis ? "block" : "none";
     document.getElementById("analyzeBtn").style.display = isAnalysis ? "block" : "none";
-    document.querySelector(".highlight-switch-block").style.display = isAnalysis ? "inline-flex" : "none";
+    document.querySelector(".highlight-switch-block").style.display = showFilter ? "inline-flex" : "none";
 
     if (isFeedback && hasPendingChanges){
         document.getElementById("recalculateBtn").style.display="block";
@@ -354,16 +375,35 @@ function updateFilterOptions() {
     const select = document.getElementById("filterType");
     const types = [...new Set(comments.map(c => c.type))]; // Tipos únicos
 
+    const previousValue = select.value;
+
     select.innerHTML = "";
 
+    const baseOptions = [
+        {value: "todos", label: "Todos"},
+        {value:"morfosintaxis", label:"Morfosintaxis"},
+        {value: "lexico-semantico", label:"Léxico-semánticos"}
+    ];
+
+    baseOptions.forEach(opt => {
+        const option = document.createElement("option");
+        option.value = opt.value;
+        option.textContent = opt.label;
+        select.appendChild(option);
+    });
+
     // Añadimos la opción "Todos"
-    const allOption = document.createElement("option");
-    allOption.value = "todos";
-    allOption.textContent ="Todos";
-    select.appendChild(allOption);
+    //const allOption = document.createElement("option");
+    //allOption.value = "todos";
+    //allOption.textContent ="Todos";
+    //select.appendChild(allOption);
 
     // Añadir opciones únicas
     types.forEach(type => {
+
+        // Evitar duplicados con los que he añadido al principio
+        if(baseOptions.some(opt => opt.value === type)) return;
+
         const option = document.createElement("option");
         option.value = type;
 
@@ -379,7 +419,11 @@ function updateFilterOptions() {
     });
 
     //Predeterminado: "Todos"
-    select.value = "todos";
+    if ([...select.options].some(opt => opt.value === previousValue)) {
+        select.value = previousValue;
+    } else {
+        select.value = "todos";
+    }
 }
 
 function updateParagraphFilter() {
@@ -395,7 +439,7 @@ function updateParagraphFilter() {
     // Opción texto completo
     const allOption = document.createElement("option");
     allOption.value = "all";
-    allOption.textContent = "Texto completo";
+    allOption.textContent = "Todos";
     select.appendChild(allOption);
 
     let count = 1;
@@ -405,7 +449,7 @@ function updateParagraphFilter() {
         if (text.length > 0) {
             const option = document.createElement("option");
             option.value = count;
-            option.textContent = "Párrafo " + count;
+            option.textContent = count;
             select.appendChild(option);
             count++;
         }

@@ -582,10 +582,25 @@ input:checked + .slider:before {
 }
 
 .highlight-switch-block {
-    margin-top: 10px;  /* 👈 espacio vertical */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 15px;  /* 👈 espacio vertical */
 }
 
 .switch {
     display: inline-flex;
-    margin-top: 10px;
+    margin-top: 0;
+}
+
+#filtersRow {
+    display: flex;
+    gap: 10px; /* espacio entre los dos filtros */
+    align-items: center;
+}
+
+#filterContainer,
+#filterText {
+    display: flex;
+    flex-direction: column;
 }
