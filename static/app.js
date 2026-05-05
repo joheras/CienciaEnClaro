@@ -382,7 +382,7 @@ function updateFilterOptions() {
     const baseOptions = [
         {value: "todos", label: "Todos"},
         {value:"morfosintaxis", label:"Morfosintaxis"},
-        {value: "lexico-semantico", label:"Léxico-semánticos"}
+        {value: "léxico-semántico", label:"Léxico-semántico"}
     ];
 
     baseOptions.forEach(opt => {
@@ -615,7 +615,8 @@ function renderComments(openCommentId = null){
             oracionLarga: `las siguientes oraciones largas. Cada oración debería tener máximo 20 palabras.`,
             orden: `las siguientes oraciones que no siguen el orden sintáctico sujeto-verbo-complementos.`,
             coordinada: `las siguientes oraciones coordinadas.`,
-            yuxtapuesta: `las siguientes oraciones yuxtapuestas.`
+            yuxtapuesta: `las siguientes oraciones yuxtapuestas.`,
+            extranjerismo: " los siguientes extranjerismos."
         };
         desc.innerText = "Descripción: " + paragraphText + descriptionMap[first.name];
 
@@ -1489,7 +1490,7 @@ function highlightByType(type) {
         if (selectedParagraph !== null && Number(c.paragraph) !== selectedParagraph){
             return;
         }
-    highlightError(c.index, c.length, c.name);
+        highlightError(c.index, c.length, c.name);
     })
 }
 

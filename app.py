@@ -8,6 +8,7 @@ import asyncio
 
 # Importamos los módulos
 from modules.morfosintaxis import *
+from modules.lexsem import *
 from modules.legibility import *
 from modules.models import *
 
@@ -33,7 +34,8 @@ async def analizar_parrafo(texto, inicioParrafo):
     total_oraciones = 0
     oraciones_largas = 0
 
-    resultado = await morfosintaxis_paragraph(texto, inicioParrafo)
+    resultado_morf = await morfosintaxis_paragraph(texto, inicioParrafo)
+    resultado_lexsem = await lexsem_paragraph(texto, inicioParrafo)
 
     # Contar métricas
     frases = nltk.sent_tokenize(texto, language="Spanish")
@@ -43,9 +45,10 @@ async def analizar_parrafo(texto, inicioParrafo):
         if oracion_larga(frase)[0]:
             oraciones_largas += 1
 
-    result.extend(resultado)
+    result.extend(resultado_morf)
+    result.extend(resultado_lexsem)
     errores_por_tipo = {}
-    for item in resultado:
+    for item in resultado_morf:
         tipo = item["name"]
         if tipo not in errores_por_tipo:
             errores_por_tipo[tipo] = set()
@@ -201,6 +204,46 @@ async def morfosintaxis_text(request: Request):
     inicio = 0
     for i, parrafo in enumerate(parrafos, start=1):
         resultados[i] = morfosintaxis_paragraph(parrafo, inicio)
+        inicio = inicio + len(parrafo) + 1
+    return resultados
+
+async def lexsem_paragraph(texto, inicioParrafo):
+    """ Dado un párrafo devuelve un resumen de dicho párrafo con los índices léxico-semánticos que no cumplen las características deseadas"""
+    result = []
+    if texto != '\n' and texto!='':
+        inicioPalabra = inicioParrafo
+
+        palabras = nltk.word_tokenize(texto, language="spanish")
+
+        for palabra in palabras:
+            finPalabra = inicioPalabra + len(palabra)
+            es_extranjerismo = extranjerismos(palabra)
+
+            if es_extranjerismo:
+                resumen = {
+                    "id": str(uuid.uuid4()),
+                    "start": inicioPalabra,
+                    "end": finPalabra,
+                    "text": "Extranjerismo",
+                    "description": f"Se debe evitar el abuso de extranjerismos.",
+                    "type": "léxico-semántico",
+                    "name": "extranjerismo"
+                }
+                result.append(resumen)
+            inicioPalabra = finPalabra + 1 # Sumamos uno por el espacio
+    return result
+
+async def lexsem_text(request: Request):
+    """ Dado un texto devuelve un resumen de dicho texto con los índices léxico-semánticos que no cumplen las características deseadas"""
+    data = await request.json()
+    texto = data.get("text", "")
+
+    parrafos = dividir_parrafos(texto)
+    resultados = {} # Aquí voy a almacenar todos los comentarios por parrafo
+
+    inicio = 0
+    for i, parrafo in enumerate(parrafos, start=1):
+        resultados[i] = lexsem_paragraph(parrafo, inicio)
         inicio = inicio + len(parrafo) + 1
     return resultados
 
