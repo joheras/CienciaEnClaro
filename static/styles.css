@@ -97,8 +97,8 @@ html, body {
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
-  backdrop-filter: blur(2px);
+  z-index: 99999;
+  backdrop-filter: none;
 }
 
 .loadingContent {
@@ -396,6 +396,10 @@ html, body {
     max-width: 300px;       /* Evita que sea demasiado ancho */
     word-wrap: break-word;   /* Que el texto se ajuste */
     display: none;           /* Inicialmente oculto */
+}
+
+#suggestionModal {
+    z-index: 2000;
 }
 
 .paragraph-suggestion-popup{

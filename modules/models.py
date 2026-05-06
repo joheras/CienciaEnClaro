@@ -19,7 +19,8 @@ def obtenerSugerencia(comment):
 
     response: ChatResponse = chat(
         #model = "nichonauta/pepita-2-2b-it-v5",
-        model = "mistral",
+        #model = "mistral",
+        model = "gemma4:e4b",
         messages = [
             {
                 "role": "user",
