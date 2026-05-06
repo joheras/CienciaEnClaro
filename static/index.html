@@ -78,6 +78,7 @@
         </span>
 
         <!-- Swtich editar -->
+        <!--
         <span class="edit-switch">
             <label class="switch">
                 <input type="checkbox" id="editToggle" checked>
@@ -85,7 +86,7 @@
             </label>
             <span id="editLabel">Editar</span>
         </span>
-
+-->
 
 
     </div>
@@ -121,8 +122,8 @@
         </div>
         <!-- Botones personalizados con iconos -->
         <span class="ql-formats">
-            <!--<button id="paragraphBtn" class="ql-paragraph" title="Analizar párrafo"> Analizar párrafo</button>-->
-            <button id="addCommentFirst10Btn" class="ql-comment10" title="Analizar texto"> Analizar texto</button>
+            <!--<button id="paragraphBtn" class="ql-paragraph" title="Analizar párrafo"> Analizar párrafo</button>
+            <button id="addCommentFirst10Btn" class="ql-comment10" title="Analizar texto"> Analizar texto</button>-->
 
             </span>
         <div class="ql-formats highlight-switch-block">
@@ -147,11 +148,25 @@
 </div>
 
 <!-- Overlay de carga -->
-<div id="loadingOverlay">
+<div id="analysisOverlay">
+    <div id="progressContainer">
+        <div class="progressWrapper">
+            <div id="progressBar"> </div>
+        </div>
+
+        <div id="progressText"> 0% </div>
+
+        <div class="loadingContent">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <span>En proceso...</span>
+        </div>
+    </div>
+</div>
+
+<div id="suggestionOverlay">
     <div class="loadingContent">
         <i class="fa-solid fa-spinner fa-spin"></i>
-        <span>En proceso...</span>
-    </div>
+        <span>Generando sugerencia...</span>
 </div>
 
 

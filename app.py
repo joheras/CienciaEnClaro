@@ -211,12 +211,11 @@ async def lexsem_paragraph(texto, inicioParrafo):
     """ Dado un párrafo devuelve un resumen de dicho párrafo con los índices léxico-semánticos que no cumplen las características deseadas"""
     result = []
     if texto != '\n' and texto!='':
-        inicioPalabra = inicioParrafo
+        for match in re.finditer(r'\w+', texto, re.UNICODE):
+            palabra = match.group()
+            inicioPalabra = inicioParrafo + match.start()
+            finPalabra = inicioParrafo + match.end()
 
-        palabras = nltk.word_tokenize(texto, language="spanish")
-
-        for palabra in palabras:
-            finPalabra = inicioPalabra + len(palabra)
             es_extranjerismo = extranjerismos(palabra)
 
             if es_extranjerismo:
@@ -230,7 +229,6 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "name": "extranjerismo"
                 }
                 result.append(resumen)
-            inicioPalabra = finPalabra + 1 # Sumamos uno por el espacio
     return result
 
 async def lexsem_text(request: Request):

@@ -16,6 +16,7 @@ let porcentajesPorTipoParrafo = {};
 let currentParagraphFilter = "all";
 let activeCommentId = null;
 let enableSentenceHighlight = true;
+let lastAnalyzedParagraphs = {};
 
 // Meter al css
 let popupDiv = document.createElement("div");
@@ -64,12 +65,12 @@ document.getElementById("toggleHighlight").addEventListener("change", (e) => {
         }
     }
 })
-const editToggle = document.getElementById("editToggle");
-const editLabel = document.getElementById("editLabel");
-setEditMode(true);
-editToggle.addEventListener("change", () => {
-    setEditMode(editToggle.checked);
-})
+//const editToggle = document.getElementById("editToggle");
+//const editLabel = document.getElementById("editLabel");
+//setEditMode(true);
+//editToggle.addEventListener("change", () => {
+//    setEditMode(editToggle.checked);
+//})
 
 // para que la aplicación empiece en el modo escribir
 quill.enable(true);
@@ -78,7 +79,7 @@ document.getElementById("filterText").style.display="none";
 document.getElementById("analysisContainer").style.display="none";
 document.getElementById("analyzeBtn").style.display = "none";
 //document.getElementById("paragraphBtn").style.display = "none";
-document.getElementById("addCommentFirst10Btn").style.display = "none";
+//document.getElementById("addCommentFirst10Btn").style.display = "none";
 document.getElementById("recalculateBtn").style.display = "none";
 document.getElementById("generateSuggestionBtn").style.display="none";
 document.querySelector(".highlight-switch-block").style.display = "none";
@@ -102,6 +103,8 @@ document.getElementById("exampleTextBtn").addEventListener("click", async() => {
         const text = await response.text();
 
         quill.setText(text);
+
+        quill.formatText(0, quill.getLength(), {color: "#000000"});
 
         updateParagraphNumbers();
         updateParagraphFilter();
@@ -186,10 +189,58 @@ document.getElementById("analyzeBtn").addEventListener("click", analyzeText);
 //        addCommentParagraph();
 //    }
 //}
-document.getElementById("recalculateBtn").onclick = () => {
+document.getElementById("recalculateBtn").onclick = async () => {
     unlockComments();
-    addCommentParagraph();
+
+    const changed = getChangedParagraphs();
+    if (changed.length===0){
+        console.log("No hay cambios que recalcular");
+        return;
+    }
+    const overlay = document.getElementById("analysisOverlay");
+    overlay.style.display = "flex";
+
+    const total = changed.length;
+    let current = 0;
+    updateProgress(0, total);
+
+    for (const par of changed) {
+        const paragraphs = quill.root.querySelectorAll("p");
+        const p = Array.from(paragraphs).filter(x =>
+            x.textContent.replace(/\u200B/g, "").trim().length > 0)[par.index - 1];
+        if (!p) continue;
+        const start = quill.getIndex(Quill.find(p));
+        const data = await analyzeSingleParagraph(par.text, start);
+        comments = comments.filter(c => c.paragraph !== par.index);
+
+        /*
+        const oldLength = p.innerText.length;
+        const newLength = par.text.length;
+        const paragraphEnd = start + oldLength;
+
+        const diff = newLength-oldLength;
+
+        comments.forEach(c => {
+            if (c.index > paragraphEnd) {
+                c.index += diff;
+            }
+        })
+         */
+
+        data.forEach(item => {
+            comments.push(buildComment(item, par.text, par.index, start));
+        });
+        lastAnalyzedParagraphs[par.index] = par.text;
+        current++;
+        updateProgress(current, total);
+        await new Promise(r => setTimeout(r, 0));
+    }
+    updateFilterOptions();
+    renderComments(activeCommentId);
+    overlay.style.display = "none";
+
 };
+/*
 document.getElementById("addCommentFirst10Btn").onclick = () => {
     if (quill.isEnabled()){
         return;
@@ -197,6 +248,8 @@ document.getElementById("addCommentFirst10Btn").onclick = () => {
         addCommentText();
     }
 };
+
+ */
 
 document.querySelector(".ql-editor").setAttribute("spellcheck", "true");
 document.getElementById("filterType").addEventListener("change", () => {
@@ -213,12 +266,12 @@ const analysisBtn = document.getElementById("analysisModeBtn");
 //writeBtn.onclick = () => setMode("write");
 feedBackBtn.onclick = () => {
     setMode("feedback");
-    forceLockEditing();
+    //forceLockEditing();
     addCommentText();
 }
 analysisBtn.onclick = () => {
     setMode("analysis");
-    forceLockEditing();
+    //forceLockEditing();
     analyzeText();
 }
 
@@ -335,7 +388,7 @@ function setMode(mode) {
     document.getElementById("filterContainer").style.display = showFilter ? "block" : "none";
     document.getElementById("filterText").style.display = isFeedback ? "block" : "none";
     //document.getElementById("paragraphBtn").style.display = isFeedback ? "block" : "none";
-    document.getElementById("addCommentFirst10Btn").style.display = isFeedback ? "block" : "none";
+    //document.getElementById("addCommentFirst10Btn").style.display = isFeedback ? "block" : "none";
     document.getElementById("analysisContainer").style.display = isAnalysis ? "block" : "none";
     document.getElementById("analyzeBtn").style.display = isAnalysis ? "block" : "none";
     document.querySelector(".highlight-switch-block").style.display = showFilter ? "inline-flex" : "none";
@@ -497,6 +550,7 @@ function renderComments(openCommentId = null){
         panel.style.display = "block";
     }
 
+    const activeComment = comments.find(c => c.id === openCommentId);
 
     // Agrupar comentarios
     const grouped = filtered.reduce((acc, comment) => {
@@ -620,6 +674,8 @@ function renderComments(openCommentId = null){
         };
         desc.innerText = "Descripción: " + paragraphText + descriptionMap[first.name];
 
+
+
         // Botón quitar sugerencia
         const btn = document.createElement("button");
         btn.innerText = "Ocultar comentario";
@@ -671,7 +727,11 @@ function renderComments(openCommentId = null){
               }
         };
 
-        if (openCommentId && first.id === openCommentId) {
+        const groupHasActive = group.some(c => c.id === openCommentId);
+
+        const isActiveGroup = groupHasActive || (activeComment && group[0].name === activeComment.name);
+
+        if (isActiveGroup) {
             desc.style.display = "block";
             btn.style.display = "inline-block";
         }
@@ -752,15 +812,23 @@ async function addCommentText() {
     let paragraph;
 
     // Mostrar overlay de bloqueo
-    const overlay = document.getElementById("loadingOverlay");
+    const overlay = document.getElementById("analysisOverlay");
     overlay.style.display = "flex";
 
     const paragraphs = quill.root.querySelectorAll("p");
     let visibleIndex = 1;
 
-    for (let p of paragraphs) {
+    const paragraphsArray = Array.from(paragraphs).filter(p =>
+    p.textContent.replace(/\u100B/g, "").trim().length > 0);
+
+    const total = paragraphsArray.length;
+    let current = 0;
+    updateProgress(0, total);
+
+    for (let p of paragraphsArray) {
         const text = p.textContent.replace(/\u200B/g, "").trim();
         if (!text) continue;
+        lastAnalyzedParagraphs[visibleIndex] = text;
 
         const oraciones = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
         totalOracionesPorParrafo[visibleIndex] = oraciones.length;
@@ -768,20 +836,9 @@ async function addCommentText() {
         const start = quill.getIndex(Quill.find(p));
         const data = await analyzeSingleParagraph(text, start);
         data.forEach(item => {
-            comments.push({id: item.id,
-            text: item.text,
-            index: item.start,
-            length: item.end - item.start,
-            description: item.description,
-            error: item.error,
-            original: item.original,
-            type: item.type,
-            suggestion: item.suggestion,
-                mode: "paragraph",
-                texto: text,
-                paragraph: visibleIndex,
-            name: item.name
-            });
+            comments.push(
+                buildComment(item, text, visibleIndex, start)
+            );
 
             const paragraphText = text;
             const localIndex = item.start - start;
@@ -796,6 +853,9 @@ async function addCommentText() {
             conteoErroresPorTipoParrafo[item.name][visibleIndex].add(sentenceId);
         });
         visibleIndex++;
+        current++;
+        updateProgress(current, total);
+        await new Promise(r => setTimeout(r, 0));
     }
     calcularPorcentajesPorParrafo();
 
@@ -861,6 +921,9 @@ async function addCommentParagraph() {
             if (quill.getIndex(Quill.find(p)) === start) {
                 currentParagraphNumber = visibleIndex;
                 p.classList.add("active-paragraph");
+
+                lastAnalyzedParagraphs[currentParagraphNumber] = paragraphText;
+
             } else {
                 p.classList.remove("active-paragraph");
             }
@@ -885,7 +948,7 @@ async function addCommentParagraph() {
     }
 
     // Mostrar overlay de bloqueo
-    const overlay = document.getElementById("loadingOverlay");
+    const overlay = document.getElementById("analysisOverlay");
     overlay.style.display = "flex";
 
     let parrafo = text.paragraphText;
@@ -909,22 +972,9 @@ async function addCommentParagraph() {
     for (let i = 0; i< data.length; i+=CHUNK_SIZE) {
         const chunk = data.slice(i, i + CHUNK_SIZE);
         chunk.forEach(item => {
-            let commentObj = {
-                id: item.id,
-                text: item.text,
-                index: item.start,
-                length: item.end - item.start,
-                description: item.description,
-                error: item.error,
-                original: item.original,
-                type: item.type,
-                suggestion: item.suggestion,
-                mode: "paragraph",
-                texto: item.parrafo,
-                isParagraphSuggestion: false,
-                paragraph: getParagraphNumberFromIndex(item.start)
-            };
-            comments.push(commentObj);
+            comments.push(
+                buildComment(item, text, visibleIndex, start)
+            );
         });
         // Dejamos que el navegador renderice
         await new Promise(r => setTimeout(r, 0));
@@ -996,7 +1046,7 @@ function getParagraphAtCursor() {
 }
 
 async function analyzeText() {
-    forceLockEditing();
+    //forceLockEditing();
     if (appMode !== "analysis") return;
     const range = quill.getSelection();
     let text;
@@ -1281,7 +1331,7 @@ function highlightParagraphFromFilter() {
 
 async function generateSuggestion(comment){
     // Mostrar overlay de bloqueo
-    const overlay = document.getElementById("loadingOverlay");
+    const overlay = document.getElementById("suggestionOverlay");
     overlay.style.display = "flex";
     try {
         // Generamos la sugerencia
@@ -1490,10 +1540,13 @@ function highlightByType(type) {
         if (selectedParagraph !== null && Number(c.paragraph) !== selectedParagraph){
             return;
         }
-        highlightError(c.index, c.length, c.name);
+        const index = getUpdatedIndex(c);
+        //highlightError(c.index, c.length, c.name);
+        highlightError(index, c.length, c.name);
     })
 }
 
+/*
 // Función para el switch
 function setEditMode(enabled) {
     quill.enable(enabled);
@@ -1501,7 +1554,90 @@ function setEditMode(enabled) {
     editLabel.textContent = enabled ? "Editar" : "Bloqueado";
     document.getElementById("toolbar").style.opacity = enabled ? "1" : "0.5";
 }
+
 function forceLockEditing() {
     editToggle.checked = false;
     setEditMode(false);
+}
+ */
+
+
+// Párrafos que han cambiado
+function getChangedParagraphs() {
+    const paragraphs = quill.root.querySelectorAll("p");
+    let changes = [];
+    let visibleIndex = 1;
+    paragraphs.forEach(p => {
+        const text = p.textContent.replace(/\u200B/g, "").trim();
+        if (!text) return;
+        const previous = lastAnalyzedParagraphs[visibleIndex];
+
+        if (previous!==text) {
+            changes.push({index: visibleIndex, text: text});
+        }
+        visibleIndex++;
+    });
+    return changes;
+}
+
+function updateProgress(current, total) {
+    const percent = Math.round((current/total) * 100);
+    const bar = document.getElementById("progressBar");
+    const text = document.getElementById("progressText");
+
+    if (bar) bar.style.width = percent + "%";
+    if (text) text.innerText = `${percent}% (${current}/${total})`;
+}
+
+function buildComment(item, paragraphText, paragraphIndex, paragraphstart){
+    return {
+        id: item.id,
+        text: item.text,
+        paragraphStart: paragraphstart,
+        index: item.start,
+        localIndex: item.start - paragraphstart,
+        length: item.end - item.start,
+        description: item.description,
+        error: item.error,
+        original: item.original,
+        type: item.type,
+        suggestion: item.suggestion,
+        //mode: "paragraph",
+        texto: paragraphText,
+        paragraph: paragraphIndex,
+        name: item.name
+    };
+}
+
+function getUpdatedIndex(comment) {
+    const paragraphs = quill.root.querySelectorAll("p");
+
+    let visibleIndex = 1;
+
+    for (let p of paragraphs) {
+        const text = p.textContent.replace(/\u200B/g, "").trim();
+        if (!text) continue;
+
+        if (visibleIndex === comment.paragraph) {
+            const blot = Quill.find(p);
+            const start = quill.getIndex(blot);
+
+            // ✅ 1. Intento robusto por texto original
+            if (comment.original) {
+                const idx = text.indexOf(comment.original);
+                if (idx !== -1) {
+                    return start + idx;
+                }
+            }
+
+            // ✅ 2. Fallback por posición relativa
+            if (comment.localIndex != null) {
+                return start + comment.localIndex;
+            }
+        }
+
+        visibleIndex++;
+    }
+
+    return null;
 }
