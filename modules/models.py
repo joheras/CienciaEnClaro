@@ -26,7 +26,8 @@ def obtenerSugerencia(comment):
                 "role": "user",
                 "content": instruccion
             }
-        ]
+        ],
+    think= False
     )
     sugerencia = response.message.content.strip()
     return sugerencia

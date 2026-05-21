@@ -660,3 +660,9 @@ input:checked + .slider:before {
   gap: 10px;
   margin-top: 20px; /* 👈 separación con la barra */
 }
+
+.comment-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    filter: grayscale(30%);
+}

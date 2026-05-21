@@ -229,6 +229,19 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "name": "extranjerismo"
                 }
                 result.append(resumen)
+
+            es_baul = detectar_palabras_baul(texto, palabra)
+            if es_baul:
+                resumen = {
+                    "id": str(uuid.uuid4()),
+                    "start": inicioPalabra,
+                    "end": finPalabra,
+                    "text": "Baul",
+                    "description": f"Se debe evitar el abuso de palabra baúl.",
+                    "type": "léxico-semántico",
+                    "name": "baul"
+                }
+                result.append(resumen)
     return result
 
 async def lexsem_text(request: Request):

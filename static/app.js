@@ -17,6 +17,7 @@ let currentParagraphFilter = "all";
 let activeCommentId = null;
 let enableSentenceHighlight = true;
 let lastAnalyzedParagraphs = {};
+let modifiedParagraphs = new Map();
 
 // Meter al css
 let popupDiv = document.createElement("div");
@@ -114,6 +115,89 @@ document.getElementById("exampleTextBtn").addEventListener("click", async() => {
     }
 });
 
+document.getElementById("loadFileBtn").addEventListener("click", () => {
+    document.getElementById("fileInput").click();
+});
+
+document.getElementById("fileInput").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const name = file.name.toLowerCase();
+
+    try {
+        // 📄 TXT
+        if (name.endsWith(".txt")) {
+            const text = await file.text();
+            quill.setText(text);
+        }
+
+        // 📄 DOCX
+        else if (name.endsWith(".docx")) {
+            const arrayBuffer = await file.arrayBuffer();
+
+            const result = await mammoth.convertToHtml({ arrayBuffer });
+
+            const html = result.value;
+
+            quill.clipboard.dangerouslyPasteHTML(html);
+
+        }
+
+        else {
+            alert("Formato no soportado");
+            return;
+        }
+
+        comments = [];
+        hasPendingChanges = false;
+        commentsLocked = false;
+        updateParagraphNumbers();
+        updateParagraphFilter();
+        updateFilterOptions();
+        renderComments();
+    } catch(err) {
+        console.error(err);
+        alert("Error al cargar el archivo");
+    }
+});
+
+document.getElementById("downloadBtn").addEventListener("click", async () => {
+    const { Document, Packer, Paragraph, TextRun } = window.docx;
+
+    const delta = quill.getContents();
+
+    const doc = new Document({
+        sections: [{
+            children: delta.ops.map(op => {
+                if (typeof op.insert !== "string") return null;
+
+                return new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: op.insert,
+                            bold: op.attributes?.bold || false,
+                            italics: op.attributes?.italic || false,
+                            underline: op.attributes?.underline || false,
+                            strike: op.attributes?.strike || false,
+                        })
+                    ]
+                });
+            }).filter(Boolean)
+        }]
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "texto.docx";
+    a.click();
+
+    URL.revokeObjectURL(url);
+});
+
 // Para que al hacer click en un párrafo se actualice el filtro automáticamente
 document.querySelector(".ql-editor").addEventListener("click", (e) => {
     let p = e.target;
@@ -149,7 +233,13 @@ document.querySelector(".ql-editor").addEventListener("click", (e) => {
 
 quill.on("selection-change", (range) => {
     if (!range) return;
-    const paragraphNumber = getParagraphNumberFromIndex(range.index);
+    let index = range.index;
+    const text = quill.getText();
+    // Para que me marque bien si justo pongo el cursor después del punto final del párrafo
+    if (text[index] === "\n" && index > 0) {
+        index -= 1;
+    }
+    const paragraphNumber = getParagraphNumberFromIndex(index);
     if (!paragraphNumber) return;
 
     const select = document.getElementById("filterParagraph");
@@ -166,17 +256,15 @@ quill.root.querySelectorAll("p").forEach(p =>
     p.classList.add("active-paragraph"));
 
 quill.on("text-change", (delta, oldDelta, source) => {
-    updateParagraphNumbers();
-    updateParagraphFilter();
+    if (source!== "user") return;
 
-    // Solo reaccionar si el cambio lo hizo el usuario
-    if (source === "user") {
-        hasPendingChanges = true;
-        // Si hay un análisis activo o comentarios visibles
-        if (!commentsLocked && comments.length > 0) {
-            lockComments();
-        }
-    }
+    hasPendingChanges = true;
+    const changed = getChangedParagraphs();
+
+    changed.forEach(par => {
+        modifiedParagraphs.set(par.index, true);
+    });
+    updateParagraphNumbers();
 });
 
 //document.getElementById("addCommentBtn").onclick = addCom;
@@ -231,12 +319,14 @@ document.getElementById("recalculateBtn").onclick = async () => {
             comments.push(buildComment(item, par.text, par.index, start));
         });
         lastAnalyzedParagraphs[par.index] = par.text;
+        modifiedParagraphs.delete(par.index);
         current++;
         updateProgress(current, total);
         await new Promise(r => setTimeout(r, 0));
     }
     updateFilterOptions();
     renderComments(activeCommentId);
+    updateParagraphNumbers();
     overlay.style.display = "none";
 
 };
@@ -575,6 +665,10 @@ function renderComments(openCommentId = null){
         const div = document.createElement("div");
         div.className = "comment-item";
 
+        if (commentsLocked) {
+            div.classList.add("comment-disabled");
+        }
+
         // Cabecera (texto + etiqueta tipo)
         const title = document.createElement("div");
         title.className = "comment-title";
@@ -675,7 +769,6 @@ function renderComments(openCommentId = null){
         desc.innerText = "Descripción: " + paragraphText + descriptionMap[first.name];
 
 
-
         // Botón quitar sugerencia
         const btn = document.createElement("button");
         btn.innerText = "Ocultar comentario";
@@ -691,6 +784,7 @@ function renderComments(openCommentId = null){
             acceptSuggestion(first);
             renderComments(activeCommentId);
         };
+
         title.onclick = () => {
               //Si está bloqueado no se puede clicar el comentario
               if (commentsLocked) return;
@@ -784,6 +878,7 @@ function unlockComments() {
 // Añadir comentarios del texto completo
 async function addCommentText() {
     quill.removeFormat(0, quill.getLength());
+    modifiedParagraphs.clear();
     hasFullAnalysis = true;
     hasParagraphAnalysis = false;
     if (appMode === "write") {
@@ -819,7 +914,7 @@ async function addCommentText() {
     let visibleIndex = 1;
 
     const paragraphsArray = Array.from(paragraphs).filter(p =>
-    p.textContent.replace(/\u100B/g, "").trim().length > 0);
+    p.textContent.replace(/\u200B/g, "").trim().length > 0);
 
     const total = paragraphsArray.length;
     let current = 0;
@@ -872,6 +967,7 @@ async function addCommentText() {
 // Añadir comentarios del párrafo seleccionado
 async function addCommentParagraph() {
     quill.removeFormat(0, quill.getLength());
+    modifiedParagraphs.clear();
     hasFullAnalysis = false;
     hasParagraphAnalysis = true;
 
@@ -893,7 +989,7 @@ async function addCommentParagraph() {
     }
 
     const {paragraphText, start} = text;
-    analyzingParagraphStart = start;
+    analyzedParagraphStart = start;
 /*
     const range = quill.getSelection();
     const [leaf] = quill.getLeaf(range.index);
@@ -1117,7 +1213,10 @@ function updateParagraphNumbers() {
         row.style.boxSizing = "border-box";
 
         if (text) {
-            row.textContent = count++;
+            const paragraphNumber = count;
+
+            // Añadir asterisco si el párrafo se ha modificado
+            row.textContent = paragraphNumber + (modifiedParagraphs.has(count) ? " *" : "");
 
             // Si este párrafo es el analizado, le añadimos la clase
             const blot = Quill.find(p);
@@ -1125,6 +1224,7 @@ function updateParagraphNumbers() {
             if (analyzedParagraphStart!=null && analyzedParagraphStart === parStart){
                 row.classList.add("active-paragraph-number");
             }
+            count++;
         } else {
                 row.textContent = ""; // párrafo vacío -> hueco
             }
@@ -1389,7 +1489,7 @@ function checkPopupClose(){
         currentParagraphComment = null;
 
         document.querySelectorAll("#paragraphNumbers div")
-            .forEach(div => div.classList.remove("active-paragraph-numer-suggestion"))
+            .forEach(div => div.classList.remove("active-paragraph-number-suggestion"))
     }
 }
 
