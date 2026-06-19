@@ -38,7 +38,7 @@ async def analizar_parrafo(texto, inicioParrafo):
     resultado_lexsem = await lexsem_paragraph(texto, inicioParrafo)
 
     # Contar métricas
-    frases = nltk.sent_tokenize(texto, language="Spanish")
+    frases = nltk.sent_tokenize(texto, language="spanish")
     total_oraciones = len(frases)
 
     for frase in frases:
