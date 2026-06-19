@@ -113,7 +113,7 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                 "id": str(uuid.uuid4()),
                 "start": inicioParrafo,
                 "end": finParrafo,
-                "text": "Párrafo corto",
+                "text": "Párrafo-oración",
                 "description": f"El párrafo es demasiado corto, debería tener mínimo dos oraciones y tiene {parrafoCorto[1]}.",
                 "type": "morfosintaxis",
                 "name": "parrafoCorto"

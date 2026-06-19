@@ -187,6 +187,23 @@ document.getElementById("downloadBtn").addEventListener("click", async () => {
         }]
     });
 
+    document.getElementById("downloadPdfBtn").addEventListener("click", async () => {
+        const {jsPDF} = window.jspdf;
+        const pdf = new jsPDF({
+            orientation: "portrait",
+            unit:"pt",
+            format: "a4"
+        });
+        const editor = document.querySelector(".ql-editor");
+        await pdf.html(editor, {
+            margin: [40, 40, 40, 40],
+            autoPaging: "text",
+            callback: function (pdf) {
+                pdf.save("texto.pdf");
+            }
+        });
+    });
+
     const blob = await Packer.toBlob(doc);
     const url = URL.createObjectURL(blob);
 
@@ -737,6 +754,7 @@ function renderComments(openCommentId = null){
             const last = paragraphsNumbers.pop();
             paragraphText = `Los párrafos ${paragraphsNumbers.join(", ")} y ${last} contienen`;
         }
+
         // Descripciones
         const descriptionMap = {
             parrafoCorto: `${paragraphText} pocas oraciones. Cada párrafo debería tener mínimo dos oraciones.`,
@@ -755,7 +773,6 @@ function renderComments(openCommentId = null){
         //}
         desc.innerText = "Descripción: " + (descriptionMap[first.name] || first.description || "Sin descripción disponible") + extraDetalle;
 
-         */
         paragraphText = `Se han detectado `;
         const descriptionMap = {
             parrafoCorto: `los siguientes párrafos cortos. Cada párrafo debería tener mínimo dos oraciones.`,
@@ -768,6 +785,17 @@ function renderComments(openCommentId = null){
         };
         desc.innerText = "Descripción: " + paragraphText + descriptionMap[first.name];
 
+         */
+        const descriptionMap = {
+            parrafoCorto: "Los párrafos con una sola oración presentan información fragmentada y dificultan la construcción de relaciones entre las ideas.\nSe podría construir un párrafo que incluya al menos dos oraciones relacionadas entre sí.\n\nEjemplo\nAntes:\nLa temperatura media global ha aumentado durante las últimas décadas.\nDespués:\nLa temperatura media global ha aumentado durante las últimas décadas. Este incremento se relaciona principalmente con las emisiones de gases de efecto invernadero.",
+            parrafoLargo: "Los párrafos largos aumentan el esfuerzo de lectura, dificultan la localización de las ideas principales y favorecen la pérdida de información relevante.\nSe podría dividir la información en varios párrafos más breves, procurando que cada párrafo desarrolle una única idea principal.",
+            oracionLarga: "Las oraciones extensas (que superan las 25 palabras) incrementan la carga cognitiva y dificultan la identificación de las relaciones sintácticas.\nSe podría dividir la oración en varias oraciones más breves.\n\nEjemplo\nAntes:\nLos investigadores analizaron los datos obtenidos en diferentes estaciones meteorológicas distribuidas por diversas regiones durante varias décadas con el fin de identificar tendencias relacionadas con la temperatura y las precipitaciones.\nDespués:\nLos investigadores analizaron datos de diversas estaciones meteorológicas. El estudio incluyó varias regiones y varias décadas. El objetivo fue identificar tendencias relacionadas con la temperatura y las precipitaciones.",
+            orden: `las siguientes oraciones que no siguen el orden sintáctico sujeto-verbo-complementos.`,
+            coordinada: `las siguientes oraciones coordinadas.`,
+            yuxtapuesta: `las siguientes oraciones yuxtapuestas.`,
+            extranjerismo: " los siguientes extranjerismos."
+        }
+        desc.innerText = descriptionMap[first.name];
 
         // Botón quitar sugerencia
         const btn = document.createElement("button");

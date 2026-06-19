@@ -25,7 +25,7 @@ def oracion_larga(texto):
     El booleano será False si la oración es demasiado corta (menos de 20 palabras).
     El entero que devuelve es el número de palabras que tiene la oración."""
     long = longitud_frase(texto)
-    return long>20, long
+    return long>25, long
 
 # Las oraciones deben seguir el orden sujeto-verbo-complementos
 def orden_incorrecto(texto):
