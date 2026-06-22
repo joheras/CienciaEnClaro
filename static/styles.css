@@ -666,3 +666,25 @@ input:checked + .slider:before {
     pointer-events: none;
     filter: grayscale(30%);
 }
+
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 9999;
+}
+
+.modal-content {
+    background: white;
+    width: 500px;
+    max-width: 90%;
+    margin: 10vh auto;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.intent-option {
+    display: block;
+    margin: 8px 0;
+}

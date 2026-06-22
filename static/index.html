@@ -20,9 +20,9 @@
 
             <!-- NUEVOS BOTONES: Cargar y Descargar -->
         <span class="ql-formats">
-            <button id="loadFileBtn" title="Cargar archivo"><i class="fa-solid fa-file-import"></i></button>
-            <button id="downloadBtn" title="Descargar"><i class="fa-solid fa-download"></i></button>
-            <button id="downloadPdfBtn" title="Exportar"><i class="fa-solid fa-file-pdf"></i></button>
+            <button id="loadFileBtn" title="Cargar archivo"><i class="fa-solid fa-upload"></i></button>
+            <button id="downloadBtn" title="Descargar word"><i class="fa-solid fa-file-word"></i></button>
+            <button id="downloadPdfBtn" title="Descargar PDF"><i class="fa-solid fa-file-pdf"></i></button>
             <button id="exampleTextBtn" title ="Texto de ejemplo"><i class="fa-solid fa-file-lines"></i></button>
             <span class="toolbar-separator"></span>
         </span>
@@ -74,8 +74,9 @@
 
         <!-- Deshacer / Rehacer -->
         <span class="ql-formats">
-            <button class="ql-undo"><i class="fa-solid fa-rotate-left"></i></button>
+            <button class="ql-undo" title="Configuración intencionalidad"><i class="fa-solid fa-rotate-left"></i></button>
             <button class="ql-redo"><i class="fa-solid fa-rotate-right"></i></button>
+            <span class="toolbar-separator"></span>
         </span>
 
         <!-- Swtich editar -->
@@ -88,6 +89,9 @@
             <span id="editLabel">Editar</span>
         </span>
 -->
+        <span class="ql-formats">
+            <button id="intentionalityConfigBtn" class="toolbar-btn"><i class="fa-solid fa-gear"></i></button>
+        </span>
 
 
     </div>
@@ -95,6 +99,18 @@
     <div class="editor-wrapper">
       <div id="paragraphNumbers"></div>
       <div id="editor"></div>
+    </div>
+</div>
+
+<div id="intentionalityModal" class="modal">
+    <div class="modal-content">
+        <h3>¿Cuál es la intención del texto?</h3>
+
+        <div id="intentionalityOptions"></div>
+
+        <button id="saveIntentionalityBtn">
+            Continuar
+        </button>
     </div>
 </div>
 
@@ -108,7 +124,7 @@
         <div id="modeButtons">
             <!--  <button id="writeModeBtn" class="mode-btn active">Editar</button> -->
             <button id="feedbackModeBtn" class="mode-btn">Análisis</button>
-            <button id = "analysisModeBtn" class ="mode-btn">Estadísticas</button>
+            <!--<button id = "analysisModeBtn" class ="mode-btn">Estadísticas</button> -->
         </div>
         <div id="filtersRow">
       <!-- <label for="filterType">Comentarios. Filtro por tipo:</label> -->
@@ -144,7 +160,7 @@
         <button id="generateSuggestionBtn" class="generate-btn">Generar sugerencia</button>
 
         <!-- Análisis -->
-        <div id="analysisContainer"> Análisis del texto </div>
+         <div id="analysisContainer"> Análisis del texto </div>
         <button id="analyzeBtn" class="ql-analyze" title="Resumen texto"><i class="fa-solid fa-rotate"></i></button>
     </div>
 </div>

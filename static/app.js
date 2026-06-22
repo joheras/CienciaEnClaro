@@ -18,6 +18,18 @@ let activeCommentId = null;
 let enableSentenceHighlight = true;
 let lastAnalyzedParagraphs = {};
 let modifiedParagraphs = new Map();
+let textIntentions = ["enseñar-explicar"];
+const AVAILABLE_INTENTIONS = [
+    { value: "informar", label: "Informar" },
+    { value: "persuadir", label: "Persuadir" },
+    { value: "entretener", label: "Entretener/deleitar" },
+    { value: "enseñar-explicar", label: "Enseñar/explicar" },
+    { value: "describir", label: "Describir" },
+    { value: "aclarar", label: "Aclarar" },
+    { value: "fomentar-interes", label: "Fomentar el interés" },
+    { value: "concienciar", label: "Concienciar" },
+    { value: "aconsejar", label: "Aconsejar" }
+];
 
 // Meter al css
 let popupDiv = document.createElement("div");
@@ -44,7 +56,7 @@ quill = new Quill('#editor', {
             container: "#toolbar",
             handlers: {
                 //addComment: addCom,
-                analyze: analyzeText,
+                //analyze: analyzeText,
                 paragraph: addCommentParagraph,
                 comment10: addCommentText
             }
@@ -98,21 +110,48 @@ document.getElementById("commentsList").style.display="none";
 
 document.getElementById("exampleTextBtn").addEventListener("click", async() => {
     try {
-        const response = await fetch("/static/ejemplo.txt");
+        const response = await fetch("/static/ejemplo.docx");
         if (!response.ok) throw new Error("No se pudo cargar el archivo");
 
-        const text = await response.text();
+        const arrayBuffer = await response.arrayBuffer();
 
-        quill.setText(text);
+        const result = await mammoth.convertToHtml({
+            arrayBuffer: arrayBuffer
+        });
+
+        quill.setContents([]);
+        quill.clipboard.dangerouslyPasteHTML(result.value);
+        //const text = await response.text(); //Esto sirve si el texto que estoy cargando es un txt
+
+        //quill.setText(text);
 
         quill.formatText(0, quill.getLength(), {color: "#000000"});
 
         updateParagraphNumbers();
         updateParagraphFilter();
+        showIntentionalityModal();
     } catch (error) {
         console.error(error);
         alert("Error cargando el texto de ejemplo");
     }
+});
+
+document.getElementById("intentionalityConfigBtn").addEventListener("click", () => {
+        showIntentionalityModal();
+    });
+
+let editorWasEmpty = false;
+quill.root.addEventListener("paste", () => {
+    editorWasEmpty = quill.getText().trim().length===0;
+    setTimeout(() => {
+
+        const text = quill.getText().trim();
+
+        if (editorWasEmpty && text.length > 0) {
+            showIntentionalityModal();
+        }
+
+    }, 100);
 });
 
 document.getElementById("loadFileBtn").addEventListener("click", () => {
@@ -156,6 +195,7 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
         updateParagraphFilter();
         updateFilterOptions();
         renderComments();
+        showIntentionalityModal();
     } catch(err) {
         console.error(err);
         alert("Error al cargar el archivo");
@@ -285,7 +325,7 @@ quill.on("text-change", (delta, oldDelta, source) => {
 });
 
 //document.getElementById("addCommentBtn").onclick = addCom;
-document.getElementById("analyzeBtn").addEventListener("click", analyzeText);
+//document.getElementById("analyzeBtn").addEventListener("click", analyzeText);
 
 //document.getElementById("paragraphBtn").onclick = () => {
  //   if (quill.isEnabled()){
@@ -369,18 +409,21 @@ updateFilterOptions();
 
 //const writeBtn = document.getElementById("writeModeBtn");
 const feedBackBtn = document.getElementById("feedbackModeBtn");
-const analysisBtn = document.getElementById("analysisModeBtn");
+//const analysisBtn = document.getElementById("analysisModeBtn");
 //writeBtn.onclick = () => setMode("write");
 feedBackBtn.onclick = () => {
     setMode("feedback");
     //forceLockEditing();
     addCommentText();
 }
+/*
 analysisBtn.onclick = () => {
     setMode("analysis");
     //forceLockEditing();
     analyzeText();
 }
+
+ */
 
 // Referencias a la sugerencia
 const modal = document.getElementById("suggestionModal");
@@ -394,6 +437,7 @@ const suggestedTextArea = document.getElementById('suggestedText');
 const highlightSwitch = document.getElementById("toggleHighlight");
 
 
+/*
 generateBtn.addEventListener('click', async () => {
     const paragraphFilter = document.getElementById("filterParagraph").value;
     if (paragraphFilter === "all") return;
@@ -467,6 +511,8 @@ useSuggestionBtn.addEventListener('click', () => {
     lockComments();
 });
 
+ */
+
 function setMode(mode) {
     appMode = mode;
 
@@ -476,7 +522,7 @@ function setMode(mode) {
 
     //writeBtn.classList.toggle("active", isWrite);
     feedBackBtn.classList.toggle("active", isFeedback);
-    analysisBtn.classList.toggle("active", isAnalysis);
+    //analysisBtn.classList.toggle("active", isAnalysis);
 
     /*if (isWrite) {
         editToggle.disabled = false;
@@ -542,7 +588,8 @@ function updateFilterOptions() {
     const baseOptions = [
         {value: "todos", label: "Todos"},
         {value:"morfosintaxis", label:"Morfosintaxis"},
-        {value: "léxico-semántico", label:"Léxico-semántico"}
+        {value: "léxico-semántico", label:"Léxico-semántico"},
+        {value: "estadisticas", label:"Estadísticas"}
     ];
 
     baseOptions.forEach(opt => {
@@ -1082,7 +1129,7 @@ async function addCommentParagraph() {
         const response = await fetch("/analyse_paragraph", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({"parrafo": parrafo, "start": start})
+            body: JSON.stringify({"parrafo": parrafo, "start": start, intencionalidad: textIntentions})
         });
         data = await response.json();
     } catch (err) {
@@ -1221,7 +1268,8 @@ async function analyzeText() {
     };
 */
 
-    analysisContainer.innerHTML = "<strong>Análisis:</strong><br>" + description.replace(/\n/g, "<br>");
+    //analysisContainer.innerHTML = "<strong>Análisis:</strong><br>" + description.replace(/\n/g, "<br>");
+    analysisContainer.innerHTML = description.replace(/\n/g, "<br>");
 }
 
 function updateParagraphNumbers() {
@@ -1551,8 +1599,8 @@ function updateGenerateSuggestionButton() {
     const isFeedBack = appMode === "feedback";
     const isParagraphFiltered = paragraphFilter!=="all";
 
-    const shouldShow = isFeedBack && (hasParagraphAnalysis || (hasFullAnalysis && isParagraphFiltered));
-    btn.style.display = shouldShow ? "block" : "none";
+    //const shouldShow = isFeedBack && (hasParagraphAnalysis || (hasFullAnalysis && isParagraphFiltered));
+    //btn.style.display = shouldShow ? "block" : "none";
 }
 
 function getTotalParagraphs() {
@@ -1590,7 +1638,7 @@ async function analyzeSingleParagraph(paragraphText, start) {
     const response = await fetch("/analyse_paragraph", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ parrafo: paragraphText, start })
+        body: JSON.stringify({ parrafo: paragraphText, start, intencionalidad: textIntentions })
     });
 
     const data = await response.json();
@@ -1769,3 +1817,53 @@ function getUpdatedIndex(comment) {
 
     return null;
 }
+
+function showIntentionalityModal() {
+
+    const modal = document.getElementById("intentionalityModal");
+    const container = document.getElementById("intentionalityOptions");
+
+    container.innerHTML = "";
+
+    AVAILABLE_INTENTIONS.forEach(option => {
+
+        const label = document.createElement("label");
+        label.className = "intent-option";
+
+        const checkbox = document.createElement("input");
+
+        checkbox.type = "checkbox";
+        checkbox.value = option.value;
+
+        checkbox.checked = textIntentions.includes(option.value);
+
+        label.appendChild(checkbox);
+        label.append(" " + option.label);
+
+        container.appendChild(label);
+    });
+
+    modal.style.display = "block";
+}
+
+function saveIntentionality() {
+
+    const selected = [...document.querySelectorAll(
+        "#intentionalityOptions input:checked"
+    )].map(cb => cb.value);
+
+    if (selected.length === 0) {
+        alert("Debes seleccionar al menos una intención.");
+        return;
+    }
+
+    textIntentions = selected;
+
+    document.getElementById("intentionalityModal").style.display = "none";
+
+    console.log("Intenciones:", textIntentions);
+}
+
+document
+    .getElementById("saveIntentionalityBtn")
+    .addEventListener("click", saveIntentionality);
