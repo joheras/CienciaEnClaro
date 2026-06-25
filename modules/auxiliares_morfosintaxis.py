@@ -64,6 +64,15 @@ def oracion_valida(texto):
     )
     return tiene_predicacion
 
+def tiene_dos_o_mas_proposiciones_coordinadas(texto):
+    doc = nlp(texto)
+
+    verbos_coordinados = [
+        token for token in doc
+        if token.dep_ == "conj" and token.pos_ in ("VERB", "AUX")
+    ]
+    return len(verbos_coordinados) >= 2
+
 
 def coordinada(texto, t):
     """Dada una oración, devuelve TRUE si es una oración coordinada, y FALSE en caso contrario.
@@ -80,7 +89,7 @@ def coordinada(texto, t):
             if token.dep_ == "cc":
                 if str(doc[token.i]) != 'o':
                     posiblesCortes.append(token.i)
-        if posiblesCortes == []:
+        if len(posiblesCortes)<2 and not(tiene_dos_o_mas_proposiciones_coordinadas(texto)):
             return False, texto
         else:
             final = posiblesCortes[-1]
@@ -187,7 +196,7 @@ def yuxtapuesta(texto, t):
         posiblesCortes = re.split(r'[,:;]', texto)
         posiblesCortes = [parte.strip() for parte in posiblesCortes if parte.strip()]
 
-        if posiblesCortes == [] or len(posiblesCortes) < 2 or (len(posiblesCortes) == 2 and '' in posiblesCortes):
+        if posiblesCortes == [] or len(posiblesCortes) < 5 or (len(posiblesCortes) == 5 and '' in posiblesCortes):
             return False, texto
         else:
             # Comprobamos si cada trozo está completo o no y almacenamos la información en booleanos
@@ -451,7 +460,335 @@ def participio(texto):
                 return True
     return False
 
-# def inciso(texto):
+
+# Necesario para los incisos:
+MIN_TOKENS = 2  # mínimo tokens para considerar un inciso válido
+PUNCT_TO_STRIP = ",;:—-()[] "  # limpiar alrededor de incisos
+
+MARCADORES_DISCURSIVOS = [
+    "es decir, ", "sin embargo, ", "no obstante, ", "por ejemplo, ",
+    "sin duda, ", "en efecto, ", "además, ", "esto es, ", "de hecho, "
+]
+
+def clean_text(text):
+    return text.strip().strip(PUNCT_TO_STRIP)
+
+def normaliza_espacios(texto):
+    return re.sub(r"\s{2,}", " ", texto).strip()
+
+# === 4. Detectar incisos explícitos (paréntesis, guiones, comas) ===
+def detectar_incisos_explicitos(oracion):
+   """
+    Devuelve una lista de diccionarios:
+    {
+        'texto': contenido del inciso,
+        'span': forma exacta a eliminar,
+        'tipo': comas | guiones | paréntesis
+        'oracion': la oración original
+    }
+    """
+   #patron = r"(?:,([^,]+),)|(?:—([^—]+)—)|(?:\(([^)]+)\))"
+   patron1 = r"(?<=,)\s*([^,]+?)\s*(?=,)"
+   patron2 = r",\s*(.+?)\s*,\s*(?=[^,]+$)"
+
+   #encontrados = re.findall(patron, oracion)
+   #incisos = [i for grupo in encontrados for i in grupo if i]
+   incisos1 = re.findall(patron1, oracion)
+   incisos2 = re.findall(patron2, oracion)
+   resultados = []
+   for inciso in incisos1:
+        texto = clean_text(inciso)
+        if len(texto.split()) < MIN_TOKENS:
+            continue
+        # tipo según puntuación
+        if f"({inciso})" in oracion:
+            tipo = "paréntesis"
+            forma = f"({inciso})"
+        elif f"—{inciso}—" in oracion:
+            tipo = "guiones"
+            forma = f"-{inciso}-"
+        else:
+            tipo = "comas"
+            forma = f", {inciso},"
+
+        resultados.append({
+            "texto":texto,
+            "span": forma,
+            "tipo": tipo,
+            "oracion": oracion})
+
+   for inciso in incisos2:
+      texto = clean_text(inciso)
+      if len(texto.split()) < MIN_TOKENS:
+          continue
+      # tipo según puntuación
+      if f"({inciso})" in oracion:
+          tipo = "paréntesis"
+          forma = f"({inciso}) "
+      elif f"—{inciso}—" in oracion:
+          tipo = "guiones"
+          forma = f"-{inciso}-"
+      else:
+          tipo = "comas"
+          forma = f", {inciso},"
+
+      resultados.append({
+          "texto":texto,
+          "span": forma,
+          "tipo": tipo,
+          "oracion": oracion})
+
+   return resultados
 
 
-# def negaciones(texto):
+# === 5. Detectar incisos sintácticos “reales” ===
+def detectar_incisos_sintacticos(sent):
+    resultados = []
+
+    # 1️⃣ Aposiciones (appos)
+    for token in sent:
+        if token.dep_ == "appos":
+            span = sent[token.left_edge.i : token.right_edge.i + 1]
+            texto = clean_text(span.text)
+            if len(texto.split()) >= MIN_TOKENS:
+              resultados.append({
+                  "texto": texto,
+                  "span": span.text,
+                  "tipo": "aposición",
+                  "oracion": sent.text.strip()})
+
+    # 2️⃣ Marcadores discursivos cortos (advmod)
+    texto = sent.text.lower()
+    for marcador in MARCADORES_DISCURSIVOS:
+        if marcador in texto:
+              resultados.append({
+                  "texto": marcador,
+                  "span": marcador,
+                  "tipo": "marcador",
+                  "oracion": sent.text.strip()})
+    return resultados
+
+
+doc = nlp("Nos ponemos en contacto con vosotros desde el Comité Organizador de las III JJI, formado por Joaquín Ortiz de Murua, Laura Moreno, Mayra Vanessa Alvear y Alejandro Marcos, para anunciar las III Jornadas de Jóvenes Investigadores del DMC (JJI-DMC 25/26). María la amiga de mi hermana es muy maja.")
+for sent in doc.sents:
+    oracion = sent.text.strip()
+
+def inciso(frase):
+    """
+        Dado una frase y la posición en la que empieza con respecto al texto, devuelve la posición final de la frase y una lista vacía si no tiene inciso.
+        En caso contrario, devuelve la posición final y un comentario con:
+        - comment_id: un identificador único
+        - start: donde empieza la frase
+        - end: donde acaba la frase
+        - text: el problema de la frase
+        - description: no abusar de los incisos
+        - suggestion: la frase sin el inciso
+        - type: el tipo de error (morfosintáctico)
+        - original: la frase
+        """
+    result = []
+    doc = nlp(frase)
+    incisos_total = []
+    for sent in doc.sents:
+        oracion = sent.text.strip()
+        incisos_total.extend(detectar_incisos_explicitos(oracion) or [])
+        incisos_total.extend(detectar_incisos_sintacticos(sent) or [])
+
+    # eliminar duplicados
+    unicos = []
+    reserva = [] #Lo hago así para añadir primero los marcadores discursivos
+    visto = set()
+    for item in incisos_total:
+        tupla = (item["texto"], item["oracion"])
+        if item['tipo'] == 'marcador':
+          if tupla not in visto:
+              visto.add(tupla)
+              unicos.append(item)
+        else:
+            reserva.append(item)
+    for r in reserva:
+      tupla2 = (r["texto"], r["oracion"])
+      if tupla2 not in visto:
+          visto.add(tupla2)
+          unicos.append(r)
+
+    incisos_total = unicos
+
+    # quitamos el posible inciso para ver si la frase tiene sentido
+    partidos = []
+    nuevos = []
+    for inciso in incisos_total:
+        partido = inciso["oracion"].split(inciso["texto"])
+        nuevo = ""
+        for i in range(len(partido)):
+            aux = clean_text(partido[i])
+            if inciso["tipo"]=='marcador':
+                nuevo = nuevo + aux + ', '
+            else:
+               nuevo = nuevo + aux + ' '
+        nuevo = nuevo.strip().replace('.,', '.')
+        if oracion_valida(nuevo):
+            result.append({#"id": comment_id, "start": pos_inicial, "end": end, "text": "Frase con inciso",
+                           #"description": "No abusar de los incisos",
+                           "suggestion": nuevo,
+                           #"type": "inciso",
+                           "original": frase,
+                           # ,"error": "longFrase",
+                           "inciso": inciso
+                           })
+    return result
+
+def filtrarInciso(frase):
+  doc = nlp(frase)
+  esInciso = False
+  raices = []
+  for token in doc:
+    if token.dep_ == "ROOT":
+        raices.append(token.text)
+  posibles = []
+  subarboles = []
+  resultado = inciso(frase)
+  if resultado == []:
+    return frase
+  else:
+    for r in resultado:
+      for raiz in raices:
+        doc2 = nlp(r['suggestion'])
+        if not any(t.dep_=="ROOT" and t.pos_=="VERB" for t in doc2): # Si tiene verbo raíz no es inciso
+          continue
+        if raiz not in r['suggestion']: # Si el verbo principal de la oración está en el inciso, realmente no es un inciso
+          continue
+        for t in doc2:
+          if t.dep_=="ROOT" and t.text==raiz:
+            for p in doc2:
+              if p.dep_ in {"amod", "acl", "appos", "nmod", "advcl", "obl", "parataxis", "advmod"}:
+                subarbol = doc2[p.left_edge.i : p.right_edge.i +1].text.strip(" ,") # Al eliminar el subarbol completo, debe coincidir con la sugerencia
+                subarboles.append(subarbol)
+    for r in resultado:
+      for arbol in subarboles:
+        if arbol == r['inciso']['span'].strip(" ,") or arbol == r['inciso']['texto'].strip(" ,"):
+            posibles.append((r['suggestion']).replace('  ',' ').replace(' .', '.'))
+    sintacticos = detectar_incisos_sintacticos(doc)
+    for sint in sintacticos:
+      if len(frase.split(sint['span']))>1:
+        posibles.append((frase.split(sint['span'])[0]+' '+frase.split(sint['span'])[1]).replace('  ',' ').replace(' .', '.'))
+  for p in posibles:
+      if p != frase and p != []:
+          esInciso = True
+  return esInciso
+
+def relativo(frase):
+    relativos =  {"que", "quien", "quienes", "cual", "cuales", "cuyo", "cuya", "cuyos", "cuyas", "donde", "como", "cuando"}
+    doc = nlp(frase)
+    estado = False
+    for token in doc:
+        if token.text.lower() in relativos:
+            preantecedente = token.head
+            antecedente = preantecedente.head
+            distancia = abs(token.i-antecedente.i)
+            if distancia>4:
+                estado=True
+    return
+
+def concordancia(frase):
+  errores = []
+  doc = nlp(frase)
+  for token in doc:
+    #Determinante y sustantivo
+    if token.pos_=="DET":
+      if token.head.pos_=="ADJ":
+        head = "adjetivo"
+      elif token.head.pos_=="NOUN":
+        head = "sustantivo"
+      elif token.head.pos_=="VERB":
+        head = "verbo"
+      else:
+        head = str(token.head.pos_)
+      if token.morph.get("Gender") and token.head.morph.get("Gender"):
+        if token.morph.get("Gender") != token.head.morph.get("Gender"):
+          errores.append(f"Determinante ({token.text}) y {head} ({token.head.text}) no concordan en género")
+      if token.morph.get("Number") and token.head.morph.get("Number"):
+        if token.morph.get("Number") != token.head.morph.get("Number"):
+          errores.append(f"Determinante ({token.text}) y {head} ({token.head.text}) no concordan en número")
+
+    #Adjetivo y sustantivo
+    elif token.pos_ == "ADJ" and (token.dep_=="amod" or token.dep_=="flat" or token.dep_=="ROOT"):
+      # Para evitar que, por problemas de spacy, detecte un sustantivo como nombre propio
+      # Comprobar si se trata de nombre propio
+      if token.head.pos_=="PROPN" and token.text.islower():
+          errores.append(f"Posible error de concordancia con el {head} ({token.head.text})")
+
+      if token.head.pos_=="ADJ":
+        head = "adjetivo"
+      elif token.head.pos_=="NOUN":
+        head = "sustantivo"
+      elif token.head.pos_=="VERB":
+        head = "verbo"
+      else:
+        head = str(token.head.pos_)
+      if token.morph.get("Gender") and token.head.morph.get("Gender"):
+        if token.morph.get("Gender") != token.head.morph.get("Gender"):
+          errores.append(f"Adjetivo ({token.text}) y {head} ({token.head.text}) no concordan en género")
+      if token.morph.get("Number") and token.head.morph.get("Number"):
+        if token.morph.get("Number") != token.head.morph.get("Number"):
+          errores.append(f"Adjetivo ({token.text}) y {head} ({token.head.text}) no concordan en número")
+
+    elif token.pos_ == "NOUN":
+      if token.head.pos_=="ADJ":
+        head = "adjetivo"
+      elif token.head.pos_=="NOUN":
+        head = "sustantivo"
+      elif token.head.pos_=="VERB":
+        head = "verbo"
+      else:
+        head = str(token.head.pos_)
+      if token.morph.get("Gender") and token.head.morph.get("Gender"):
+        if token.morph.get("Gender") != token.head.morph.get("Gender"):
+          errores.append(f"Sustantivo ({token.text}) y {head} ({token.head.text}) no concordan en género")
+      if token.morph.get("Number") and token.head.morph.get("Number"):
+        if token.morph.get("Number") != token.head.morph.get("Number"):
+          errores.append(f"Sustantivo ({token.text}) y {head} ({token.head.text}) no concordan en número")
+
+
+    # Sujeto y verbo
+    elif token.dep_ == "nsubj":
+      if token.head.pos_=="ADJ":
+        head = "adjetivo"
+      elif token.head.pos_=="NOUN":
+        head = "sustantivo"
+      elif token.head.pos_=="VERB":
+        head = "verbo"
+      else:
+        head = str(token.head.pos_)
+      if token.morph.get("Person") and token.head.morph.get("Person"):
+        if token.morph.get("Person") != token.head.morph.get("Person"):
+          errores.append(f"Sujeto ({token.text}) y {head} ({token.head.text}) no concordan en persona")
+      if token.morph.get("Number") and token.head.morph.get("Number"):
+        if token.morph.get("Number") != token.head.morph.get("Number"):
+          errores.append(f"Sujeto ({token.text}) y {head} ({token.head.text}) no concordan en número")
+  if errores!=[]:
+      return True
+  else:
+      return False
+
+
+PRONOUN_SUBJECTS = {
+    "yo", "tú", "él", "ella", "usted",
+    "nosotros", "nosotras", "vosotros", "vosotras",
+    "ellos", "ellas", "ustedes"
+}
+
+def eliptico(sent):
+    "Devuelve True si tiene pronombre explícito, False si no"
+    doc = sent
+    # 1. Buscar dependencias de sujeto
+    for token in doc:
+        if token.dep_ in ("nsubj", "nsubj:pass", "csubj"):
+            return True
+
+    # 2. Buscar pronombres explícitos
+    for token in doc:
+        if token.pos_ == "PRON" and token.lower_ in PRONOUN_SUBJECTS:
+            return True
+
+    return False

@@ -298,6 +298,7 @@ html, body {
 /* Número de párrafo */
 .editor-wrapper {
   display: flex;
+    height: 100%;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -334,8 +335,8 @@ html, body {
   font-size: 1rem;
   line-height: 1.6;
   padding: 12px;
-  overflow-y: visible; /* último añadido */
-  height: auto; /* Último añadido */
+  overflow-y: auto; /* último añadido */
+  height: 100%; /* Último añadido */
 }
 
 /* ===== Comentarios bloqueados ===== */
@@ -350,6 +351,13 @@ html, body {
   opacity: 1;
   filter: none;
 }
+
+/* Para que no aparezca el botón de generar sugerencias nunca */
+#generateSuggestionBtn {
+  display: none !important;
+}
+
+
 #recalculateBtn {
   margin-bottom: 12px;
   padding: 8px 10px;
@@ -677,7 +685,7 @@ input:checked + .slider:before {
 
 .modal-content {
     background: white;
-    width: 500px;
+    width: fit-content;
     max-width: 90%;
     margin: 10vh auto;
     padding: 20px;
@@ -687,4 +695,11 @@ input:checked + .slider:before {
 .intent-option {
     display: block;
     margin: 8px 0;
+}
+
+.intentionality-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
 }

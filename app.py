@@ -97,6 +97,9 @@ async def analyse_text(request: Request):
             "stats": data_parrafo["stats"]
         }
         inicio = inicio + len(parrafo) + 1 # +1 por el salto de línea
+    resultados["global"] = {
+        "comentarios": await stadistics_text(texto),
+    "stats": ""}
     return JSONResponse(content=resultados)
 
 
@@ -129,6 +132,18 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                 "description": f"El párrafo es demasiado largo, debería tener máximo cinco oraciones y tiene {parrafoLargo[1]}.",
                 "type": "morfosintaxis",
                 "name": "parrafoLargo"
+            }
+            result.append(resumen)
+        eliptico = sujeto_eliptico(texto)
+        if eliptico:
+            resumen = {
+                "id": str(uuid.uuid4()),
+                "start": inicioParrafo,
+                "end": finParrafo,
+                "text": "Sujeto elíptico reiterado",
+                "description": f"El párrafo contiene varias oraciones seguidas con sujeto elíptico.",
+                "type": "morfosintaxis",
+                "name": "eliptico"
             }
             result.append(resumen)
 
@@ -169,7 +184,7 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                         "id": str(uuid.uuid4()),
                         "start": inicioFrase,
                         "end": finFrase,
-                        "text": "Oración coordinada",
+                        "text": "Exceso de coordinaciones",
                         "description": f"Se debe evitar el abuso de oraciones coordinadas.",
                         "type": "morfosintaxis",
                         "name": "coordinada",
@@ -181,10 +196,61 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                         "id": str(uuid.uuid4()),
                         "start": inicioFrase,
                         "end": finFrase,
-                        "text": "Oración yuxtapuesta",
+                        "text": "Exceso de yuxtaposiciones",
                         "description": f"Se debe evitar el abuso de oraciones yuxtapuestas.",
                         "type": "morfosintaxis",
                         "name": "yuxtapuesta"
+                    }
+                    result.append(resumen)
+
+                tieneInciso = tiene_inciso(frase)
+                if tieneInciso:
+                    resumen = {
+                        "id": str(uuid.uuid4()),
+                        "start": inicioFrase,
+                        "end": finFrase,
+                        "text": "Uso de incisos o aclaraciones",
+                        "description": f"Se debe evitar el abuso de incisos.",
+                        "type": "morfosintaxis",
+                        "name": "inciso"
+                    }
+                    #result.append(resumen)
+                relativoLejos = relativo_lejano(frase)
+                if relativoLejos:
+                    resumen = {
+                    "id": str(uuid.uuid4()),
+                    "start": inicioFrase,
+                    "end": finFrase,
+                    "text": "Oración de relativo compleja",
+                    "description": f"Se debe evitar el uso de relativos complejos.",
+                    "type": "morfosintaxis",
+                    "name": "relativo"
+                    }
+                    result.append(resumen)
+
+                pasiva = voz_pasiva(frase)
+                if pasiva:
+                    resumen = {
+                        "id": str(uuid.uuid4()),
+                        "start": inicioFrase,
+                        "end": finFrase,
+                        "text": "Uso de voz pasiva",
+                        "description": f"Se debe evitar el abuso de oraciones pasivas.",
+                        "type": "morfosintaxis",
+                        "name": "pasiva"
+                    }
+                    result.append(resumen)
+
+                noConjugados = verbos_no_conjugados(frase)
+                if noConjugados:
+                    resumen = {
+                        "id": str(uuid.uuid4()),
+                        "start": inicioFrase,
+                        "end": finFrase,
+                        "text": "Uso de formas no personales",
+                        "description": f"Se debe evitar el abuso de formas no personales.",
+                        "type": "morfosintaxis",
+                        "name": "nopersonal"
                     }
                     result.append(resumen)
 
@@ -258,7 +324,6 @@ async def lexsem_text(request: Request):
         inicio = inicio + len(parrafo) + 1
     return resultados
 
-"""
 def legibility_paragraph(texto, inicioParrafo):
     " Dado un párrafo devuelve un resumen de dicho párrafo con los índices de legibilidad que no cumplen las características deseadas"
     result = []
@@ -270,12 +335,13 @@ def legibility_paragraph(texto, inicioParrafo):
             "id": str(uuid.uuid4()),
             "start": inicioParrafo,
             "end": finParrafo,
-            "text": "Fernández-Huerta",
+            "text": "Incumplimiento de umbrales de legibilidad",
             "description": fernandezHuerta[1],
             "type": "legibility",
             "name": "fernandezHuerta"
         }
         result.append(resumen)
+        """
     frases = nltk.sent_tokenize(texto, language="spanish")
     for frase in frases:
         finFrase = inicioFrase + len(frase)
@@ -301,6 +367,7 @@ def legibility_paragraph(texto, inicioParrafo):
             "name": "silabasPalabra"
         }
         result.append(resumen)
+        """
 
     return result
 
@@ -318,7 +385,7 @@ async def legibility_text(request: Request):
         resultados[i] = legibility_paragraph(parrafo, inicio)
         inicio = inicio + len(parrafo) + 1
     return resultados
-"""
+
 @app.post("/resumen")
 async def summary(request: Request):
     data = await request.json()
@@ -338,6 +405,112 @@ async def summary(request: Request):
     texto = texto + '\n' + "Índice de Fernández-Huerta: " + str(round(textstat.fernandez_huerta(data), 2))
 
     return JSONResponse(content=texto)
+
+
+async def stadistics_paragraph(texto, inicioParrafo):
+    # Dado un párrafo devuelve un resumen de dicho párrafo con los índices estadísticos
+    result = []
+    finParrafo = inicioParrafo + len(texto)
+
+    caracteres = len(texto)
+    resumen = {
+        "id": str(uuid.uuid4()),
+        "start": inicioParrafo,
+        "end": finParrafo,
+        "text": "Número de caracteres",
+        "description": f"El texto tiene {caracteres} caracteres.",
+        "type": "estadistica",
+        "name": "caracteres"
+    }
+    result.append(resumen)
+    silabas = textstat.syllable_count(texto, lang="es")
+    resumen = {
+        "id": str(uuid.uuid4()),
+        "start": inicioParrafo,
+        "end": finParrafo,
+        "text": "Número de sílabas",
+        "description": f"El texto tiene {silabas} sílabas.",
+        "type": "estadistica",
+        "name": "silabas"
+    }
+    result.append(resumen)
+    palabras = textstat.lexicon_count(texto, removepunct=True)
+    resumen = {
+        "id": str(uuid.uuid4()),
+        "start": inicioParrafo,
+        "end": finParrafo,
+        "text": "Número de palabras",
+        "description": f"El texto tiene {palabras} palabras.",
+        "type": "estadistica",
+        "name": "palabras"
+    }
+    result.append(resumen)
+    frases = textstat.sentence_count(texto)
+    resumen = {
+        "id": str(uuid.uuid4()),
+        "start": inicioParrafo,
+        "end": finParrafo,
+        "text": "Número de frases",
+        "description": f"El texto tiene {frases} frases.",
+        "type": "estadistica",
+        "name": "frases"
+    }
+    result.append(resumen)
+    return result
+
+
+async def stadistics_text(texto):
+    " Dado un texto devuelve un resumen de dicho texto con los índices estadísticos"
+    result = []
+    inicioParrafo = 0
+    finParrafo = inicioParrafo + len(texto)
+
+    caracteres = len(texto)
+    resumen = {
+        "id": str(uuid.uuid4()),
+        "start": inicioParrafo,
+        "end": finParrafo,
+        "text": "Número de caracteres",
+        "description": f"El texto tiene {caracteres} caracteres.",
+        "type": "estadistica",
+        "name": "caracteres"
+    }
+    result.append(resumen)
+    silabas = textstat.syllable_count(texto, lang="es")
+    resumen = {
+        "id": str(uuid.uuid4()),
+        "start": inicioParrafo,
+        "end": finParrafo,
+        "text": "Número de sílabas",
+        "description": f"El texto tiene {silabas} sílabas.",
+        "type": "estadistica",
+        "name": "silabas"
+    }
+    result.append(resumen)
+    palabras = textstat.lexicon_count(texto, removepunct=True)
+    resumen = {
+        "id": str(uuid.uuid4()),
+        "start": inicioParrafo,
+        "end": finParrafo,
+        "text": "Número de palabras",
+        "description": f"El texto tiene {palabras} palabras.",
+        "type": "estadistica",
+        "name": "palabras"
+    }
+    result.append(resumen)
+    frases = textstat.sentence_count(texto)
+    resumen = {
+        "id": str(uuid.uuid4()),
+        "start": inicioParrafo,
+        "end": finParrafo,
+        "text": "Número de frases",
+        "description": f"El texto tiene {frases} frases.",
+        "type": "estadistica",
+        "name": "frases"
+    }
+    result.append(resumen)
+    return result
+
 
 @app.post("/generar_sugerencia")
 async def generar_sugerencia(request: Request):

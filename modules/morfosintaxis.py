@@ -84,6 +84,44 @@ def verbos_no_conjugados(texto):
         return True
     return False
 
-#def tiene_inciso(texto):
+def tiene_inciso(texto):
+    """Dada una oración, devuelve True si encuentra algún verbo en infinitivo, gerundio o participio.
+        Devuelve False en caso contrario."""
+    if filtrarInciso(texto):
+        return True
+    else:
+        return False
+
+def relativo_lejano(texto):
+    """Dada una oración, devuelve True si encuentra algún relativo a más de 4 palabras de su antecedente.
+            Devuelve False en caso contrario."""
+    if relativo(texto):
+        return True
+    else:
+        return False
+
+def falta_concordancia(texto):
+    """Dada una oración, devuelve True si encuentra algún fallo de concordancia.
+    Devuelve False en caso contrario."""
+    return concordancia(texto)
+
+def sujeto_eliptico(texto):
+    """Dado un párrafo, devuelve True si encuentra varias oraciones seguidas con sujeto elíptico dentro del mismo párrafo.
+        Devuelve False en caso contrario."""
+    doc = nlp(texto)
+    results = []
+    consecutivos = 0
+    for i, sent in enumerate(doc.sents):
+        explicito = eliptico(sent)
+        results.append((sent.text, explicito))
+        if not explicito:
+            consecutivos+=1
+        else:
+            consecutivos=0
+
+        if consecutivos>=3:
+            return True
+
+    return False
 
 #def negaciones_dobles(texto):

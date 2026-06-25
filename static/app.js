@@ -64,6 +64,12 @@ quill = new Quill('#editor', {
     }
 });
 
+const editor = document.querySelector('.ql-editor');
+const numbers = document.getElementById('paragraphNumbers');
+
+editor.addEventListener('scroll', () => {
+  numbers.scrollTop = editor.scrollTop;
+});
 
 
 document.getElementById("toggleHighlight").addEventListener("change", (e) => {
@@ -104,7 +110,7 @@ document.getElementById("filterParagraph").addEventListener("change", () => {
     if (activeType) {
         highlightByType(activeType);
     }
-    updateGenerateSuggestionButton();
+    //updateGenerateSuggestionButton();
 })
 document.getElementById("commentsList").style.display="none";
 
@@ -551,7 +557,7 @@ function setMode(mode) {
     } else {
         document.getElementById("recalculateBtn").style.display="none";
     }
-    updateGenerateSuggestionButton();
+    //updateGenerateSuggestionButton();
     if (mode!=="feedback") {
         document.getElementById("generateSuggestionBtn").style.display="none";
     }
@@ -589,7 +595,7 @@ function updateFilterOptions() {
         {value: "todos", label: "Todos"},
         {value:"morfosintaxis", label:"Morfosintaxis"},
         {value: "léxico-semántico", label:"Léxico-semántico"},
-        {value: "estadisticas", label:"Estadísticas"}
+        {value: "estadistica", label:"Estadísticas"}
     ];
 
     baseOptions.forEach(opt => {
@@ -639,7 +645,7 @@ function updateParagraphFilter() {
     // Guardo el valor actual del filtro
     const previousValue = select.value;
 
-    const paragraph = quill.root.querySelectorAll("p");
+    const paragraph = getVisibleParagraphs();
 
     select.innerHTML = "";
 
@@ -651,9 +657,9 @@ function updateParagraphFilter() {
 
     let count = 1;
 
-    paragraph.forEach(p => {
-        const text = p.textContent.replace(/\u200B/g, "").trim();
-        if (text.length > 0) {
+    paragraph.forEach(({node, text}, index) => {
+        const cleanText = text.replace(/\u200B/g, "").trim();
+        if (cleanText.length > 0) {
             const option = document.createElement("option");
             option.value = count;
             option.textContent = count;
@@ -837,10 +843,18 @@ function renderComments(openCommentId = null){
             parrafoCorto: "Los párrafos con una sola oración presentan información fragmentada y dificultan la construcción de relaciones entre las ideas.\nSe podría construir un párrafo que incluya al menos dos oraciones relacionadas entre sí.\n\nEjemplo\nAntes:\nLa temperatura media global ha aumentado durante las últimas décadas.\nDespués:\nLa temperatura media global ha aumentado durante las últimas décadas. Este incremento se relaciona principalmente con las emisiones de gases de efecto invernadero.",
             parrafoLargo: "Los párrafos largos aumentan el esfuerzo de lectura, dificultan la localización de las ideas principales y favorecen la pérdida de información relevante.\nSe podría dividir la información en varios párrafos más breves, procurando que cada párrafo desarrolle una única idea principal.",
             oracionLarga: "Las oraciones extensas (que superan las 25 palabras) incrementan la carga cognitiva y dificultan la identificación de las relaciones sintácticas.\nSe podría dividir la oración en varias oraciones más breves.\n\nEjemplo\nAntes:\nLos investigadores analizaron los datos obtenidos en diferentes estaciones meteorológicas distribuidas por diversas regiones durante varias décadas con el fin de identificar tendencias relacionadas con la temperatura y las precipitaciones.\nDespués:\nLos investigadores analizaron datos de diversas estaciones meteorológicas. El estudio incluyó varias regiones y varias décadas. El objetivo fue identificar tendencias relacionadas con la temperatura y las precipitaciones.",
-            orden: `las siguientes oraciones que no siguen el orden sintáctico sujeto-verbo-complementos.`,
-            coordinada: `las siguientes oraciones coordinadas.`,
-            yuxtapuesta: `las siguientes oraciones yuxtapuestas.`,
-            extranjerismo: " los siguientes extranjerismos."
+            inciso: "Los incisos o alaraciones interrumpen la lectura y dificultan la identificación de la estructura principal de la oración.\nSería recomendable eliminar los incisos innecesarios o convertirlos en oraciones independientes.\n\nEjemplo\nAntes:\nEl informe, elaborado por un grupo internacional de expertos, algunos de ellos especializados en climatología marina, fue publicado recientemente.\nDespués:\nUn grupo internacional de expertos elaboró el informe. Algunos especialistas trabajaban en climatología marina. El informe se publicó recientemente.",
+            orden: "Las oraciones que siguen el orden natural del español (sujeto+verbo+complementos) requieren un menor esfuerzo de interpretación.\nSe podría priorizar el orden sujeto+verbo+complementos en la oración.\n\nEjemplo\nAntes:\nAumentó considerablemente la temperatura media global durante el último siglo.\nDespués:\nLa temperatura media global aumentó consiblemente durante el último siglo.",
+            coordinada: "Las oraciones que acumulan varios elementos unidos con conjunciones generan sensación de infomación poco jerarquizada y menos comprensible.\nSe podría dividir la información en varias oraciones.\n\nEjemplo\nAntes:\nEl estudio analizó temperaturas y precipitaciones y vientos y humedad y cobertura vegetal.\nDespués:\nEl estudio analizó las temperaturas y las precipitaciones. También examinó los vientos, la humedad y la cobertura vegetal.",
+            yuxtapuesta: "Las oraciones que acumulan varios elementos unidos con signo de puntuación (comas y/o puntos y coma) generan sensación de información poro jerarquizada y menos comprensible.\nSe podría dividir la información en varias oraciones.\n\nEjemplo\nAntes:\nEl estudio analizó temperaturas, precipitaciones, vientos, humedad, cobertura vegetal, heladas, granizo, otros fenómenos adversos.\nDespués:\nEl estudio analizó las temperaturas y las precipitaciones. También examinó los vientos, la humedad y la cobertura vegetal. Por último, se centró en estudiar las heladas, el granizo, así como otros fenómenos adversos.",
+            relativo: "Las oraciones con fórmulas de relativo alejadas de su antecedente o elemento al que se refiere se comprenden peor porque puede producirse una pérdida de referente.\nSe podría simplificar la estructura o acercar el antecedente a la expresión de relativo.\n\nEjemplo\nAntes:\nLos modelos que utilizan los investigadores que trabajan en centros especializados permiten realizar proyecciones.\nDespués\nLos investigadores utilizan modelos especializados. Estos modelos permiten realizar proyecciones.",
+            concordancia: "La concordancia en español afecta al género, número, persona o tiempo verbal. La falta de concordancia genera dudas sobre las relaciones gramaticales.\nSería necesario revisar la concordancia de todos los elementos de la oración.\n\nEjemplo\nAntes:\nLos datos obtenida muestran una tendencia.\nDespués:\nLos datos obtenidos muestran una tendencia.",
+            pasiva: "La voz pasiva suele resultar más compleja de interpretar que la voz activa.\nSe podría transformar la oración a voz activa cuando sea posible.\n\nEjemplo\nAntes:\nLas mediciones fueron realizadas por los investigadores.\nDespués:\nLos investigadores realizaron las mediciones.",
+            eliptico: "El encadenamiento de oraciones sin sujeto explícito en el mismo párrafo puede dificultar la identificación del sujeto que realiza la acción y genera ambigüedad entre los agentes implicados.\nSe podría explicitar el sujeto en alguna de las oraciones.\n\nEjemplo\nAntes:\nSe analizaron los resultados.\nDespués:\nEl equipo investigador analizó los resultados.",
+            nopersonal: "El uso de infinitivos, gerundios o participios al principio de la oración aumentan la complejidad del texto. Lo mismo ocurre cuando estas formas no van acompañadas de verbos en forma personal.\nSe podrían priorizar los verbos conjugados en la oración.\n\nEjemplo\nAntes:\nPara realizar la evaluación y obtener los resultados...\nDespués:\nEl equipo evaluó los datos y obtuvo los resultados.",
+            conector: "Los conectores o marcadores discursivos ayudan a dar cohesión al texto.\nSe podría introducir algún conector al inicio del párrafo o entre oraciones para conectar las ideas.\n\nEjemplo\nAntes:\nLas temperaturas aumentaron. Las precipitaciones disminuyeron.\nDespués:\nLas temperaturas aumentaron. Además, las precipitaciones disminuyeron.",
+            extranjerismo: " los siguientes extranjerismos.",
+            fernandezHuerta:"No cumple con el criterio de Fernández-Huerta."
         }
         desc.innerText = descriptionMap[first.name];
 
@@ -952,7 +966,8 @@ function unlockComments() {
 
 // Añadir comentarios del texto completo
 async function addCommentText() {
-    quill.removeFormat(0, quill.getLength());
+    //quill.removeFormat(0, quill.getLength());
+    clearHighlights();
     modifiedParagraphs.clear();
     hasFullAnalysis = true;
     hasParagraphAnalysis = false;
@@ -1034,14 +1049,15 @@ async function addCommentText() {
 
     hasPendingChanges = false;
 
-    updateGenerateSuggestionButton();
+    //updateGenerateSuggestionButton();
     // ocultar overlay
     overlay.style.display ="none";
 }
 
 // Añadir comentarios del párrafo seleccionado
 async function addCommentParagraph() {
-    quill.removeFormat(0, quill.getLength());
+    //quill.removeFormat(0, quill.getLength());
+    clearHighlights();
     modifiedParagraphs.clear();
     hasFullAnalysis = false;
     hasParagraphAnalysis = true;
@@ -1157,7 +1173,7 @@ async function addCommentParagraph() {
     analyzingParagraph = false;
     hasPendingChanges = false;
 
-    updateGenerateSuggestionButton();
+    //updateGenerateSuggestionButton();
     // Ocultar overlay
     overlay.style.display = "none";
 }
@@ -1182,6 +1198,15 @@ function getParagraphNumberFromIndex(index) {
         }
     }
     return null;
+}
+
+function getVisibleParagraphs() {
+    return Array.from(quill.root.querySelectorAll("p"))
+        .map(p => ({
+            node: p,
+            text: p.textContent.replace(/\u200B/g, "").trim()
+        }))
+        .filter(p => p.text.length > 0);
 }
 
 // Me selecciona todo el párrafo donde está el cursor
@@ -1275,35 +1300,34 @@ async function analyzeText() {
 function updateParagraphNumbers() {
     const container = document.getElementById("paragraphNumbers");
     container.innerHTML = "";
-    const paragraphs = quill.root.querySelectorAll("p");
+
+    const blocks = Array.from(quill.root.children);
     let count = 1;
 
-    paragraphs.forEach(p => {
-        const text = p.textContent.replace(/\u200B/g, "").trim();
+    blocks.forEach(node => {
         const row = document.createElement("div");
-        row.style.height = p.offsetHeight + "px";
+        row.style.height = node.offsetHeight + "px";
         row.style.display = "flex";
         row.style.alignItems = "flex-start";
         row.style.justifyContent = "flex-end";
         row.style.paddingRight = "6px";
         row.style.boxSizing = "border-box";
 
-        if (text) {
-            const paragraphNumber = count;
+        if (node.tagName === "P") {
+            const text = (node.textContent || "").replace(/\u200B/g, "").trim();
+            if (text) {
+                // Añadir asterisco si el párrafo se ha modificado
+                row.textContent = count + (modifiedParagraphs.has(count) ? " *" : "");
 
-            // Añadir asterisco si el párrafo se ha modificado
-            row.textContent = paragraphNumber + (modifiedParagraphs.has(count) ? " *" : "");
-
-            // Si este párrafo es el analizado, le añadimos la clase
-            const blot = Quill.find(p);
-            const parStart = quill.getIndex(blot);
-            if (analyzedParagraphStart!=null && analyzedParagraphStart === parStart){
-                row.classList.add("active-paragraph-number");
+                // Si este párrafo es el analizado, le añadimos la clase
+                const blot = Quill.find(node);
+                const parStart = quill.getIndex(blot);
+                if (analyzedParagraphStart != null && analyzedParagraphStart === parStart) {
+                    row.classList.add("active-paragraph-number");
+                }
+                count++;
             }
-            count++;
-        } else {
-                row.textContent = ""; // párrafo vacío -> hueco
-            }
+        }
             container.appendChild(row);
     });
     container.scrollTop = quill.root.scrollTop;
@@ -1599,8 +1623,8 @@ function updateGenerateSuggestionButton() {
     const isFeedBack = appMode === "feedback";
     const isParagraphFiltered = paragraphFilter!=="all";
 
-    //const shouldShow = isFeedBack && (hasParagraphAnalysis || (hasFullAnalysis && isParagraphFiltered));
-    //btn.style.display = shouldShow ? "block" : "none";
+    const shouldShow = isFeedBack && (hasParagraphAnalysis || (hasFullAnalysis && isParagraphFiltered));
+    btn.style.display = shouldShow ? "block" : "none";
 }
 
 function getTotalParagraphs() {
@@ -1858,12 +1882,22 @@ function saveIntentionality() {
     }
 
     textIntentions = selected;
-
-    document.getElementById("intentionalityModal").style.display = "none";
-
-    console.log("Intenciones:", textIntentions);
+    return selected;
 }
 
 document
-    .getElementById("saveIntentionalityBtn")
-    .addEventListener("click", saveIntentionality);
+    .getElementById("saveAndAnalyzeIntentionalityBtn")
+    .addEventListener("click", async() => {
+        const result = saveIntentionality();
+        if (!result) return;
+        closeIntentionalityModal();
+        setMode("feedback");
+        await addCommentText();
+    });
+document.getElementById("cancelIntentionalityBtn").addEventListener("click", () => {
+    closeIntentionalityModal();
+});
+
+function closeIntentionalityModal() {
+    document.getElementById("intentionalityModal").style.display = "none";
+}
