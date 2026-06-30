@@ -7,10 +7,25 @@ html, body {
 
 /* Contenedor de 2 columnas: editor + panel lateral */
 .container {
+    --left-panel-width: 300px;
   display: grid;
-  grid-template-columns: 1fr 300px; /* editor a la izquierda, panel a la derecha */
-  min-height: 100vh;
-  gap: 10px;
+  grid-template-columns: 1fr 6px var(--left-panel-width);
+  width: 100vw;
+  min-height: 100vh;;
+}
+
+.resizer {
+  width: 5px;
+  cursor: col-resize;
+  background: #ddd;
+}
+#panelResizer {
+  width: 6px;
+  cursor: col-resize;
+  background: transparent;
+}
+.resizer:hover {
+  background: #3EC4CF;
 }
 
 /* ===== Panel central con Quill ===== */
@@ -444,7 +459,7 @@ html, body {
 }
 
 #panelLogo {
-    max-width: 100%;
+    max-width: 300px;
     height: auto;
 }
 
@@ -702,4 +717,16 @@ input:checked + .slider:before {
     justify-content: flex-end;
     gap: 12px;
     margin-top: 20px;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-item::before {
+  content: attr(data-value);
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-label::before {
+  content: attr(data-value);
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value=""]::before {
+  content: "16";
 }

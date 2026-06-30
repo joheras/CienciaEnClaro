@@ -49,6 +49,22 @@ let currentParagraphComment = null;
 let currentModalComment = null; // mantener el comentario para el popup de la sugerencia
 let activeType = null;
 
+const Size = Quill.import('attributors/style/size');
+
+Size.whitelist = [
+  '10px',
+  '12px',
+  '14px',
+  '16px',
+  '18px',
+  '20px',
+  '24px',
+  '28px',
+  '32px'
+];
+
+Quill.register(Size, true);
+
 quill = new Quill('#editor', {
     theme: 'snow',
     modules: {
@@ -67,9 +83,41 @@ quill = new Quill('#editor', {
 const editor = document.querySelector('.ql-editor');
 const numbers = document.getElementById('paragraphNumbers');
 
+
 editor.addEventListener('scroll', () => {
   numbers.scrollTop = editor.scrollTop;
 });
+
+
+const resizer = document.getElementById('panelResizer');
+const container = document.querySelector('.container');
+
+let resizing = false;
+console.log(resizer);
+resizer.addEventListener('mousedown', () => {
+  resizing = true;
+  document.body.style.cursor = 'col-resize';
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!resizing) return;
+
+  const rect = container.getBoundingClientRect();
+
+  // ancho del panel derecho
+  let width = rect.right - e.clientX;
+
+  // límites
+  width = Math.max(250, Math.min(width, 700));
+
+  container.style.setProperty('--left-panel-width', `${width}px`);
+});
+
+document.addEventListener('mouseup', () => {
+  resizing = false;
+  document.body.style.cursor = '';
+});
+
 
 
 document.getElementById("toggleHighlight").addEventListener("change", (e) => {
@@ -142,6 +190,9 @@ document.getElementById("exampleTextBtn").addEventListener("click", async() => {
     }
 });
 
+
+
+
 document.getElementById("intentionalityConfigBtn").addEventListener("click", () => {
         showIntentionalityModal();
     });
@@ -198,7 +249,11 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
         hasPendingChanges = false;
         commentsLocked = false;
         updateParagraphNumbers();
+        document.getElementById("filterParagraph").value = "all";
         updateParagraphFilter();
+        const paragraphFilter = document.getElementById("filterParagraph");
+        paragraphFilter.value = "all";
+        paragraphFilter.dispatchEvent(new Event("change"));
         updateFilterOptions();
         renderComments();
         showIntentionalityModal();
@@ -585,7 +640,7 @@ function addCom(){
 */
 function updateFilterOptions() {
     const select = document.getElementById("filterType");
-    const types = [...new Set(comments.map(c => c.type))]; // Tipos únicos
+    const types = [...new Set(comments.map(c => c.type).filter(t=>t))]; // Tipos únicos
 
     const previousValue = select.value;
 
@@ -595,6 +650,7 @@ function updateFilterOptions() {
         {value: "todos", label: "Todos"},
         {value:"morfosintaxis", label:"Morfosintaxis"},
         {value: "léxico-semántico", label:"Léxico-semántico"},
+        {value: "pragmático-discursivo", label:"Pragmático-discursivo"},
         {value: "estadistica", label:"Estadísticas"}
     ];
 
@@ -625,7 +681,7 @@ function updateFilterOptions() {
         } else if (type == "paragraph"){
             option.textContent = "Por párrafo";
         } else {
-            const cleanLabel = type.replace(/-/g, " ");
+            const cleanLabel = (type || "desconocido").replace(/-/g, " ");
             option.textContent = cleanLabel.charAt(0).toUpperCase() + cleanLabel.slice(1);
         }
         select.appendChild(option);
@@ -704,16 +760,22 @@ function renderComments(openCommentId = null){
     }
 
     if (filtered.length === 0) {
-        panel.style.display="none";
+        panel.style.display="block";
+        panel.innerHTML=`
+        <div class="no-comments">
+            No se han detectado comentarios.
+        </div>
+    `;
         return;
     } else {
         panel.style.display = "block";
     }
 
     const activeComment = comments.find(c => c.id === openCommentId);
-
     // Agrupar comentarios
     const grouped = filtered.reduce((acc, comment) => {
+
+    console.log("COMMENT RAW: ", comment);
         const key = comment.name || comment.text;
         if (!acc[key]) {
             acc[key] = [];
@@ -852,62 +914,75 @@ function renderComments(openCommentId = null){
             pasiva: "La voz pasiva suele resultar más compleja de interpretar que la voz activa.\nSe podría transformar la oración a voz activa cuando sea posible.\n\nEjemplo\nAntes:\nLas mediciones fueron realizadas por los investigadores.\nDespués:\nLos investigadores realizaron las mediciones.",
             eliptico: "El encadenamiento de oraciones sin sujeto explícito en el mismo párrafo puede dificultar la identificación del sujeto que realiza la acción y genera ambigüedad entre los agentes implicados.\nSe podría explicitar el sujeto en alguna de las oraciones.\n\nEjemplo\nAntes:\nSe analizaron los resultados.\nDespués:\nEl equipo investigador analizó los resultados.",
             nopersonal: "El uso de infinitivos, gerundios o participios al principio de la oración aumentan la complejidad del texto. Lo mismo ocurre cuando estas formas no van acompañadas de verbos en forma personal.\nSe podrían priorizar los verbos conjugados en la oración.\n\nEjemplo\nAntes:\nPara realizar la evaluación y obtener los resultados...\nDespués:\nEl equipo evaluó los datos y obtuvo los resultados.",
+            gerundio: "El uso del gerundio para expresar una acción posterior a la principal no es normativo en español.\nPara evitar el gerundio de posterioridad, se podría dividir la información en dos oraciones.\nMás información: https://www.rae.es/libro-estilo-justicia/las-palabras-y-sus-grupos-problemas-y-actuaciones/gerundio/usos-incorrectos/gerundio-de-posterioridad\n\nEjemplo\nAntes:\nSe publicó el informe, generando un intenso debate.\nDespués:\nSe publicó el informe. Dicha publicación generó un intenso debate.",
             conector: "Los conectores o marcadores discursivos ayudan a dar cohesión al texto.\nSe podría introducir algún conector al inicio del párrafo o entre oraciones para conectar las ideas.\n\nEjemplo\nAntes:\nLas temperaturas aumentaron. Las precipitaciones disminuyeron.\nDespués:\nLas temperaturas aumentaron. Además, las precipitaciones disminuyeron.",
-            extranjerismo: " los siguientes extranjerismos.",
-            fernandezHuerta:"No cumple con el criterio de Fernández-Huerta."
+            conectorRepe: "La variación en el uso de los conectores ayuda a mejorar el texto. Dicha variación debe hacerse atendiendo la relación lógica entre las distintas partes de la oración o el párrafo.\n\nEjemplo\nSustituir repeticiones de 'además' por otros conectores que también indiquen adición como: asimismo, igualmente, por otra parte, además de ello.",
+            conectoresPunt:"Los conectores van acompañados de coma cuando aparecen en el inicio de la oración o entrecomillados si están en el interior de la oración.\n\nEjemplo\nAntes:\nSin embargo los resultados fueron concluyentes.\nDespués:\nSin embargo, los resultados fueron concluyentes.",
+            secun: "Los párrafos que presentan más de una idea, temas laterales poco justificados o gran número de detalles resultan menos comprensibles.\nEn estos casos, se recomienda que se mantenga únicamente la información necesaria.\n\nEjemplo\nEliminar anécdotas o datos históricos que no contribuyen a la explicación principal.",
+            destinatario: "El nivel de profundidad científica en los textos divulgativos debe adecuarse a un lector sin conocimiento universitario.\n\nEjemplo\nAntes:\nForzamiento radiactivo antropogénico.\nDespués:\nAumento del calor retenido por la atmósfera debido a actividades humanas.",
+            finalidad: "Cada finalidad comunicativa requiere un determinado uso de estrategias discursivas. Los textos divulgativos suelen tener finalidades comunicativas como: informar, persuadir, entretener/deleitar, enseñar/explicar, describir, aclarar, fomentar el interés, concienciar o aconsejar.\nSe debería ajustar el tono y la estructura del texto a los objetivos comunicativos previstos.\n\nEjemplo\nUn texto divulgativo debe priorizar la explicación antes que la discusión metodológica detallada.",
+            coherenciaInt: "Los textos requieren una coherencia interna entre las ideas y una prograsión temática. Para lograrlo, se debe evitar caer en cnotradicción, reiteraciones o saltos de información",
+            progresion: "La información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva...) para que el mensaje se entienda mejor.\n\nEjemplo\nDefinición -> causas -> consecuencias -> soluciones.",
+            claridad: "La información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva...) para que el mensaje se entienda mejor. Los conectores y marcadores discursivos ayudan a conseguirlo.\n\nEjemplo\nComo consecuencia de este aumento de temperatura, los glaciares pierden masa.",
+            coherenciaExt: "Los textos divulgativos disponen de una estructura básica dividida en tres partes: introducción, desarrollo y conclusión. Este tipo de textos resultan más claros cucando dicha estructura es perceptible por el lector.",
+            digresion: "Los textos que presentan digresiones o se desvían del tema principal son más difíciles de entender.\n\nEjemplo\nSi el texto explica el cambio climático, evite incluir extensas descripciones sobre la historia de la navegación, salvo que tengan relación directa con el tema tratado.",
+            enum: "Los elementos de una lista o enumeración deben presentar estructuras gramaticales similares como, por ejemplo, empezar por un sustantivo, un artículo o un infinitivo. De ese modo, se consigue una lectura más rápida y sencilla.\n\nEjemplo\nAntes:\n- Reducir emisiones.\n- La protección de bosuqes.\n- Que se mejore la eficiencia energética.\nDespués:\n- Reducir emisiones.\n- Proteger bosques.\n- Mejorar la eficiencia energética.",
+            enumIncos: "Es recomendable que las listas o enumeraciones del texto mantengas siempre el mismo criterio y eviten utilizar números, letras o símbolos de forma arbitraria.",
+            baul: "Es recomendable evitar el uso de palabras baúl o palabras imprecisas para evitar malentendidos. Estas palabras pueden sustituirse por términos más concretos y específicos.\n\nEjemplo\nAntes:\nSe observaron varias cosas en el oceáno debido al cambio climático.\nDespués:\nLos sensores datelitales observaron un aumento dde 1,5ºC en la temperatura del océano debido al cambio climático.",
+            rodeos: "Las perífrasis y locuciones innecesarias alargan la oración sin aportar un significado adicional. Por ello, se recomienda sustituir las expresiones complejas por verbos directos.\n\nEjemplo\nAntes:\nLlevar a cabo una evaluación.\nDespués:\nEvaluar.",
+            extranjerismo: "Los extranjerismos, latinismos o arcaísmos resultan, con frecuencia, expresiones poco habituales en el español actual. Por ello, se recomienda que se sustituyan por equivalencias más actuales cuando sea posible.\n\nEjemplo\nAntes:\nAd hoc.\nDespués:\nPara este fin.",
+            latinismo: "Los extranjerismos, latinismos o arcaísmos resultan, con frecuencia, expresiones poco habituales en el español actual. Por ello, se recomienda que se sustituyan por equivalencias más actuales cuando sea posible.\n\nEjemplo\nAntes:\nAd hoc.\nDespués:\nPara este fin.",
+            largas: "Las palabras largas, provengan o no de otras palabras de las que derivan, resultan más difíciles de procesar. Por esa razón, se recomienda que se sustituyan por alternativas más breves.\n\nEjemplo\nAntes:\nUtilización.\nDespués:\nUso.",
+            tecnicismo: "Los textos con numerosos términos especializados son más difíciles de entender. Su comprensión mejora si los tecnicismos innecesarios se sustituyen por palabras más generales y los términos necesarios se explican en el primer uso.\nEjemplo\n\nAntes:\nLa pérdida de la cubierta de hielo en el Océano Ártico genera un bucle de retroalimentación positiva que reduce drásticamente el albedo de la región.\nDespués:\nLa pérdida de hielo en el Océano Ártico crea un efecto de bola de nieve que empeora la situación: reduce drásticamente la capacidad de la región para reflejar la luz del sol.",
+            negacion: "La reiteración de negaciones en la oración incrementa la complejidad interpretativa. Por ello, se recomienda reformular la oración en afirmativo.\n\nEjemplo\nAntes:\nNo es infrecuente que no existan diferencias.\nDespués:\nEs habitual que existan pocas diferencias.",
+            negacionAbun: "Las ideas se deben expresar con formulaciones afirmativas siempre que sea posible. La acumulación de oraciones negativas en el texto dificulta su compresión.",
+            sesgo: "Si bien la RAE considera el masculino el término inclusivo, aconseja el uso de expresiones más genéricas, como los sustantivos epicenos, siempre que sea posible. Se podría valorar, pues, el uso de términos colectivos, abstractos o epicenos cuando resulten adecuados.\n\nEjemplo\nAntes:\nLos investigadores deben presentar sus resultados.\nDespués:\nEl personal investigador debe presentar sus resultados.",
+            textoLargo: "El texto supera la longitud habitual para el género de la difusión. Esta extensión suele situarse en las 1500 o 2000.",
+            fernandezHuerta:"Los textos dirigidos al público general deben cumplir unos índices de legibilidad. Puede utilizar los índices alojados en este asistente para medir la legibilidad de su texto.",
+            parrafoComplejo: "El párrafo resulta complejo cuando acumulan subordinaciones, coordinaciones, incisos y nominalizaciones. La concentración de varios de estos recursos en un solo párrafo incrementa significativamente el esfuerzo de lectura.\n\nEjemplo\nAntes:\nEl informe, elaborado por diferentes grupos de investigación y revisado posteriormente por especialistas internacionales, analiza múltiples aspectos, que resultan fundamentales, relacionados con la temperatura, la biodiversidad, los recursos hídricos y la economía.\nDespués:\nEl informe fue elaborado por diversos grupos de investigación. Posteriormente, especialistas internacionales revisaron el documento. El estudio analiza aspectos fundamentales como la temperatura, la biodiversidad, los recursos hídricos y la economía."
         }
         desc.innerText = descriptionMap[first.name];
 
         // Botón quitar sugerencia
+        /*
         const btn = document.createElement("button");
         btn.innerText = "Ocultar comentario";
         btn.className = "comment-accept-btn";
         btn.style.display = "none";
+
+         */
 
         const existsInFiltered = filtered.some(c => c.id === activeCommentId);
         if (!existsInFiltered) {
             activeCommentId = null;
         }
 
+        /*
         btn.onclick = () => {
             acceptSuggestion(first);
             renderComments(activeCommentId);
         };
 
+         */
+
         title.onclick = () => {
               //Si está bloqueado no se puede clicar el comentario
               if (commentsLocked) return;
 
-              //const start = group[0].index;
-              //const end = group[group.length - 1].index + group[group.length -1].length;
-              // quill.setSelection(start, end-start); // Seleccionaba el texto marcado, lo comento porque no quiero que se marque
+              if (activeCommentId === first.id) {
+                  activeCommentId = null;
+                  activeType = null;
+                  clearHighlights();
+                  renderComments();
+                  return;
+              }
 
-              // Resaltar las oraciones de ese comentario
-              activeType = first.name;
               activeCommentId = first.id;
-              if(enableSentenceHighlight) {
+              activeType = first.name;
+              if (enableSentenceHighlight) {
                   highlightByType(first.name);
               }
-
-              // Cerrar todo
-              document.querySelectorAll("#commentsList .comment-desc")
-                  .forEach(d => d.style.display = "none");
-              document.querySelectorAll("#commentsList .comment-sugg")
-                  .forEach(s => s.style.display = "none");
-              document.querySelectorAll("#commentsList .comment-accept-btn")
-                  .forEach(b => b.style.display = "none");
-              document.querySelectorAll("#commentsList .comment-sugges-btn")
-                  .forEach(b => b.style.display = "none");
-              document.querySelectorAll("#commentsList .comment-accept-btn")
-                  .forEach(b => b.style.display = "none");
-              document.querySelectorAll("#commentsList .comment-nusug-btn")
-                  .forEach(b => b.style.display = "none");
-
-              // Abrir este
-              desc.style.display = "block";
-              if (first.suggestion && first.suggestion.trim() !== "") {
-                  btn.style.display = "inline-block";
-              }
+              renderComments(activeCommentId);
         };
 
         const groupHasActive = group.some(c => c.id === openCommentId);
@@ -916,12 +991,12 @@ function renderComments(openCommentId = null){
 
         if (isActiveGroup) {
             desc.style.display = "block";
-            btn.style.display = "inline-block";
+            //btn.style.display = "inline-block";
         }
 
         div.appendChild(title);
         div.appendChild(desc);
-        div.appendChild(btn);
+        //div.appendChild(btn);
         panel.appendChild(div);
     });
     document.getElementById("filterType");
@@ -982,6 +1057,8 @@ async function addCommentText() {
     updateParagraphNumbers();
     updateParagraphFilter();
 
+    const textoCompleto = quill.getText().trim();
+
     comments = [];
     let id;
     let text1;
@@ -1010,6 +1087,25 @@ async function addCommentText() {
     let current = 0;
     updateProgress(0, total);
 
+    let globalComments = [];
+    const globalResponse = await fetch("/analyse_document", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            texto: textoCompleto,
+            intencionalidad: textIntentions
+        })
+    });
+
+    const globalData = await globalResponse.json();
+
+    globalComments = (globalData.comentarios_globales || []).map(c=> ({
+        ...c,
+        global: true
+    }));
+
+    comments = [...globalComments];
+
     for (let p of paragraphsArray) {
         const text = p.textContent.replace(/\u200B/g, "").trim();
         if (!text) continue;
@@ -1020,6 +1116,7 @@ async function addCommentText() {
 
         const start = quill.getIndex(Quill.find(p));
         const data = await analyzeSingleParagraph(text, start);
+
         data.forEach(item => {
             comments.push(
                 buildComment(item, text, visibleIndex, start)
@@ -1138,29 +1235,50 @@ async function addCommentParagraph() {
     const overlay = document.getElementById("analysisOverlay");
     overlay.style.display = "flex";
 
-    let parrafo = text.paragraphText;
+    let parrafo = paragraphText;
     comments = [];
     let data;
     try {
+        const globalResponse = await fetch('/analyse_document', {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                texto: textoCompleto,
+                intencionalidad: textIntentions
+            })
+        });
+        const globalData = await globalResponse.json();
         const response = await fetch("/analyse_paragraph", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({"parrafo": parrafo, "start": start, intencionalidad: textIntentions})
         });
-        data = await response.json();
+        paragraphData = await response.json();
     } catch (err) {
         console.error("Error analizando el párrafo:", err);
         overlay.style.display = "none";
         return;
     }
+    console.log("GLOBAL DATA", globalData);
+console.log("PARAGRAPH DATA", paragraphData);
+console.log("GLOBAL COMMENTS", globalComments);
+console.log("PARAGRAPH COMMENTS", paragraphComments);
+console.log("FINAL DATA", data);
     // Procesamos comentarios por chunks para no bloquear el hilo
     const CHUNK_SIZE = 5;
-    data = Array.isArray(data) ? data : data.comentarios || [];
+    const globalComments = (globalData.comentarios_globales || []).map(c => ({
+        ...c,
+        global: true
+    }));
+    const paragraphComments = Array.isArray(paragraphData)
+        ? paragraphData
+        : (paragraphData.comentarios || []);
+    data = [...globalComments, ...paragraphComments];
     for (let i = 0; i< data.length; i+=CHUNK_SIZE) {
         const chunk = data.slice(i, i + CHUNK_SIZE);
         chunk.forEach(item => {
             comments.push(
-                buildComment(item, text, visibleIndex, start)
+                buildComment(item, text, null, start)
             );
         });
         // Dejamos que el navegador renderice
@@ -1624,7 +1742,7 @@ function updateGenerateSuggestionButton() {
     const isParagraphFiltered = paragraphFilter!=="all";
 
     const shouldShow = isFeedBack && (hasParagraphAnalysis || (hasFullAnalysis && isParagraphFiltered));
-    btn.style.display = shouldShow ? "block" : "none";
+    //btn.style.display = shouldShow ? "block" : "none";
 }
 
 function getTotalParagraphs() {
@@ -1894,6 +2012,15 @@ document
         setMode("feedback");
         await addCommentText();
     });
+document
+    .getElementById("saveIntentionalityBtn")
+    .addEventListener("click", async() => {
+        const result = saveIntentionality();
+        if (!result) return;
+        closeIntentionalityModal();
+        setMode("feedback");
+    });
+
 document.getElementById("cancelIntentionalityBtn").addEventListener("click", () => {
     closeIntentionalityModal();
 });

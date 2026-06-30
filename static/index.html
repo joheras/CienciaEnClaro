@@ -21,50 +21,38 @@
             <!-- NUEVOS BOTONES: Cargar y Descargar -->
         <span class="ql-formats">
             <button id="loadFileBtn" title="Cargar archivo"><i class="fa-solid fa-upload"></i></button>
-            <button id="downloadBtn" title="Descargar word"><i class="fa-solid fa-file-word"></i></button>
-            <button id="downloadPdfBtn" title="Descargar PDF"><i class="fa-solid fa-file-pdf"></i></button>
+            <button id="downloadBtn" title="Descargar word"><i class="fa-solid fa-file-word"></i><i class="fa-solid fa-download"></i></button>
+            <button id="downloadPdfBtn" title="Descargar PDF"><i class="fa-solid fa-file-pdf"></i><i class="fa-solid fa-download"></i></button>
             <button id="exampleTextBtn" title ="Texto de ejemplo"><i class="fa-solid fa-file-lines"></i></button>
             <span class="toolbar-separator"></span>
         </span>
 
         <span class="ql-formats">
-            <button class="ql-bold"></button>
-            <button class="ql-italic"></button>
-            <button class="ql-underline"></button>
-            <button class="ql-strike"></button>
+            <button class="ql-bold" title="Negrita"></button>
+            <button class="ql-italic" title="Cursiva"></button>
+            <button class="ql-underline" title="Subrayado"></button>
+            <button class="ql-strike" title="Tachado"></button>
         </span>
 
         <!-- Fuente y tamaño -->
-        <span class="ql-formats">
-            <select class="ql-font"></select>
-            <select class="ql-size"></select>
+        <span class="ql-formats" title="Tamaño">
+            <!-- <select class="ql-font"></select> -->
+            <select class="ql-size">
+              <option value="10px">10</option>
+              <option value="12px">12</option>
+              <option value="14px">14</option>
+              <option value="16px" selected>16</option>
+              <option value="18px">18</option>
+              <option value="20px">20</option>
+              <option value="24px">24</option>
+              <option value="28px">28</option>
+              <option value="32px">32</option>
+            </select>
         </span>
 
-        <!-- Color y fondo -->
-        <span class="ql-formats">
-            <select class="ql-color"></select>
-            <select class="ql-background"></select>
-          </span>
-
-        <!-- Listas y alineación -->
-        <span class="ql-formats">
-            <button class="ql-list" value="ordered"></button>
-            <button class="ql-list" value="bullet"></button>
-            <button class="ql-align" value=""></button>
-            <button class="ql-align" value="center"></button>
-            <button class="ql-align" value="right"></button>
-            <button class="ql-align" value="justify"></button>
-          </span>
-
-        <!-- Links, imágenes y videos -->
-        <span class="ql-formats">
-            <button class="ql-link"></button>
-            <button class="ql-image"></button>
-            <button class="ql-video"></button>
-          </span>
 
         <span class="ql-formats">
-          <select class="ql-header">
+          <select class="ql-header" title="Tipo de texto">
             <option selected value="0">Normal</option>
             <option value="1">Título 1</option>
             <option value="2">Título 2</option>
@@ -72,10 +60,35 @@
           </select>
         </span>
 
+        <!-- Color y fondo
+        <span class="ql-formats">
+            <select class="ql-color"></select>
+            <select class="ql-background"></select>
+          </span>
+          -->
+
+        <!-- Listas y alineación -->
+        <span class="ql-formats">
+            <button class="ql-list" value="ordered" title="Lista ordenada"></button>
+            <button class="ql-list" value="bullet" title="Lista no ordenada"></button>
+            <button class="ql-align" value="" title="Alinear a izquierda"></button>
+            <button class="ql-align" value="center" title="Centrar texto"></button>
+            <button class="ql-align" value="right" title="Alinear a derecha"></button>
+            <button class="ql-align" value="justify" title="Texto justificado"></button>
+          </span>
+
+        <!-- Links, imágenes y videos -->
+        <span class="ql-formats">
+            <button class="ql-link" title="Añadir hiperenlace"></button>
+            <button class="ql-image" title="Añadir imagen"></button>
+            <button class="ql-video" title="Añadir vídeo"></button>
+          </span>
+
+
         <!-- Deshacer / Rehacer -->
         <span class="ql-formats">
-            <button class="ql-undo" title="Configuración intencionalidad"><i class="fa-solid fa-rotate-left"></i></button>
-            <button class="ql-redo"><i class="fa-solid fa-rotate-right"></i></button>
+            <button class="ql-undo" title="Deshacer"><i class="fa-solid fa-rotate-left"></i></button>
+            <button class="ql-redo" title="Volver a hacer"><i class="fa-solid fa-rotate-right"></i></button>
             <span class="toolbar-separator"></span>
         </span>
 
@@ -90,7 +103,7 @@
         </span>
 -->
         <span class="ql-formats">
-            <button id="intentionalityConfigBtn" class="toolbar-btn"><i class="fa-solid fa-gear"></i></button>
+            <button id="intentionalityConfigBtn" class="toolbar-btn" title="Configuración intencionalidad"><i class="fa-solid fa-gear"></i></button>
         </span>
 
 
@@ -109,11 +122,12 @@
         <div id="intentionalityOptions"></div>
         <div class="intenonality-actions">
             <button id="cancelIntentionalityBtn" class="generate-btn">Cancelar</button>
+            <button id="saveIntentionalityBtn" class="generate-btn">Guardar</button>
             <button id="saveAndAnalyzeIntentionalityBtn" class="generate-btn">Guardar y analizar</button>
         </div>
     </div>
 </div>
-
+<div id="panelResizer"></div>
 <!-- Panel de comentarios -->
 <div class="leftPanel">
     <!-- Imagen logo -->

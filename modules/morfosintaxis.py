@@ -95,7 +95,7 @@ def tiene_inciso(texto):
 def relativo_lejano(texto):
     """Dada una oración, devuelve True si encuentra algún relativo a más de 4 palabras de su antecedente.
             Devuelve False en caso contrario."""
-    if relativo(texto):
+    if relativo(texto)[0]:
         return True
     else:
         return False

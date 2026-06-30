@@ -688,7 +688,8 @@ def relativo(frase):
             distancia = abs(token.i-antecedente.i)
             if distancia>4:
                 estado=True
-    return
+            return estado, distancia
+    return estado, 0
 
 def concordancia(frase):
   errores = []

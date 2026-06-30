@@ -6,11 +6,17 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 import asyncio
 
+import dspy
+
 # Importamos los módulos
 from modules.morfosintaxis import *
 from modules.lexsem import *
 from modules.legibility import *
 from modules.models import *
+from modules.pragdisc import *
+from modules.observaciones_llm import *
+
+
 
 app = FastAPI()
 
@@ -29,13 +35,14 @@ def dividir_parrafos(texto):
 
 
 # Nos analiza todos los índices para un párrafo dado
-async def analizar_parrafo(texto, inicioParrafo):
+async def analizar_parrafo(texto, inicioParrafo, texto_completo=None):
     result = []
     total_oraciones = 0
     oraciones_largas = 0
 
     resultado_morf = await morfosintaxis_paragraph(texto, inicioParrafo)
     resultado_lexsem = await lexsem_paragraph(texto, inicioParrafo)
+    resultado_pragdis = await pragdisc_paragraph(texto, inicioParrafo)
 
     # Contar métricas
     frases = nltk.sent_tokenize(texto, language="spanish")
@@ -47,6 +54,7 @@ async def analizar_parrafo(texto, inicioParrafo):
 
     result.extend(resultado_morf)
     result.extend(resultado_lexsem)
+    result.extend(resultado_pragdis)
     errores_por_tipo = {}
     for item in resultado_morf:
         tipo = item["name"]
@@ -61,6 +69,7 @@ async def analizar_parrafo(texto, inicioParrafo):
         else:
             porcentajes[tipo] = 0
     #result.extend(legibility_paragraph(texto, inicioParrafo))
+
     return {
         "comentarios": result,
         "stats": {
@@ -68,6 +77,15 @@ async def analizar_parrafo(texto, inicioParrafo):
             "porcentajes": porcentajes
         }
     }
+
+@app.post("/analyse_document")
+async def analyse_document(request: Request):
+    data = await request.json()
+    texto = data['texto']
+    comentarios = await globales(texto)
+    return JSONResponse(content={
+        "comentarios_globales": comentarios
+    })
 
 @app.post("/analyse_paragraph")
 async def analyse_paragraph(request: Request):
@@ -98,7 +116,8 @@ async def analyse_text(request: Request):
         }
         inicio = inicio + len(parrafo) + 1 # +1 por el salto de línea
     resultados["global"] = {
-        "comentarios": await stadistics_text(texto),
+        #"comentarios": await stadistics_text(texto),
+        "comentarios": await globales(texto),
     "stats": ""}
     return JSONResponse(content=resultados)
 
@@ -215,6 +234,19 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                         "name": "inciso"
                     }
                     #result.append(resumen)
+
+                if falta_concordancia(frase):
+                    resumen = {
+                        "id": str(uuid.uuid4()),
+                        "start": inicioFrase,
+                        "end": finFrase,
+                        "text": "Falta de concordancia",
+                        "description": f"No debe haber faltas de concordancia.",
+                        "type": "morfosintaxis",
+                        "name": "concordancia"
+                    }
+                    #result.append(resumen)
+
                 relativoLejos = relativo_lejano(frase)
                 if relativoLejos:
                     resumen = {
@@ -276,6 +308,18 @@ async def morfosintaxis_text(request: Request):
 async def lexsem_paragraph(texto, inicioParrafo):
     """ Dado un párrafo devuelve un resumen de dicho párrafo con los índices léxico-semánticos que no cumplen las características deseadas"""
     result = []
+    finParrafo = inicioParrafo + len(texto)
+    if parrafoComplejo(texto):
+        resumen = {
+            "id": str(uuid.uuid4()),
+            "start": inicioParrafo,
+            "end": finParrafo,
+            "text": "Párrafo complejo",
+            "description": f"Se deben evitar párrafos demasiado complejos.",
+            "type": "léxico-semántico",
+            "name": "parrafoComplejo"
+        }
+        result.append(resumen)
     if texto != '\n' and texto!='':
         for match in re.finditer(r'\w+', texto, re.UNICODE):
             palabra = match.group()
@@ -308,6 +352,40 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "name": "baul"
                 }
                 result.append(resumen)
+            if palabraLarga(palabra):
+                resumen = {
+                    "id": str(uuid.uuid4()),
+                    "start": inicioPalabra,
+                    "end": finPalabra,
+                    "text": "Revisar uso de palabras largas o derivados",
+                    "description": f"Se debe evitar el uso de palabras muy largas.",
+                    "type": "léxico-semántico",
+                    "name": "largas"
+                }
+                result.append(resumen)
+            if latinism(palabra):
+                resumen = {
+                    "id": str(uuid.uuid4()),
+                    "start": inicioPalabra,
+                    "end": finPalabra,
+                    "text": "Latinismos",
+                    "description": f"Se debe evitar el uso de latinismos.",
+                    "type": "léxico-semántico",
+                    "name": "latinismo"
+                }
+                result.append(resumen)
+            if tecnisimos(palabra):
+                resumen = {
+                    "id": str(uuid.uuid4()),
+                    "start": inicioPalabra,
+                    "end": finPalabra,
+                    "text": "Uso de tecnicismos",
+                    "description": f"Se debe evitar el uso de tecnicismos.",
+                    "type": "léxico-semántico",
+                    "name": "tecnicismo"
+                }
+                result.append(resumen)
+
     return result
 
 async def lexsem_text(request: Request):
@@ -321,6 +399,74 @@ async def lexsem_text(request: Request):
     inicio = 0
     for i, parrafo in enumerate(parrafos, start=1):
         resultados[i] = lexsem_paragraph(parrafo, inicio)
+        inicio = inicio + len(parrafo) + 1
+    return resultados
+
+
+async def pragdisc_paragraph(texto, inicioParrafo):
+    """ Dado un párrafo devuelve un resumen de dicho párrafo con los índices pragmático-discursivos que no cumplen las características deseadas"""
+    result = []
+    finParrafo = inicioParrafo + len(texto)
+    frases = nltk.sent_tokenize(texto, language="spanish")
+    inicioFrase = inicioParrafo
+
+    CHUNK_SIZE = 2  # Procesamos 5 frases por vez
+    for i in range(0, len(frases), CHUNK_SIZE):
+        chunk = frases[i:i + CHUNK_SIZE]
+        for frase in chunk:
+            finFrase = inicioFrase + len(frase)
+            cone = falta_conectores(frase)
+            if cone:
+                resumen = {
+                    "id": str(uuid.uuid4()),
+                    "start": inicioFrase,
+                    "end": finFrase,
+                    "text": "Ausencia de conectores",
+                    "description": f"Se debe incentivar el uso de conectores.",
+                    "type": "pragmático-discursivo",
+                    "name": "conector"
+                }
+                result.append(resumen)
+
+            if conectores_repe(frase):
+                resumen = {
+                    "id": str(uuid.uuid4()),
+                    "start": inicioFrase,
+                    "end": finFrase,
+                    "text": "Repetición de conector",
+                    "description": f"Se debe incentivar el uso de conectores variados.",
+                    "type": "pragmático-discursivo",
+                    "name": "conectorRepe"
+                }
+                result.append(resumen)
+
+            puntuacion = conectores_punt(frase)
+            if puntuacion[0]:
+                resumen = {
+                    "id": str(uuid.uuid4()),
+                    "start": inicioFrase + puntuacion[1],
+                    "end": inicioFrase + puntuacion[1]+len(puntuacion[2]),
+                    "text": "Revisar la puntuación de conector",
+                    "description": f"Los conectores deben ir con buena puntuación.",
+                    "type": "pragmático-discursivo",
+                    "name": "conectoresPunt"
+                }
+                result.append(resumen)
+            inicioFrase = finFrase + 1
+
+    return result
+
+async def pragdisc_text(request: Request):
+    """ Dado un texto devuelve un resumen de dicho texto con los índices pragmático-discursivos que no cumplen las características deseadas"""
+    data = await request.json()
+    texto = data.get("text", "")
+
+    parrafos = dividir_parrafos(texto)
+    resultados = {} # Aquí voy a almacenar todos los comentarios por parrafo
+
+    inicio = 0
+    for i, parrafo in enumerate(parrafos, start=1):
+        resultados[i] = pragdisc_paragraph(parrafo, inicio)
         inicio = inicio + len(parrafo) + 1
     return resultados
 
@@ -509,6 +655,77 @@ async def stadistics_text(texto):
         "name": "frases"
     }
     result.append(resumen)
+    return result
+
+async def llm_text(texto):
+    """ Dado un texto devuelve un resumen de dicho texto con los índices pragmático-discursivos que no cumplen las características deseadas evaluadas por un LLM"""
+    result = []
+    inicioParrafo = 0
+    finParrafo = inicioParrafo + len(texto)
+    analisis = evaluate_text(texto)
+    if analisis[0]['se_detecta']:
+        resumen = {
+            "id": str(uuid.uuid4()),
+            "start": inicioParrafo,
+            "end": finParrafo,
+            "text": "Falta de coherencia interna",
+            "description": f"El texto tiene contradicciones internas.",
+            "type": "pragmático-discursivo",
+            "name": "coherenciaInt"
+        }
+        result.append(resumen)
+    if analisis[1]['se_detecta']:
+        resumen = {
+            "id": str(uuid.uuid4()),
+            "start": inicioParrafo,
+            "end": finParrafo,
+            "text": "Falta de progresión temática",
+            "description": f"Existe un salto abrupto en la progresión temática.",
+            "type": "pragmático-discursivo",
+            "name": "progresion"
+        }
+        result.append(resumen)
+    if analisis[2]['se_detecta']:
+        resumen = {
+            "id": str(uuid.uuid4()),
+            "start": inicioParrafo,
+            "end": finParrafo,
+            "text": "Falta de claridad entre ideas",
+            "description": f"Las ideas entre cada párrafo no están bien estructuradas.",
+            "type": "pragmático-discursivo",
+            "name": "claridad"
+        }
+        result.append(resumen)
+    if analisis[3]['se_detecta']:
+        resumen = {
+            "id": str(uuid.uuid4()),
+            "start": inicioParrafo,
+            "end": finParrafo,
+            "text": "Falta de coherencia externa",
+            "description": "La organización global no se ajusta a la estructura de un texto divulgativo coherente..",
+            "type": "pragmático-discursivo",
+            "name": "coherenciaExt"
+        }
+        result.append(resumen)
+    if analisis[4]['se_detecta']:
+        resumen = {
+            "id": str(uuid.uuid4()),
+            "start": inicioParrafo,
+            "end": finParrafo,
+            "text": "Posible digresión",
+            "description": "Hay ideas que se alejan del tema principal.",
+            "type": "pragmático-discursivo",
+            "name": "digresion"
+        }
+        result.append(resumen)
+    return result
+
+async def globales(texto):
+    result = []
+    #estadisticas = await stadistics_text(texto)
+    #result.append(estadisticas)
+    pragmaticos = await llm_text(texto)
+    result.append(pragmaticos)
     return result
 
 
