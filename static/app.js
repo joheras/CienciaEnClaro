@@ -93,7 +93,6 @@ const resizer = document.getElementById('panelResizer');
 const container = document.querySelector('.container');
 
 let resizing = false;
-console.log(resizer);
 resizer.addEventListener('mousedown', () => {
   resizing = true;
   document.body.style.cursor = 'col-resize';
@@ -408,6 +407,7 @@ document.getElementById("recalculateBtn").onclick = async () => {
 
     const total = changed.length;
     let current = 0;
+    resetProgress();
     updateProgress(0, total);
 
     for (const par of changed) {
@@ -922,11 +922,11 @@ function renderComments(openCommentId = null){
             secun: "Los párrafos que presentan más de una idea, temas laterales poco justificados o gran número de detalles resultan menos comprensibles.\nEn estos casos, se recomienda que se mantenga únicamente la información necesaria.\n\nEjemplo\nEliminar anécdotas o datos históricos que no contribuyen a la explicación principal.",
             destinatario: "El nivel de profundidad científica en los textos divulgativos debe adecuarse a un lector sin conocimiento universitario.\n\nEjemplo\nAntes:\nForzamiento radiactivo antropogénico.\nDespués:\nAumento del calor retenido por la atmósfera debido a actividades humanas.",
             finalidad: "Cada finalidad comunicativa requiere un determinado uso de estrategias discursivas. Los textos divulgativos suelen tener finalidades comunicativas como: informar, persuadir, entretener/deleitar, enseñar/explicar, describir, aclarar, fomentar el interés, concienciar o aconsejar.\nSe debería ajustar el tono y la estructura del texto a los objetivos comunicativos previstos.\n\nEjemplo\nUn texto divulgativo debe priorizar la explicación antes que la discusión metodológica detallada.",
-            coherenciaInt: "Los textos requieren una coherencia interna entre las ideas y una prograsión temática. Para lograrlo, se debe evitar caer en cnotradicción, reiteraciones o saltos de información",
-            progresion: "La información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva...) para que el mensaje se entienda mejor.\n\nEjemplo\nDefinición -> causas -> consecuencias -> soluciones.",
-            claridad: "La información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva...) para que el mensaje se entienda mejor. Los conectores y marcadores discursivos ayudan a conseguirlo.\n\nEjemplo\nComo consecuencia de este aumento de temperatura, los glaciares pierden masa.",
-            coherenciaExt: "Los textos divulgativos disponen de una estructura básica dividida en tres partes: introducción, desarrollo y conclusión. Este tipo de textos resultan más claros cucando dicha estructura es perceptible por el lector.",
-            digresion: "Los textos que presentan digresiones o se desvían del tema principal son más difíciles de entender.\n\nEjemplo\nSi el texto explica el cambio climático, evite incluir extensas descripciones sobre la historia de la navegación, salvo que tengan relación directa con el tema tratado.",
+            coherenciaInt: first.description + "\nLos textos requieren una coherencia interna entre las ideas y una prograsión temática. Para lograrlo, se debe evitar caer en contradicción, reiteraciones o saltos de información.",
+            progresion: first.description + "\nLa información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva...) para que el mensaje se entienda mejor.\n\nEjemplo\nDefinición -> causas -> consecuencias -> soluciones. ",
+            claridad: first.description + "\nLa información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva...) para que el mensaje se entienda mejor. Los conectores y marcadores discursivos ayudan a conseguirlo.\n\nEjemplo\nComo consecuencia de este aumento de temperatura, los glaciares pierden masa.",
+            coherenciaExt: first.description + "\nLos textos divulgativos disponen de una estructura básica dividida en tres partes: introducción, desarrollo y conclusión. Este tipo de textos resultan más claros cucando dicha estructura es perceptible por el lector.",
+            digresion: first.description + "\nLos textos que presentan digresiones o se desvían del tema principal son más difíciles de entender.\n\nEjemplo\nSi el texto explica el cambio climático, evite incluir extensas descripciones sobre la historia de la navegación, salvo que tengan relación directa con el tema tratado.",
             enum: "Los elementos de una lista o enumeración deben presentar estructuras gramaticales similares como, por ejemplo, empezar por un sustantivo, un artículo o un infinitivo. De ese modo, se consigue una lectura más rápida y sencilla.\n\nEjemplo\nAntes:\n- Reducir emisiones.\n- La protección de bosuqes.\n- Que se mejore la eficiencia energética.\nDespués:\n- Reducir emisiones.\n- Proteger bosques.\n- Mejorar la eficiencia energética.",
             enumIncos: "Es recomendable que las listas o enumeraciones del texto mantengas siempre el mismo criterio y eviten utilizar números, letras o símbolos de forma arbitraria.",
             baul: "Es recomendable evitar el uso de palabras baúl o palabras imprecisas para evitar malentendidos. Estas palabras pueden sustituirse por términos más concretos y específicos.\n\nEjemplo\nAntes:\nSe observaron varias cosas en el oceáno debido al cambio climático.\nDespués:\nLos sensores datelitales observaron un aumento dde 1,5ºC en la temperatura del océano debido al cambio climático.",
@@ -940,10 +940,7 @@ function renderComments(openCommentId = null){
             sesgo: "Si bien la RAE considera el masculino el término inclusivo, aconseja el uso de expresiones más genéricas, como los sustantivos epicenos, siempre que sea posible. Se podría valorar, pues, el uso de términos colectivos, abstractos o epicenos cuando resulten adecuados.\n\nEjemplo\nAntes:\nLos investigadores deben presentar sus resultados.\nDespués:\nEl personal investigador debe presentar sus resultados.",
             textoLargo: "El texto supera la longitud habitual para el género de la difusión. Esta extensión suele situarse en las 1500 o 2000.",
             fernandezHuerta:first.description,
-            caracteres: first.description,
-            silabas: first.description,
-            palabras: first.description,
-            frases: first.description,
+            estadística: first.description,
             szigrisztPazos: first.description,
             parrafoComplejo: "El párrafo resulta complejo cuando acumulan subordinaciones, coordinaciones, incisos y nominalizaciones. La concentración de varios de estos recursos en un solo párrafo incrementa significativamente el esfuerzo de lectura.\n\nEjemplo\nAntes:\nEl informe, elaborado por diferentes grupos de investigación y revisado posteriormente por especialistas internacionales, analiza múltiples aspectos, que resultan fundamentales, relacionados con la temperatura, la biodiversidad, los recursos hídricos y la economía.\nDespués:\nEl informe fue elaborado por diversos grupos de investigación. Posteriormente, especialistas internacionales revisaron el documento. El estudio analiza aspectos fundamentales como la temperatura, la biodiversidad, los recursos hídricos y la economía."
         }
@@ -1924,9 +1921,25 @@ function updateProgress(current, total) {
     const percent = Math.round((current/total) * 100);
     const bar = document.getElementById("progressBar");
     const text = document.getElementById("progressText");
+    const message = document.getElementById("loadingMessage");
+    if (current===0){
+    message.textContent = 'Analizando texto completo...';
+    bar.style.width = '0%';
+    text.textContent = "0$";
+    }
+    else {
+        const percent = Math.round(((current+1) / ((total+1))) * 100);
+        message.textContent = `Analizado párrafo ${current} de ${total}...`;
 
-    if (bar) bar.style.width = percent + "%";
-    if (text) text.innerText = `${percent}% (${current}/${total})`;
+        bar.style.width = `${percent}%`;
+        text.textContent = `${percent}%`;
+    }
+}
+function resetProgress() {
+    document.getElementById("progressBar").style.width = "0%";
+    document.getElementById("progressText").textContent = "0%";
+    document.getElementById("loadingMessage").textContent =
+        "Analizando texto completo...";
 }
 
 function buildComment(item, paragraphText, paragraphIndex, paragraphstart){

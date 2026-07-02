@@ -601,47 +601,17 @@ async def stadistics_paragraph(texto, inicioParrafo):
     finParrafo = inicioParrafo + len(texto)
 
     caracteres = len(texto)
-    resumen = {
-        "id": str(uuid.uuid4()),
-        "start": inicioParrafo,
-        "end": finParrafo,
-        "text": "Número de caracteres",
-        "description": f"El texto tiene {caracteres} caracteres.",
-        "type": "estadistica",
-        "name": "caracteres"
-    }
-    result.append(resumen)
     silabas = textstat.syllable_count(texto, lang="es")
-    resumen = {
-        "id": str(uuid.uuid4()),
-        "start": inicioParrafo,
-        "end": finParrafo,
-        "text": "Número de sílabas",
-        "description": f"El texto tiene {silabas} sílabas.",
-        "type": "estadistica",
-        "name": "silabas"
-    }
-    result.append(resumen)
     palabras = textstat.lexicon_count(texto, removepunct=True)
-    resumen = {
-        "id": str(uuid.uuid4()),
-        "start": inicioParrafo,
-        "end": finParrafo,
-        "text": "Número de palabras",
-        "description": f"El texto tiene {palabras} palabras.",
-        "type": "estadistica",
-        "name": "palabras"
-    }
-    result.append(resumen)
     frases = textstat.sentence_count(texto)
     resumen = {
         "id": str(uuid.uuid4()),
         "start": inicioParrafo,
         "end": finParrafo,
-        "text": "Número de frases",
-        "description": f"El texto tiene {frases} frases.",
+        "text": "Estadísticas del párrafo",
+        "description": f"El párrafo tiene:\n- {caracteres} caracteres\n- {silabas} sílabas\n- {palabras} palabras\n- {frases} frases",
         "type": "estadistica",
-        "name": "frases"
+        "name": "estadística"
     }
     result.append(resumen)
     return result
@@ -654,47 +624,17 @@ async def stadistics_text(texto):
     finParrafo = inicioParrafo + len(texto)
 
     caracteres = len(texto)
-    resumen = {
-        "id": str(uuid.uuid4()),
-        "start": inicioParrafo,
-        "end": finParrafo,
-        "text": "Número de caracteres",
-        "description": f"El texto tiene {caracteres} caracteres.",
-        "type": "estadistica",
-        "name": "caracteres"
-    }
-    result.append(resumen)
     silabas = textstat.syllable_count(texto, lang="es")
-    resumen = {
-        "id": str(uuid.uuid4()),
-        "start": inicioParrafo,
-        "end": finParrafo,
-        "text": "Número de sílabas",
-        "description": f"El texto tiene {silabas} sílabas.",
-        "type": "estadistica",
-        "name": "silabas"
-    }
-    result.append(resumen)
     palabras = textstat.lexicon_count(texto, removepunct=True)
-    resumen = {
-        "id": str(uuid.uuid4()),
-        "start": inicioParrafo,
-        "end": finParrafo,
-        "text": "Número de palabras",
-        "description": f"El texto tiene {palabras} palabras.",
-        "type": "estadistica",
-        "name": "palabras"
-    }
-    result.append(resumen)
     frases = textstat.sentence_count(texto)
     resumen = {
         "id": str(uuid.uuid4()),
         "start": inicioParrafo,
         "end": finParrafo,
-        "text": "Número de frases",
-        "description": f"El texto tiene {frases} frases.",
+        "text": "Estadísticas del texto",
+        "description": f"El texto tiene:\n- {caracteres} caracteres\n- {silabas} sílabas\n- {palabras} palabras\n- {frases} frases",
         "type": "estadistica",
-        "name": "frases"
+        "name": "estadística"
     }
     result.append(resumen)
     return {"global": result}
@@ -711,7 +651,7 @@ async def llm_text(texto):
             "start": inicioParrafo,
             "end": finParrafo,
             "text": "Falta de coherencia interna",
-            "description": f"El texto tiene contradicciones internas.",
+            "description": analisis[0]['razonamiento'],
             "type": "pragmático-discursivo",
             "name": "coherenciaInt"
         }
@@ -722,7 +662,7 @@ async def llm_text(texto):
             "start": inicioParrafo,
             "end": finParrafo,
             "text": "Falta de progresión temática",
-            "description": f"Existe un salto abrupto en la progresión temática.",
+            "description": analisis[1]['razonamiento'],
             "type": "pragmático-discursivo",
             "name": "progresion"
         }
@@ -733,7 +673,7 @@ async def llm_text(texto):
             "start": inicioParrafo,
             "end": finParrafo,
             "text": "Falta de claridad entre ideas",
-            "description": f"Las ideas entre cada párrafo no están bien estructuradas.",
+            "description": analisis[2]['razonamiento'],
             "type": "pragmático-discursivo",
             "name": "claridad"
         }
@@ -744,7 +684,7 @@ async def llm_text(texto):
             "start": inicioParrafo,
             "end": finParrafo,
             "text": "Falta de coherencia externa",
-            "description": "La organización global no se ajusta a la estructura de un texto divulgativo coherente..",
+            "description": analisis[3]['razonamiento'],
             "type": "pragmático-discursivo",
             "name": "coherenciaExt"
         }
@@ -755,7 +695,7 @@ async def llm_text(texto):
             "start": inicioParrafo,
             "end": finParrafo,
             "text": "Posible digresión",
-            "description": "Hay ideas que se alejan del tema principal.",
+            "description": analisis[4]['razonamiento'],
             "type": "pragmático-discursivo",
             "name": "digresion"
         }
