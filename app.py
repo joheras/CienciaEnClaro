@@ -760,7 +760,7 @@ async def llm_text(texto):
             "name": "digresion"
         }
         result.append(resumen)
-    return result
+    return {"global":result}
 
 async def globales(texto):
     result = []
