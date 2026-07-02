@@ -476,15 +476,27 @@ def legibility_paragraph(texto, inicioParrafo):
     finParrafo = inicioParrafo + len(texto)
     inicioFrase = inicioParrafo
     fernandezHuerta = indice_fernandezHuerta(texto)
-    if fernandezHuerta[0]<60:
+    if fernandezHuerta[0]<60 and fernandezHuerta[0]!=0:
         resumen = {
             "id": str(uuid.uuid4()),
             "start": inicioParrafo,
             "end": finParrafo,
-            "text": "Incumplimiento de umbrales de legibilidad",
+            "text": "Incumplimiento de umbrales de legibilidad (índice de Fernández-Huerta)",
             "description": fernandezHuerta[1],
             "type": "legibility",
             "name": "fernandezHuerta"
+        }
+        result.append(resumen)
+    szigrisztPazos = indice_szigriszt_pazos(texto)
+    if szigrisztPazos[0]<50 and szigrisztPazos!=0:
+        resumen = {
+            "id": str(uuid.uuid4()),
+            "start": inicioParrafo,
+            "end": finParrafo,
+            "text": "Incumplimiento de umbrales de legibilidad (índice de Szigriszt-Pazos)",
+            "description": szigrisztPazos[1],
+            "type": "legibility",
+            "name": "szigrisztPazos"
         }
         result.append(resumen)
         """
@@ -518,18 +530,46 @@ def legibility_paragraph(texto, inicioParrafo):
     return result
 
 
-async def legibility_text(request: Request):
+async def legibility_text(texto):
     " Dado un texto devuelve un resumen de dicho texto con los índices de legibilidad que no cumplen las características deseadas"
-    data = await request.json()
-    texto = data.get("text", "")
+    #data = await request.json()
+    #texto = data.get("text", "")
 
     parrafos = dividir_parrafos(texto)
     resultados = {} # Aquí voy a almacenar todos los comentarios por parrafo
-
+    inicioParrafo = 0
+    finParrafo = inicioParrafo + len(texto)
     inicio = 0
-    for i, parrafo in enumerate(parrafos, start=1):
-        resultados[i] = legibility_paragraph(parrafo, inicio)
-        inicio = inicio + len(parrafo) + 1
+    resultados['global'] = []
+    fernandezHuerta = indice_fernandezHuerta(texto)
+    if fernandezHuerta[0] < 60:
+        resumen = {
+            "id": str(uuid.uuid4()),
+            "start": inicioParrafo,
+            "end": finParrafo,
+            "text": "Incumplimiento de umbrales de legibilidad (índice de Fernández-Huerta)",
+            "description": fernandezHuerta[1],
+            "type": "legibility",
+            "name": "fernandezHuerta"
+        }
+        resultados['global'].append(resumen)
+
+    szigrisztPazos = indice_szigriszt_pazos(texto)
+    if szigrisztPazos[0] < 50:
+        resumen = {
+            "id": str(uuid.uuid4()),
+            "start": inicioParrafo,
+            "end": finParrafo,
+            "text": "Incumplimiento de umbrales de legibilidad (índice de Szigriszt-Pazos)",
+            "description": szigrisztPazos[1],
+            "type": "legibility",
+            "name": "szigrisztPazos"
+        }
+        resultados['global'].append(resumen)
+
+    # for i, parrafo in enumerate(parrafos, start=1):
+    #     resultados[i] = legibility_paragraph(parrafo, inicio)
+    #     inicio = inicio + len(parrafo) + 1
     return resultados
 
 @app.post("/resumen")
@@ -655,7 +695,7 @@ async def stadistics_text(texto):
         "name": "frases"
     }
     result.append(resumen)
-    return result
+    return {"global": result}
 
 async def llm_text(texto):
     """ Dado un texto devuelve un resumen de dicho texto con los índices pragmático-discursivos que no cumplen las características deseadas evaluadas por un LLM"""
@@ -722,10 +762,12 @@ async def llm_text(texto):
 
 async def globales(texto):
     result = []
-    #estadisticas = await stadistics_text(texto)
-    #result.append(estadisticas)
-    pragmaticos = await llm_text(texto)
-    result.append(pragmaticos)
+    estadisticas = await stadistics_text(texto)
+    result.append(estadisticas)
+    #pragmaticos = await llm_text(texto)
+    #result.append(pragmaticos)
+    legibilidad = await legibility_text(texto)
+    result.append(legibilidad)
     return result
 
 

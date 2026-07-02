@@ -6,12 +6,16 @@ import textstat
 def indice_fernandezHuerta(texto):
     """Dado un texto, devuelve un real con el resultado del test y un string con la explicación a dicho número."""
     indice = round(fernandez_huerta(texto), 2)
-    if indice<30:
-        resultado = "Es un texto muy difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(indice) + ")"
-    elif indice<50:
-        resultado = "Es un texto difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(indice) + ")"
-    elif indice<60:
-        resultado = "Es un texto algo difícil. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(indice) + ")"
+    if indice<60 and indice!=0:
+        resultado = "Los textos dirigidos al público general deben cumplir unos índices de legibilidad. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 60 y 70 (puntuación actual:  " + str(indice) + ")"
+    else:
+        resultado = "El texto se considera legible dentro de la divulgación científica."
+    return indice, resultado
+
+def indice_szigriszt_pazos(texto):
+    indice = round(szigriszt_pazos(texto), 2)
+    if indice<50 and indice!=0:
+        resultado = "Los textos dirigidos al público general deben cumplir unos índices de legibilidad. Un texto legible dentro de la divulgación científica debería extraer una puntuación de entre 51 y 65 (puntuación actual: " + str(indice) + ")"
     else:
         resultado = "El texto se considera legible dentro de la divulgación científica."
     return indice, resultado

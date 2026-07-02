@@ -651,6 +651,7 @@ function updateFilterOptions() {
         {value:"morfosintaxis", label:"Morfosintaxis"},
         {value: "léxico-semántico", label:"Léxico-semántico"},
         {value: "pragmático-discursivo", label:"Pragmático-discursivo"},
+        {value: "legibility", label: "De accesibilidad"},
         {value: "estadistica", label:"Estadísticas"}
     ];
 
@@ -775,7 +776,6 @@ function renderComments(openCommentId = null){
     // Agrupar comentarios
     const grouped = filtered.reduce((acc, comment) => {
 
-    console.log("COMMENT RAW: ", comment);
         const key = comment.name || comment.text;
         if (!acc[key]) {
             acc[key] = [];
@@ -788,11 +788,11 @@ function renderComments(openCommentId = null){
     const tiposParrafo = ["parrafoCorto", "parrafoLargo"]
 
     const totalParagraphs = getTotalParagraphs();
-
     // Renderizar comentarios
     Object.values(grouped).forEach(group  => {
         const first = group[0];  // Como todos los text deberían ser iguales, nos quedaremos con el del primero
         const tipo = first.name;
+
 
         const div = document.createElement("div");
         div.className = "comment-item";
@@ -805,6 +805,7 @@ function renderComments(openCommentId = null){
         const title = document.createElement("div");
         title.className = "comment-title";
         title.style.cursor = "pointer";
+
 
         const textSpan = document.createElement("span");
 
@@ -938,10 +939,15 @@ function renderComments(openCommentId = null){
             negacionAbun: "Las ideas se deben expresar con formulaciones afirmativas siempre que sea posible. La acumulación de oraciones negativas en el texto dificulta su compresión.",
             sesgo: "Si bien la RAE considera el masculino el término inclusivo, aconseja el uso de expresiones más genéricas, como los sustantivos epicenos, siempre que sea posible. Se podría valorar, pues, el uso de términos colectivos, abstractos o epicenos cuando resulten adecuados.\n\nEjemplo\nAntes:\nLos investigadores deben presentar sus resultados.\nDespués:\nEl personal investigador debe presentar sus resultados.",
             textoLargo: "El texto supera la longitud habitual para el género de la difusión. Esta extensión suele situarse en las 1500 o 2000.",
-            fernandezHuerta:"Los textos dirigidos al público general deben cumplir unos índices de legibilidad. Puede utilizar los índices alojados en este asistente para medir la legibilidad de su texto.",
+            fernandezHuerta:first.description,
+            caracteres: first.description,
+            silabas: first.description,
+            palabras: first.description,
+            frases: first.description,
+            szigrisztPazos: first.description,
             parrafoComplejo: "El párrafo resulta complejo cuando acumulan subordinaciones, coordinaciones, incisos y nominalizaciones. La concentración de varios de estos recursos en un solo párrafo incrementa significativamente el esfuerzo de lectura.\n\nEjemplo\nAntes:\nEl informe, elaborado por diferentes grupos de investigación y revisado posteriormente por especialistas internacionales, analiza múltiples aspectos, que resultan fundamentales, relacionados con la temperatura, la biodiversidad, los recursos hídricos y la economía.\nDespués:\nEl informe fue elaborado por diversos grupos de investigación. Posteriormente, especialistas internacionales revisaron el documento. El estudio analiza aspectos fundamentales como la temperatura, la biodiversidad, los recursos hídricos y la economía."
         }
-        desc.innerText = descriptionMap[first.name];
+        desc.innerText = descriptionMap[first.name] || first.text;
 
         // Botón quitar sugerencia
         /*
@@ -1096,12 +1102,16 @@ async function addCommentText() {
             intencionalidad: textIntentions
         })
     });
-
     const globalData = await globalResponse.json();
 
-    globalComments = (globalData.comentarios_globales || []).map(c=> ({
+    globalComments = (globalData.comentarios_globales || []).flatMap(c => c.global || [])
+        .map(c=> ({
         ...c,
-        global: true
+        global: true,
+        paragraphStart: -1,
+        index: -1,
+        localIndex: -1,
+        paragraph: -1
     }));
 
     comments = [...globalComments];
@@ -1259,16 +1269,16 @@ async function addCommentParagraph() {
         overlay.style.display = "none";
         return;
     }
-    console.log("GLOBAL DATA", globalData);
-console.log("PARAGRAPH DATA", paragraphData);
-console.log("GLOBAL COMMENTS", globalComments);
-console.log("PARAGRAPH COMMENTS", paragraphComments);
-console.log("FINAL DATA", data);
     // Procesamos comentarios por chunks para no bloquear el hilo
     const CHUNK_SIZE = 5;
-    const globalComments = (globalData.comentarios_globales || []).map(c => ({
+    const globalComments = (globalData.comentarios_globales || []).flatMap(c => c.global || [])
+        .map(c=> ({
         ...c,
-        global: true
+        global: true,
+        paragraphStart: -1,
+        index: -1,
+        localIndex: -1,
+        paragraph: -1
     }));
     const paragraphComments = Array.isArray(paragraphData)
         ? paragraphData
@@ -1277,9 +1287,13 @@ console.log("FINAL DATA", data);
     for (let i = 0; i< data.length; i+=CHUNK_SIZE) {
         const chunk = data.slice(i, i + CHUNK_SIZE);
         chunk.forEach(item => {
-            comments.push(
-                buildComment(item, text, null, start)
-            );
+            if(item.global){
+                comments.push(item)
+            } else {
+                comments.push(
+                    buildComment(item, text, null, start)
+                );
+            }
         });
         // Dejamos que el navegador renderice
         await new Promise(r => setTimeout(r, 0));
@@ -1630,6 +1644,10 @@ function highlightParagraphFromFilter() {
         return;
     }
 
+    if(Number(paragraphFilter) === -1){
+        return;
+    }
+
     let visibleIndex = 1;
     let targetParagraph = null;
     paragraphs.forEach((p) => {
@@ -1856,6 +1874,10 @@ function highlightByType(type) {
 
          */
         if (selectedParagraph !== null && Number(c.paragraph) !== selectedParagraph){
+            return;
+        }
+
+        if (c.global || c.paragraph === -1){
             return;
         }
         const index = getUpdatedIndex(c);

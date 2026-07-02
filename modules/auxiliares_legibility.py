@@ -4,6 +4,9 @@ def fernandez_huerta(texto):
     """Dado un texto, devuelve el índice de Fernández-Huerta"""
     return textstat.fernandez_huerta(texto)
 
+def szigriszt_pazos(texto):
+    return textstat.szigriszt_pazos(texto)
+
 #Pongo en una lista las palabras comunes:
 # Lista de palabras comunes sacadas de: https://github.com/mazyvan/most-common-spanish-words/
 archivos = ["most-common-spanish-words.txt", "most-common-spanish-words-v2.txt", "most-common-spanish-words-v3.txt",
