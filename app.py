@@ -43,6 +43,7 @@ async def analizar_parrafo(texto, inicioParrafo, texto_completo=None):
     resultado_morf = await morfosintaxis_paragraph(texto, inicioParrafo)
     resultado_lexsem = await lexsem_paragraph(texto, inicioParrafo)
     resultado_pragdis = await pragdisc_paragraph(texto, inicioParrafo)
+    resultado_estad = await stadistics_paragraph(texto, inicioParrafo)
 
     # Contar métricas
     frases = nltk.sent_tokenize(texto, language="spanish")
@@ -55,6 +56,7 @@ async def analizar_parrafo(texto, inicioParrafo, texto_completo=None):
     result.extend(resultado_morf)
     result.extend(resultado_lexsem)
     result.extend(resultado_pragdis)
+    result.extend(resultado_estad)
     errores_por_tipo = {}
     for item in resultado_morf:
         tipo = item["name"]
@@ -764,8 +766,8 @@ async def globales(texto):
     result = []
     estadisticas = await stadistics_text(texto)
     result.append(estadisticas)
-    #pragmaticos = await llm_text(texto)
-    #result.append(pragmaticos)
+    pragmaticos = await llm_text(texto)
+    result.append(pragmaticos)
     legibilidad = await legibility_text(texto)
     result.append(legibilidad)
     return result
