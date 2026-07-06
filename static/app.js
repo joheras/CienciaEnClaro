@@ -141,7 +141,7 @@ document.getElementById("toggleHighlight").addEventListener("change", (e) => {
 // para que la aplicación empiece en el modo escribir
 quill.enable(true);
 //document.getElementById("filterContainer").style.display="none";
-document.getElementById("filterText").style.display="none";
+//document.getElementById("filterText").style.display="none";
 document.getElementById("analysisContainer").style.display="none";
 document.getElementById("analyzeBtn").style.display = "none";
 //document.getElementById("paragraphBtn").style.display = "none";
@@ -325,7 +325,7 @@ document.querySelector(".ql-editor").addEventListener("click", (e) => {
     if (!p) return;
 
     // Obtener índice del párrafo
-    const paragraphs = quill.root.querySelectorAll("p");
+    const paragraphs = quill.root.querySelectorAll("p, li");
     let visibleIndex = 1;
     let targetIndex = null;
 
@@ -369,19 +369,22 @@ quill.on("selection-change", (range) => {
 
 quill.on("selection-change", highlightActiveParagraph);
 
-quill.root.querySelectorAll("p").forEach(p =>
+quill.root.querySelectorAll("p, li").forEach(p =>
     p.classList.add("active-paragraph"));
 
 quill.on("text-change", (delta, oldDelta, source) => {
     if (source!== "user") return;
 
     hasPendingChanges = true;
+    lockComments();
     const changed = getChangedParagraphs();
 
     changed.forEach(par => {
         modifiedParagraphs.set(par.index, true);
     });
     updateParagraphNumbers();
+    updateAnalyzeButton();
+    renderComments(activeCommentId);
 });
 
 //document.getElementById("addCommentBtn").onclick = addCom;
@@ -394,7 +397,8 @@ quill.on("text-change", (delta, oldDelta, source) => {
 //        addCommentParagraph();
 //    }
 //}
-document.getElementById("recalculateBtn").onclick = async () => {
+
+async function reanalyzeModifiedParagraphs() {
     unlockComments();
 
     const changed = getChangedParagraphs();
@@ -410,29 +414,42 @@ document.getElementById("recalculateBtn").onclick = async () => {
     resetProgress();
     updateProgress(0, total);
 
+    comments = comments.filter(c => !c.global);
+
+    const textoCompleto = quill.getText();
+
+    let globalComments = [];
+    const globalResponse = await fetch("/analyse_document", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            texto: textoCompleto,
+            intencionalidad: textIntentions
+        })
+    });
+    const globalData = await globalResponse.json();
+
+    globalComments = (globalData.comentarios_globales || []).flatMap(c => c.global || [])
+        .map(c=> ({
+        ...c,
+        global: true,
+        paragraphStart: -1,
+        index: -1,
+        localIndex: -1,
+        paragraph: -1
+    }));
+
+    comments.push(...globalComments);
+
+
     for (const par of changed) {
-        const paragraphs = quill.root.querySelectorAll("p");
+        const paragraphs = quill.root.querySelectorAll("p, li");
         const p = Array.from(paragraphs).filter(x =>
             x.textContent.replace(/\u200B/g, "").trim().length > 0)[par.index - 1];
         if (!p) continue;
         const start = quill.getIndex(Quill.find(p));
         const data = await analyzeSingleParagraph(par.text, start);
         comments = comments.filter(c => c.paragraph !== par.index);
-
-        /*
-        const oldLength = p.innerText.length;
-        const newLength = par.text.length;
-        const paragraphEnd = start + oldLength;
-
-        const diff = newLength-oldLength;
-
-        comments.forEach(c => {
-            if (c.index > paragraphEnd) {
-                c.index += diff;
-            }
-        })
-         */
-
         data.forEach(item => {
             comments.push(buildComment(item, par.text, par.index, start));
         });
@@ -442,12 +459,22 @@ document.getElementById("recalculateBtn").onclick = async () => {
         updateProgress(current, total);
         await new Promise(r => setTimeout(r, 0));
     }
+    hasPendingChanges = modifiedParagraphs.size>0;
+    if (hasPendingChanges) {
+        lockComments();
+    } else {
+        unlockComments();
+    }
+
+
+    document.getElementById("filterParagraph").value="all";
     updateFilterOptions();
     renderComments(activeCommentId);
     updateParagraphNumbers();
+    updateAnalyzeButton();
     overlay.style.display = "none";
-
-};
+}
+document.getElementById("recalculateBtn").onclick = reanalyzeModifiedParagraphs;
 /*
 document.getElementById("addCommentFirst10Btn").onclick = () => {
     if (quill.isEnabled()){
@@ -472,11 +499,13 @@ updateFilterOptions();
 const feedBackBtn = document.getElementById("feedbackModeBtn");
 //const analysisBtn = document.getElementById("analysisModeBtn");
 //writeBtn.onclick = () => setMode("write");
-feedBackBtn.onclick = () => {
-    setMode("feedback");
-    //forceLockEditing();
-    addCommentText();
-}
+document.getElementById("feedbackModeBtn").addEventListener("click", async() => {
+    if (hasPendingChanges) {
+        await reanalyzeModifiedParagraphs();
+    } else {
+        await addCommentText();
+    }
+});
 /*
 analysisBtn.onclick = () => {
     setMode("analysis");
@@ -574,6 +603,18 @@ useSuggestionBtn.addEventListener('click', () => {
 
  */
 
+function updateAnalyzeButton() {
+    const btn = document.getElementById("feedbackModeBtn");
+
+    if (hasPendingChanges) {
+        btn.textContent = "Reanalizar";
+        btn.classList.add("reanalyze-btn");
+    } else {
+        btn.textContent = "Análisis";
+        btn.classList.remove("reanalyze-btn");
+    }
+}
+
 function setMode(mode) {
     appMode = mode;
 
@@ -607,11 +648,11 @@ function setMode(mode) {
     document.getElementById("analyzeBtn").style.display = isAnalysis ? "block" : "none";
     document.querySelector(".highlight-switch-block").style.display = showFilter ? "inline-flex" : "none";
 
-    if (isFeedback && hasPendingChanges){
-        document.getElementById("recalculateBtn").style.display="block";
-    } else {
-        document.getElementById("recalculateBtn").style.display="none";
-    }
+    //if (isFeedback && hasPendingChanges){
+    //    document.getElementById("recalculateBtn").style.display="block";
+    //} else {
+    //    document.getElementById("recalculateBtn").style.display="none";
+    //}
     //updateGenerateSuggestionButton();
     if (mode!=="feedback") {
         document.getElementById("generateSuggestionBtn").style.display="none";
@@ -648,10 +689,10 @@ function updateFilterOptions() {
 
     const baseOptions = [
         {value: "todos", label: "Todos"},
-        {value:"morfosintaxis", label:"Morfosintaxis"},
+        {value:"morfosintaxis", label:"Morfosintáctico"},
         {value: "léxico-semántico", label:"Léxico-semántico"},
         {value: "pragmático-discursivo", label:"Pragmático-discursivo"},
-        {value: "legibility", label: "De accesibilidad"},
+        {value: "legibility", label: "Accesibilidad"},
         {value: "estadistica", label:"Estadísticas"}
     ];
 
@@ -743,6 +784,14 @@ function renderComments(openCommentId = null){
 
     panel.innerHTML = "";
 
+    const commentClasses = {
+  "morfosintaxis": "comment-morfosintaxis",
+  "léxico-semántico": "comment-lexico",
+  "pragmático-discursivo": "comment-pragmatico",
+  "accesibilidad": "comment-accesibilidad",
+  "estadísticas": "comment-estadisticas"
+};
+
     // Para filtrar
     let filtered = comments.filter(c => c.text !== "¿Quieres una saugerencia?");
     // Filtro por tipo
@@ -796,6 +845,10 @@ function renderComments(openCommentId = null){
 
         const div = document.createElement("div");
         div.className = "comment-item";
+
+        if(commentClasses[first.type]) {
+            div.classList.add(commentClasses[first.type]);
+        }
 
         if (commentsLocked) {
             div.classList.add("comment-disabled");
@@ -982,7 +1035,7 @@ function renderComments(openCommentId = null){
 
               activeCommentId = first.id;
               activeType = first.name;
-              if (enableSentenceHighlight) {
+              if (enableSentenceHighlight && (!first.global)) {
                   highlightByType(first.name);
               }
               renderComments(activeCommentId);
@@ -1031,9 +1084,9 @@ function construirTextoPorParrafo(tipo, paragraphFilter) {
 }
 function lockComments() {
   commentsLocked = true;
-  if (appMode === "feedback") {
-      document.getElementById("recalculateBtn").style.display = "block";
-  }
+  //if (appMode === "feedback") {
+  //    document.getElementById("recalculateBtn").style.display = "block";
+  //}
   renderComments(activeCommentId);
 }
 
@@ -1080,7 +1133,7 @@ async function addCommentText() {
     const overlay = document.getElementById("analysisOverlay");
     overlay.style.display = "flex";
 
-    const paragraphs = quill.root.querySelectorAll("p");
+    const paragraphs = quill.root.querySelectorAll("p, li");
     let visibleIndex = 1;
 
     const paragraphsArray = Array.from(paragraphs).filter(p =>
@@ -1152,6 +1205,7 @@ async function addCommentText() {
     renderComments(activeCommentId);
 
     hasPendingChanges = false;
+    updateAnalyzeButton();
 
     //updateGenerateSuggestionButton();
     // ocultar overlay
@@ -1170,7 +1224,7 @@ async function addCommentParagraph() {
         alert("Cambia a modo feedback para analizar el párrafo.");
         return;
     }
-    quill.root.querySelectorAll("p").forEach(p =>
+    quill.root.querySelectorAll("p, li").forEach(p =>
         p.classList.remove("active-paragraph"));
 
     highlightParagraphs = true;
@@ -1202,7 +1256,7 @@ async function addCommentParagraph() {
     const paragraphStart = quill.getIndex(blot);
     analyzedParagraphStart = paragraphStart;
  */
-    const paragraphs = quill.root.querySelectorAll("p");
+    const paragraphs = quill.root.querySelectorAll("p, li");
     let currentParagraphNumber = null;
     let visibleIndex = 1;
 
@@ -1301,14 +1355,23 @@ async function addCommentParagraph() {
     renderComments(activeCommentId);
     analyzingParagraph = false;
     hasPendingChanges = false;
+    updateAnalyzeButton();
 
     //updateGenerateSuggestionButton();
     // Ocultar overlay
     overlay.style.display = "none";
 }
 
+async function handleAnalyzeButton() {
+    if (hasPendingChanges) {
+        await reanalyzeModifiedParagraphs();
+    } else {
+        await addCommentText();
+    }
+}
+
 function getParagraphNumberFromIndex(index) {
-    const paragraphs = quill.root.querySelectorAll("p");
+    const paragraphs = quill.root.querySelectorAll("p, li");
     let visibleIndex = 1;
 
     for (let i=0; i<paragraphs.length; i++) {
@@ -1330,7 +1393,7 @@ function getParagraphNumberFromIndex(index) {
 }
 
 function getVisibleParagraphs() {
-    return Array.from(quill.root.querySelectorAll("p"))
+    return Array.from(quill.root.querySelectorAll("p, li"))
         .map(p => ({
             node: p,
             text: p.textContent.replace(/\u200B/g, "").trim()
@@ -1426,47 +1489,56 @@ async function analyzeText() {
     analysisContainer.innerHTML = description.replace(/\n/g, "<br>");
 }
 
+const wrapper = document.querySelector(".editor-wrapper");
+
+wrapper.addEventListener("scroll", () => {
+    updateParagraphNumbers();
+});
+
 function updateParagraphNumbers() {
     const container = document.getElementById("paragraphNumbers");
     container.innerHTML = "";
 
-    const blocks = Array.from(quill.root.children);
+    const blocks = Array.from(quill.root.querySelectorAll("p, li"));
     let count = 1;
 
     blocks.forEach(node => {
+
+        const text = (node.textContent || "").replace(/\u200B/g, "").trim();
+        if (!text) {
+            return
+        }
+
         const row = document.createElement("div");
-        row.style.height = node.offsetHeight + "px";
-        row.style.display = "flex";
-        row.style.alignItems = "flex-start";
-        row.style.justifyContent = "flex-end";
+        row.style.position = "absolute";
+        row.style.right = "6px";
         row.style.paddingRight = "6px";
         row.style.boxSizing = "border-box";
+        // Añadir asterisco si el párrafo se ha modificado
+        row.textContent = count + (modifiedParagraphs.has(count) ? " *" : "");
 
-        if (node.tagName === "P") {
-            const text = (node.textContent || "").replace(/\u200B/g, "").trim();
-            if (text) {
-                // Añadir asterisco si el párrafo se ha modificado
-                row.textContent = count + (modifiedParagraphs.has(count) ? " *" : "");
-
-                // Si este párrafo es el analizado, le añadimos la clase
-                const blot = Quill.find(node);
-                const parStart = quill.getIndex(blot);
-                if (analyzedParagraphStart != null && analyzedParagraphStart === parStart) {
-                    row.classList.add("active-paragraph-number");
-                }
-                count++;
-            }
+        // Si este párrafo es el analizado, le añadimos la clase
+        const blot = Quill.find(node);
+        if (blot){
+        const parStart = quill.getIndex(blot);
+        const bounds = quill.getBounds(parStart);
+        const wrapper = document.querySelector(".editor-wrapper");
+        row.style.top = (bounds.top-wrapper.scrollTop) + "px";
+        if (analyzedParagraphStart != null && analyzedParagraphStart === parStart) {
+            row.classList.add("active-paragraph-number");
         }
-            container.appendChild(row);
+        }
+        count++;
+    container.appendChild(row);
     });
-    container.scrollTop = quill.root.scrollTop;
+    //container.style.height = quill.root.scrollHeight + "px";
     attachParagraphHover();
 }
 
 // Para que la sugerencia me aparezca en el número del contador de párrafo
 function attachParagraphHover() {
     const container = document.getElementById("paragraphNumbers");
-    const paragraphs = quill.root.querySelectorAll("p");
+    const paragraphs = quill.root.querySelectorAll("p, li");
 
     paragraphs.forEach((p, idx) => {
         const numberDiv = container.children[idx];
@@ -1612,7 +1684,7 @@ function highlightActiveParagraph(){
     if (!p) return;
 
     // Quitar clase a todos los párrafos
-    quill.root.querySelectorAll("p").forEach(p =>
+    quill.root.querySelectorAll("p, li").forEach(p =>
     p.classList.remove("active-paragraph"));
 
     // Activamos este párrafo
@@ -1630,7 +1702,7 @@ function highlightActiveParagraph(){
 
 function highlightParagraphFromFilter() {
     const paragraphFilter = document.getElementById("filterParagraph").value;
-    const paragraphs = quill.root.querySelectorAll("p");
+    const paragraphs = quill.root.querySelectorAll("p, li");
 
     // Quitar clase a todos
     paragraphs.forEach(p => p.classList.remove("active-paragraph"));
@@ -1735,7 +1807,7 @@ function acceptSuggestion(comment){
     lockComments();
 
     // Hacer que el párrafo aceptado se vea negro
-    const paragraphs = quill.root.querySelectorAll("p");
+    const paragraphs = quill.root.querySelectorAll("p, li");
     paragraphs.forEach(p => {
         const blot = Quill.find(p);
         const parStart = quill.getIndex(blot);
@@ -1761,7 +1833,7 @@ function updateGenerateSuggestionButton() {
 }
 
 function getTotalParagraphs() {
-    const paragraphs = quill.root.querySelectorAll("p");
+    const paragraphs = quill.root.querySelectorAll("p, li");
     let count = 0;
 
     paragraphs.forEach(p => {
@@ -1849,8 +1921,20 @@ function getSentenceIndexInParagraph(paragraphText, localIndex) {
 
 // Para marcar las oraciones
 function highlightError(index, length, type) {
-    let color = "#fff3a0";
-    quill.formatText(index, length, {background: color});
+    const colors = {
+        "morfosintaxis": "#F9E79F",
+        "léxico-semántico": "#AED6F1",
+        "pragmático-discursivo": "#A9DFBF",
+        "accesibilidad": "#F5CBA7",
+        "estadísticas": "#D7BDE2"
+    };
+    console.log(type);
+
+    const color = colors[type] || "#fff3a0";
+
+    quill.formatText(index, length, {
+        background: color
+    });
 }
 function clearHighlights() {
     quill.formatText(0, quill.getLength(), {background: false});
@@ -1879,7 +1963,7 @@ function highlightByType(type) {
         }
         const index = getUpdatedIndex(c);
         //highlightError(c.index, c.length, c.name);
-        highlightError(index, c.length, c.name);
+        highlightError(index, c.length, c.type);
     })
 }
 
@@ -1901,7 +1985,7 @@ function forceLockEditing() {
 
 // Párrafos que han cambiado
 function getChangedParagraphs() {
-    const paragraphs = quill.root.querySelectorAll("p");
+    const paragraphs = quill.root.querySelectorAll("p, li");
     let changes = [];
     let visibleIndex = 1;
     paragraphs.forEach(p => {
@@ -1925,7 +2009,7 @@ function updateProgress(current, total) {
     if (current===0){
     message.textContent = 'Analizando texto completo...';
     bar.style.width = '0%';
-    text.textContent = "0$";
+    text.textContent = "0%";
     }
     else {
         const percent = Math.round(((current+1) / ((total+1))) * 100);
@@ -1963,7 +2047,7 @@ function buildComment(item, paragraphText, paragraphIndex, paragraphstart){
 }
 
 function getUpdatedIndex(comment) {
-    const paragraphs = quill.root.querySelectorAll("p");
+    const paragraphs = quill.root.querySelectorAll("p, li");
 
     let visibleIndex = 1;
 

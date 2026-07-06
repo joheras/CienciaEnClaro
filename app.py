@@ -53,10 +53,10 @@ async def analizar_parrafo(texto, inicioParrafo, texto_completo=None):
         if oracion_larga(frase)[0]:
             oraciones_largas += 1
 
+    result.extend(resultado_estad)
+    result.extend(resultado_pragdis)
     result.extend(resultado_morf)
     result.extend(resultado_lexsem)
-    result.extend(resultado_pragdis)
-    result.extend(resultado_estad)
     errores_por_tipo = {}
     for item in resultado_morf:
         tipo = item["name"]
@@ -627,12 +627,14 @@ async def stadistics_text(texto):
     silabas = textstat.syllable_count(texto, lang="es")
     palabras = textstat.lexicon_count(texto, removepunct=True)
     frases = textstat.sentence_count(texto)
+    fernandez= round(fernandez_huerta(texto), 2)
+    pazos = round(szigriszt_pazos(texto), 2)
     resumen = {
         "id": str(uuid.uuid4()),
         "start": inicioParrafo,
         "end": finParrafo,
         "text": "Estadísticas del texto",
-        "description": f"El texto tiene:\n- {caracteres} caracteres\n- {silabas} sílabas\n- {palabras} palabras\n- {frases} frases",
+        "description": f"El texto tiene:\n- {caracteres} caracteres\n- {silabas} sílabas\n- {palabras} palabras\n- {frases} frases\n\nSobre legibilidad:\n- Fernández-Huerta: {fernandez}\n- Szigriszt-Pazos: {pazos}",
         "type": "estadistica",
         "name": "estadística"
     }
@@ -706,10 +708,10 @@ async def globales(texto):
     result = []
     estadisticas = await stadistics_text(texto)
     result.append(estadisticas)
-    pragmaticos = await llm_text(texto)
-    result.append(pragmaticos)
     legibilidad = await legibility_text(texto)
     result.append(legibilidad)
+    pragmaticos = await llm_text(texto)
+    result.append(pragmaticos)
     return result
 
 

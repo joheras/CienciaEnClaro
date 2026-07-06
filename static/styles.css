@@ -3,6 +3,7 @@ html, body {
   margin: 0;
   height: 100%;
   font-family: system-ui, sans-serif;
+    overflow: hidden;
 }
 
 /* Contenedor de 2 columnas: editor + panel lateral */
@@ -11,7 +12,8 @@ html, body {
   display: grid;
   grid-template-columns: 1fr 6px var(--left-panel-width);
   width: 100vw;
-  min-height: 100vh;;
+    height: 100vh;
+    overflow: hidden;
 }
 
 .resizer {
@@ -32,9 +34,9 @@ html, body {
 .panel.center {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+    height: 100vh;
+    overflow: hidden;
   min-height: 0;
-  overflow: hidden;
 }
 
 #toolbar {
@@ -43,9 +45,8 @@ html, body {
 }
 
 #editor {
-  flex: 1 1 0;
-  min-height: 0;
-  box-sizing: border-box;
+  flex: 1;
+    min-height: 0;
 }
 
 #result {
@@ -58,6 +59,7 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+    overflow-y: hidden;
 }
 
 #commentsPanel {
@@ -216,13 +218,7 @@ html, body {
 }
 
 .ql-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-  overflow-y: visible; /* ültimo añadido */
-  height: 100%;
+    border:none;
 }
 
 
@@ -312,26 +308,26 @@ html, body {
 
 /* Número de párrafo */
 .editor-wrapper {
-  display: flex;
-    height: 100%;
+    display: flex;
   flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  box-sizing: border-box;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 #paragraphNumbers {
-  padding: 10px 5px;
   background: #f7f7f7;
   color: #888;
   text-align: right;
   user-select: none;
   font-size: 14px;
   flex-shrink: 0;
-  width: 3%;
+  width: 50px;
   box-sizing: border-box;
   left: 0;
   overflow: hidden;
+    position: relative;
+    height: 100%;
 }
 
 #paragraphNumbers div {
@@ -339,19 +335,14 @@ html, body {
   align-items: flex-start;
   justify-content: flex-end;
   height: auto;
+    line-height: 1;
 }
 
 .ql-editor {
-  flex: 1;
-  min-height: 0;
-  box-sizing: border-box;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  font-size: 1rem;
-  line-height: 1.6;
-  padding: 12px;
-  overflow-y: auto; /* último añadido */
-  height: 100%; /* Último añadido */
+  min-height: 100%;
+    box-sizing: border-box;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 /* ===== Comentarios bloqueados ===== */
@@ -729,4 +720,53 @@ input:checked + .slider:before {
 
 .ql-snow .ql-picker.ql-size .ql-picker-label[data-value=""]::before {
   content: "16";
+}
+
+/* Botón fuerte re-analizar */
+#feedbackModeBtn.reanalyze-btn {
+    background-color: #0D8698;
+    border-color: #0D8698;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 0 8px rgba(217,83,79,0.4);
+}
+
+/* Comentarios deshabilitados cuando hay cambios pendientes que analizar */
+.comment-item.disabled-comment {
+    opacity: 0.5;
+    background-color: #f2f2f2;
+    color: #888;
+    pointer-events: none; /* opcional */
+}
+
+#downloadBtn img,
+#downloadPdfBtn img {
+    width: 17px;
+    height: 17px;
+    object-fit: contain;
+}
+
+.comment-item.comment-morfosintaxis {
+  border-left: 5px solid #F9E79F;
+  background: #fefdf3;
+}
+
+.comment-item.comment-lexico {
+  border-left: 5px solid #AED6F1;
+  background: #f4faff;
+}
+
+.comment-item.comment-pragmatico {
+  border-left: 5px solid #A9DFBF;
+  background: #f5fcf7;
+}
+
+.comment-item.comment-accesibilidad {
+  border-left: 5px solid #F5CBA7;
+  background: #fff8f4;
+}
+
+.comment-item.comment-estadisticas {
+  border-left: 5px solid #D7BDE2;
+  background: #faf8fd;
 }
