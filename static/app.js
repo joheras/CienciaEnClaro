@@ -230,7 +230,7 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
         // 📄 DOCX
         else if (name.endsWith(".docx")) {
             const arrayBuffer = await file.arrayBuffer();
-            
+
             const result = await mammoth.convertToHtml({ arrayBuffer });
 
             const html = result.value;
@@ -263,6 +263,7 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
 });
 
 document.getElementById("downloadBtn").addEventListener("click", async () => {
+    clearHighlights();
     const html = quill.root.innerHTML;
     //const { Document, Packer, Paragraph, TextRun } = window.docx;
     const content = `
@@ -318,6 +319,7 @@ document.getElementById("downloadBtn").addEventListener("click", async () => {
 
 
     document.getElementById("downloadPdfBtn").addEventListener("click", async () => {
+        clearHighlights();
         const {jsPDF} = window.jspdf;
         const pdf = new jsPDF({
             orientation: "portrait",
