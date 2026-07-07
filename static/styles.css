@@ -219,6 +219,7 @@ html, body {
 
 .ql-container {
     border:none;
+    font-size: 16px;
 }
 
 
@@ -345,6 +346,7 @@ html, body {
     box-sizing: border-box;
     word-break: break-word;
     overflow-wrap: break-word;
+    font-size: 16px;
 }
 
 /* ===== Comentarios bloqueados ===== */

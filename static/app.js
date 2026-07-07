@@ -83,6 +83,7 @@ quill = new Quill('#editor', {
 const editor = document.querySelector('.ql-editor');
 const numbers = document.getElementById('paragraphNumbers');
 
+quill.root.style.fontSize = "16px";
 
 editor.addEventListener('scroll', () => {
   numbers.scrollTop = editor.scrollTop;
