@@ -84,7 +84,8 @@ async def analizar_parrafo(texto, inicioParrafo, texto_completo=None):
 async def analyse_document(request: Request):
     data = await request.json()
     texto = data['texto']
-    comentarios = await globales(texto)
+    fin = data["intencionalidad"]
+    comentarios = await globales(texto, fin)
     return JSONResponse(content={
         "comentarios_globales": comentarios
     })
@@ -641,12 +642,12 @@ async def stadistics_text(texto):
     result.append(resumen)
     return {"global": result}
 
-async def llm_text(texto):
+async def llm_text(texto, fin):
     """ Dado un texto devuelve un resumen de dicho texto con los índices pragmático-discursivos que no cumplen las características deseadas evaluadas por un LLM"""
     result = []
     inicioParrafo = 0
     finParrafo = inicioParrafo + len(texto)
-    analisis = evaluate_text(texto)
+    analisis = evaluate_text(texto, fin)
     if analisis[0]['se_detecta']:
         resumen = {
             "id": str(uuid.uuid4()),
@@ -702,15 +703,26 @@ async def llm_text(texto):
             "name": "digresion"
         }
         result.append(resumen)
+    if analisis[5]['se_detecta']:
+        resumen = {
+            "id": str(uuid.uuid4()),
+            "start": inicioParrafo,
+            "end": finParrafo,
+            "text": "Falta de adecuación a la finalidad comunicativa.",
+            "description": analisis[5]['razonamiento'],
+            "type": "pragmático-discursivo",
+            "name": "finalidad"
+        }
+        result.append(resumen)
     return {"global":result}
 
-async def globales(texto):
+async def globales(texto, fin):
     result = []
     estadisticas = await stadistics_text(texto)
     result.append(estadisticas)
     legibilidad = await legibility_text(texto)
     result.append(legibilidad)
-    pragmaticos = await llm_text(texto)
+    pragmaticos = await llm_text(texto, fin)
     result.append(pragmaticos)
     return result
 

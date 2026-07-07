@@ -995,7 +995,7 @@ function renderComments(openCommentId = null){
             conectoresPunt:"Los conectores van acompañados de coma cuando aparecen en el inicio de la oración o entrecomillados si están en el interior de la oración.\n\nEjemplo\nAntes:\nSin embargo los resultados fueron concluyentes.\nDespués:\nSin embargo, los resultados fueron concluyentes.",
             secun: "Los párrafos que presentan más de una idea, temas laterales poco justificados o gran número de detalles resultan menos comprensibles.\nEn estos casos, se recomienda que se mantenga únicamente la información necesaria.\n\nEjemplo\nEliminar anécdotas o datos históricos que no contribuyen a la explicación principal.",
             destinatario: "El nivel de profundidad científica en los textos divulgativos debe adecuarse a un lector sin conocimiento universitario.\n\nEjemplo\nAntes:\nForzamiento radiactivo antropogénico.\nDespués:\nAumento del calor retenido por la atmósfera debido a actividades humanas.",
-            finalidad: "Cada finalidad comunicativa requiere un determinado uso de estrategias discursivas. Los textos divulgativos suelen tener finalidades comunicativas como: informar, persuadir, entretener/deleitar, enseñar/explicar, describir, aclarar, fomentar el interés, concienciar o aconsejar.\nSe debería ajustar el tono y la estructura del texto a los objetivos comunicativos previstos.\n\nEjemplo\nUn texto divulgativo debe priorizar la explicación antes que la discusión metodológica detallada.",
+            finalidad: first.description + "\nCada finalidad comunicativa requiere un determinado uso de estrategias discursivas. Los textos divulgativos suelen tener finalidades comunicativas como: informar, persuadir, entretener/deleitar, enseñar/explicar, describir, aclarar, fomentar el interés, concienciar o aconsejar.\nSe debería ajustar el tono y la estructura del texto a los objetivos comunicativos previstos.\n\nEjemplo\nUn texto divulgativo debe priorizar la explicación antes que la discusión metodológica detallada.",
             coherenciaInt: first.description + "\nLos textos requieren una coherencia interna entre las ideas y una prograsión temática. Para lograrlo, se debe evitar caer en contradicción, reiteraciones o saltos de información.",
             progresion: first.description + "\nLa información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva...) para que el mensaje se entienda mejor.\n\nEjemplo\nDefinición -> causas -> consecuencias -> soluciones. ",
             claridad: first.description + "\nLa información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva...) para que el mensaje se entienda mejor. Los conectores y marcadores discursivos ayudan a conseguirlo.\n\nEjemplo\nComo consecuencia de este aumento de temperatura, los glaciares pierden masa.",
@@ -1056,6 +1056,7 @@ function renderComments(openCommentId = null){
 
               activeCommentId = first.id;
               activeType = first.name;
+              clearHighlights();
               if (enableSentenceHighlight && (!first.global)) {
                   highlightByType(first.name);
               }
@@ -1949,7 +1950,6 @@ function highlightError(index, length, type) {
         "accesibilidad": "#F5CBA7",
         "estadísticas": "#D7BDE2"
     };
-    console.log(type);
 
     const color = colors[type] || "#fff3a0";
 
