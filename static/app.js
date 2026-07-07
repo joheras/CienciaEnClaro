@@ -230,7 +230,7 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
         // 📄 DOCX
         else if (name.endsWith(".docx")) {
             const arrayBuffer = await file.arrayBuffer();
-
+            
             const result = await mammoth.convertToHtml({ arrayBuffer });
 
             const html = result.value;
@@ -328,7 +328,9 @@ document.getElementById("downloadBtn").addEventListener("click", async () => {
         await pdf.html(editor, {
             margin: [40, 40, 40, 40],
             autoPaging: "text",
-            callback: function (pdf) {
+            width: 515,
+            windowWidth: editor.scrollWidth,
+            callback(pdf) {
                 pdf.save("texto.pdf");
             }
         });

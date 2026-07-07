@@ -340,6 +340,8 @@ html, body {
 
 .ql-editor {
   min-height: 100%;
+    width:auto; /* Nuevo */
+    max-width: 100%; /*Nuevo */
     box-sizing: border-box;
     word-break: break-word;
     overflow-wrap: break-word;

@@ -545,7 +545,7 @@ async def legibility_text(texto):
     inicio = 0
     resultados['global'] = []
     fernandezHuerta = indice_fernandezHuerta(texto)
-    if fernandezHuerta[0] < 60:
+    if (fernandezHuerta[0] < 60 and fernandezHuerta[0]!=0):
         resumen = {
             "id": str(uuid.uuid4()),
             "start": inicioParrafo,
@@ -558,7 +558,7 @@ async def legibility_text(texto):
         resultados['global'].append(resumen)
 
     szigrisztPazos = indice_szigriszt_pazos(texto)
-    if szigrisztPazos[0] < 50:
+    if (szigrisztPazos[0] < 50 and szigrisztPazos[0]!=0):
         resumen = {
             "id": str(uuid.uuid4()),
             "start": inicioParrafo,
