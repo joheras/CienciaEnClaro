@@ -263,8 +263,25 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
 });
 
 document.getElementById("downloadBtn").addEventListener("click", async () => {
-    const { Document, Packer, Paragraph, TextRun } = window.docx;
+    const html = quill.root.innerHTML;
+    //const { Document, Packer, Paragraph, TextRun } = window.docx;
+    const content = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+        </head>
+        <body>
+            ${html}
+        </body>
+        </html>
+    `;
+    // Convertir a DOCX
+    const converted = window.htmlDocx.asBlob(content);
 
+    // Descargar
+    saveAs(converted, "texto.docx");
+/*
     const delta = quill.getContents();
 
     const doc = new Document({
@@ -285,7 +302,20 @@ document.getElementById("downloadBtn").addEventListener("click", async () => {
                 });
             }).filter(Boolean)
         }]
+
     });
+       const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "texto.docx";
+    a.click();
+
+    URL.revokeObjectURL(url);
+ */
+});
+
 
     document.getElementById("downloadPdfBtn").addEventListener("click", async () => {
         const {jsPDF} = window.jspdf;
@@ -304,16 +334,7 @@ document.getElementById("downloadBtn").addEventListener("click", async () => {
         });
     });
 
-    const blob = await Packer.toBlob(doc);
-    const url = URL.createObjectURL(blob);
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "texto.docx";
-    a.click();
-
-    URL.revokeObjectURL(url);
-});
 
 // Para que al hacer click en un párrafo se actualice el filtro automáticamente
 document.querySelector(".ql-editor").addEventListener("click", (e) => {
