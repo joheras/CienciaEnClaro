@@ -2032,7 +2032,7 @@ function updateProgress(current, total) {
     const message = document.getElementById("loadingMessage");
     const percent = Math.round(((current) / ((total+1))) * 100);
     if (current!=total){
-        message.textContent = `Analizando párrafo ${current} de ${total}...`;
+        message.textContent = `Analizando párrafo ${current+1} de ${total}...`;
     } else {
         message.textContent = "Analizando texto completo...";
     }
