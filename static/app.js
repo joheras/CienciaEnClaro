@@ -444,6 +444,24 @@ async function reanalyzeModifiedParagraphs() {
 
     const textoCompleto = quill.getText();
 
+
+    for (const par of changed) {
+        const paragraphs = quill.root.querySelectorAll("p, li");
+        const p = Array.from(paragraphs).filter(x =>
+            x.textContent.replace(/\u200B/g, "").trim().length > 0)[par.index - 1];
+        if (!p) continue;
+        const start = quill.getIndex(Quill.find(p));
+        const data = await analyzeSingleParagraph(par.text, start);
+        comments = comments.filter(c => c.paragraph !== par.index);
+        data.forEach(item => {
+            comments.push(buildComment(item, par.text, par.index, start));
+        });
+        lastAnalyzedParagraphs[par.index] = par.text;
+        modifiedParagraphs.delete(par.index);
+        current++;
+        updateProgress(current, total);
+        await new Promise(r => setTimeout(r, 0));
+    }
     let globalComments = [];
     const globalResponse = await fetch("/analyse_document", {
         method: "POST",
@@ -466,25 +484,6 @@ async function reanalyzeModifiedParagraphs() {
     }));
 
     comments.push(...globalComments);
-
-
-    for (const par of changed) {
-        const paragraphs = quill.root.querySelectorAll("p, li");
-        const p = Array.from(paragraphs).filter(x =>
-            x.textContent.replace(/\u200B/g, "").trim().length > 0)[par.index - 1];
-        if (!p) continue;
-        const start = quill.getIndex(Quill.find(p));
-        const data = await analyzeSingleParagraph(par.text, start);
-        comments = comments.filter(c => c.paragraph !== par.index);
-        data.forEach(item => {
-            comments.push(buildComment(item, par.text, par.index, start));
-        });
-        lastAnalyzedParagraphs[par.index] = par.text;
-        modifiedParagraphs.delete(par.index);
-        current++;
-        updateProgress(current, total);
-        await new Promise(r => setTimeout(r, 0));
-    }
     hasPendingChanges = modifiedParagraphs.size>0;
     if (hasPendingChanges) {
         lockComments();
@@ -1170,28 +1169,6 @@ async function addCommentText() {
     let current = 0;
     updateProgress(0, total);
 
-    let globalComments = [];
-    const globalResponse = await fetch("/analyse_document", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            texto: textoCompleto,
-            intencionalidad: textIntentions
-        })
-    });
-    const globalData = await globalResponse.json();
-
-    globalComments = (globalData.comentarios_globales || []).flatMap(c => c.global || [])
-        .map(c=> ({
-        ...c,
-        global: true,
-        paragraphStart: -1,
-        index: -1,
-        localIndex: -1,
-        paragraph: -1
-    }));
-
-    comments = [...globalComments];
 
     for (let p of paragraphsArray) {
         const text = p.textContent.replace(/\u200B/g, "").trim();
@@ -1226,6 +1203,28 @@ async function addCommentText() {
         updateProgress(current, total);
         await new Promise(r => setTimeout(r, 0));
     }
+    let globalComments = [];
+    const globalResponse = await fetch("/analyse_document", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            texto: textoCompleto,
+            intencionalidad: textIntentions
+        })
+    });
+    const globalData = await globalResponse.json();
+
+    globalComments = (globalData.comentarios_globales || []).flatMap(c => c.global || [])
+        .map(c=> ({
+        ...c,
+        global: true,
+        paragraphStart: -1,
+        index: -1,
+        localIndex: -1,
+        paragraph: -1
+    }));
+
+    comments.push(...globalComments);
     calcularPorcentajesPorParrafo();
 
     updateFilterOptions();
@@ -2028,22 +2027,21 @@ function getChangedParagraphs() {
 }
 
 function updateProgress(current, total) {
-    const percent = Math.round((current/total) * 100);
     const bar = document.getElementById("progressBar");
     const text = document.getElementById("progressText");
     const message = document.getElementById("loadingMessage");
-    if (current===0){
-    message.textContent = 'Analizando texto completo...';
-    bar.style.width = '0%';
-    text.textContent = "0%";
+    const percent = Math.round(((current) / ((total+1))) * 100);
+    if (current!=total){
+        message.textContent = `Analizando párrafo ${current} de ${total}...`;
+    } else {
+        message.textContent = "Analizando texto completo...";
     }
-    else {
-        const percent = Math.round(((current+1) / ((total+1))) * 100);
-        message.textContent = `Analizado párrafo ${current} de ${total}...`;
 
-        bar.style.width = `${percent}%`;
-        text.textContent = `${percent}%`;
-    }
+
+    bar.style.width = `${percent}%`;
+    text.textContent = `${percent}%`;
+
+
 }
 function resetProgress() {
     document.getElementById("progressBar").style.width = "0%";

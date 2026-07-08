@@ -54,9 +54,9 @@ async def analizar_parrafo(texto, inicioParrafo, texto_completo=None):
             oraciones_largas += 1
 
     result.extend(resultado_estad)
-    result.extend(resultado_pragdis)
     result.extend(resultado_morf)
     result.extend(resultado_lexsem)
+    result.extend(resultado_pragdis)
     errores_por_tipo = {}
     for item in resultado_morf:
         tipo = item["name"]
