@@ -238,16 +238,16 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                     }
                     #result.append(resumen)
 
-                if falta_concordancia(frase):
-                    resumen = {
-                        "id": str(uuid.uuid4()),
-                        "start": inicioFrase,
-                        "end": finFrase,
-                        "text": "Falta de concordancia",
-                        "description": f"No debe haber faltas de concordancia.",
-                        "type": "morfosintaxis",
-                        "name": "concordancia"
-                    }
+                #if falta_concordancia(frase):
+                #    resumen = {
+                #        "id": str(uuid.uuid4()),
+                #       "start": inicioFrase,
+                #        "end": finFrase,
+                #        "text": "Falta de concordancia",
+                #        "description": f"No debe haber faltas de concordancia.",
+                #        "type": "morfosintaxis",
+                #        "name": "concordancia"
+                #    }
                     #result.append(resumen)
 
                 relativoLejos = relativo_lejano(frase)
@@ -610,7 +610,7 @@ async def stadistics_paragraph(texto, inicioParrafo):
         "start": inicioParrafo,
         "end": finParrafo,
         "text": "Estadísticas del párrafo",
-        "description": f"El párrafo tiene:\n- {caracteres} caracteres\n- {silabas} sílabas\n- {palabras} palabras\n- {frases} frases",
+        "description": f"El párrafo tiene:\n- {caracteres} caracteres\n- {silabas} sílabas\n- {palabras} palabras\n- {frases} oraciones",
         "type": "estadistica",
         "name": "estadística"
     }

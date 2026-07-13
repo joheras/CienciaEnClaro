@@ -311,86 +311,86 @@ def concordancia(texto):
     errores = []
     doc = nlp(texto)
     for token in doc:
-        # Determinante y sustantivo
-        if token.pos_ == "DET":
-            if token.head.pos_ == "ADJ":
-                head = "adjetivo"
-            elif token.head.pos_ == "NOUN":
-                head = "sustantivo"
-            elif token.head.pos_ == "VERB":
-                head = "verbo"
-            elif token.head.pos_ == "PRON":
-                head = "pronombre"
-            else:
-                head = str(token.head.pos_)
-            if token.morph.get("Gender") and token.head.morph.get("Gender"):
-                if token.morph.get("Gender") != token.head.morph.get("Gender"):
-                    errores.append(f"Determinante ({token.text}) y {head} ({token.head.text}) no concordan en género")
-            if token.morph.get("Number") and token.head.morph.get("Number"):
-                if token.morph.get("Number") != token.head.morph.get("Number"):
-                    errores.append(f"Determinante ({token.text}) y {head} ({token.head.text}) no concordan en número")
+            # Determinante y sustantivo
+            if token.pos_ == "DET":
+                if token.head.pos_ == "ADJ":
+                    head = "adjetivo"
+                elif token.head.pos_ == "NOUN":
+                    head = "sustantivo"
+                elif token.head.pos_ == "VERB":
+                    head = "verbo"
+                elif token.head.pos_ == "PRON":
+                    head = "pronombre"
+                else:
+                    head = str(token.head.pos_)
+                if token.morph.get("Gender") and token.head.morph.get("Gender"):
+                    if token.morph.get("Gender") != token.head.morph.get("Gender"):
+                        errores.append(f"Determinante ({token.text}) y {head} ({token.head.text}) no concordan en género")
+                if token.morph.get("Number") and token.head.morph.get("Number"):
+                    if token.morph.get("Number") != token.head.morph.get("Number"):
+                        errores.append(f"Determinante ({token.text}) y {head} ({token.head.text}) no concordan en número")
 
-        # Adjetivo y sustantivo
-        elif token.pos_ == "ADJ" and (token.dep_ == "amod" or token.dep_ == "flat" or token.dep_ == "ROOT"):
-            # Para evitar que, por problemas de spacy, detecte un sustantivo como nombre propio
-            # Comprobar si se trata de nombre propio
-            if token.head.pos_ == "PROPN" and token.text.islower():
-                errores.append(f"Posible error de concordancia con el {head} ({token.head.text})")
+            # Adjetivo y sustantivo
+            elif token.pos_ == "ADJ" and (token.dep_ == "amod" or token.dep_ == "flat" or token.dep_ == "ROOT"):
+                # Para evitar que, por problemas de spacy, detecte un sustantivo como nombre propio
+                # Comprobar si se trata de nombre propio
+                if token.head.pos_ == "PROPN" and token.text.islower():
+                    errores.append(f"Posible error de concordancia con el {head} ({token.head.text})")
 
-            if token.head.pos_ == "ADJ":
-                head = "adjetivo"
-            elif token.head.pos_ == "NOUN":
-                head = "sustantivo"
-            elif token.head.pos_ == "VERB":
-                head = "verbo"
-            elif token.head.pos_ == "PRON":
-                head = "pronombre"
-            else:
-                head = str(token.head.pos_)
-            if token.morph.get("Gender") and token.head.morph.get("Gender"):
-                if token.morph.get("Gender") != token.head.morph.get("Gender"):
-                    errores.append(f"Adjetivo ({token.text}) y {head} ({token.head.text}) no concordan en género")
-            if token.morph.get("Number") and token.head.morph.get("Number"):
-                if token.morph.get("Number") != token.head.morph.get("Number"):
-                    errores.append(f"Adjetivo ({token.text}) y {head} ({token.head.text}) no concordan en número")
+                if token.head.pos_ == "ADJ":
+                    head = "adjetivo"
+                elif token.head.pos_ == "NOUN":
+                    head = "sustantivo"
+                elif token.head.pos_ == "VERB":
+                    head = "verbo"
+                elif token.head.pos_ == "PRON":
+                    head = "pronombre"
+                else:
+                    head = str(token.head.pos_)
+                if token.morph.get("Gender") and token.head.morph.get("Gender"):
+                    if token.morph.get("Gender") != token.head.morph.get("Gender"):
+                        errores.append(f"Adjetivo ({token.text}) y {head} ({token.head.text}) no concordan en género")
+                if token.morph.get("Number") and token.head.morph.get("Number"):
+                    if token.morph.get("Number") != token.head.morph.get("Number"):
+                        errores.append(f"Adjetivo ({token.text}) y {head} ({token.head.text}) no concordan en número")
 
-        elif token.pos_ == "NOUN":
-            if token.head.pos_ == "ADJ":
-                head = "adjetivo"
-            elif token.head.pos_ == "NOUN":
-                head = "sustantivo"
-            elif token.head.pos_ == "VERB":
-                head = "verbo"
-            elif token.head.pos_ == "PRON":
-                head = "pronombre"
-            else:
-                head = str(token.head.pos_)
-            if token.morph.get("Gender") and token.head.morph.get("Gender"):
-                if token.morph.get("Gender") != token.head.morph.get("Gender"):
-                    errores.append(f"Sustantivo ({token.text}) y {head} ({token.head.text}) no concordan en género")
-            if token.morph.get("Number") and token.head.morph.get("Number"):
-                if token.morph.get("Number") != token.head.morph.get("Number"):
-                    errores.append(f"Sustantivo ({token.text}) y {head} ({token.head.text}) no concordan en número")
+            elif token.pos_ == "NOUN":
+                if token.head.pos_ == "ADJ":
+                    head = "adjetivo"
+                elif token.head.pos_ == "NOUN":
+                    head = "sustantivo"
+                elif token.head.pos_ == "VERB":
+                    head = "verbo"
+                elif token.head.pos_ == "PRON":
+                    head = "pronombre"
+                else:
+                    head = str(token.head.pos_)
+                if token.morph.get("Gender") and token.head.morph.get("Gender"):
+                    if token.morph.get("Gender") != token.head.morph.get("Gender"):
+                        errores.append(f"Sustantivo ({token.text}) y {head} ({token.head.text}) no concordan en género")
+                if token.morph.get("Number") and token.head.morph.get("Number"):
+                    if token.morph.get("Number") != token.head.morph.get("Number"):
+                        errores.append(f"Sustantivo ({token.text}) y {head} ({token.head.text}) no concordan en número")
 
 
-        # Sujeto y verbo
-        elif token.dep_ == "nsubj":
-            if token.head.pos_ == "ADJ":
-                head = "adjetivo"
-            elif token.head.pos_ == "NOUN":
-                head = "sustantivo"
-            elif token.head.pos_ == "VERB":
-                head = "verbo"
-            elif token.head.pos_ == "PRON":
-                head = "pronombre"
-            else:
-                head = str(token.head.pos_)
-            if token.morph.get("Person") and token.head.morph.get("Person"):
-                if token.morph.get("Person") != token.head.morph.get("Person"):
-                    errores.append(f"Sujeto ({token.text}) y {head} ({token.head.text}) no concordan en persona")
-            if token.morph.get("Number") and token.head.morph.get("Number"):
-                if token.morph.get("Number") != token.head.morph.get("Number"):
-                    errores.append(f"Sujeto ({token.text}) y {head} ({token.head.text}) no concordan en número")
+            # Sujeto y verbo
+            elif token.dep_ == "nsubj":
+                if token.head.pos_ == "ADJ":
+                    head = "adjetivo"
+                elif token.head.pos_ == "NOUN":
+                    head = "sustantivo"
+                elif token.head.pos_ == "VERB":
+                    head = "verbo"
+                elif token.head.pos_ == "PRON":
+                    head = "pronombre"
+                else:
+                    head = str(token.head.pos_)
+                if token.morph.get("Person") and token.head.morph.get("Person"):
+                    if token.morph.get("Person") != token.head.morph.get("Person"):
+                        errores.append(f"Sujeto ({token.text}) y {head} ({token.head.text}) no concordan en persona")
+                if token.morph.get("Number") and token.head.morph.get("Number"):
+                    if token.morph.get("Number") != token.head.morph.get("Number"):
+                        errores.append(f"Sujeto ({token.text}) y {head} ({token.head.text}) no concordan en número")
 
     if errores == []:
         return True, texto
