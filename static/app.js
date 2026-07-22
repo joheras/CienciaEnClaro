@@ -124,6 +124,9 @@ window.addEventListener('beforeunload', function(e){
     }
 });
 
+//Al hacer click en una palabra resaltada se abre el popup de sugerencias
+quill.root.addEventListener("click", handleHighlightedWordClick);
+
 
 const resizer = document.getElementById('panelResizer');
 const container = document.querySelector('.container');
@@ -217,7 +220,7 @@ document.getElementById("generateSuggestionBtn").style.display="none";
 document.querySelector(".highlight-switch-block").style.display = "none";
 document.getElementById("filterParagraph").addEventListener("change", () => {
     clearHighlights();
-    renderComments(activeCommentId);
+    renderComments();
     highlightParagraphFromFilter();
 
     if (activeType) {
@@ -539,7 +542,7 @@ quill.on("text-change", (delta, oldDelta, source) => {
     });
     updateParagraphNumbers();
     updateAnalyzeButton();
-    renderComments(activeCommentId);
+    renderComments();
 });
 
 //document.getElementById("addCommentBtn").onclick = addCom;
@@ -628,7 +631,7 @@ async function reanalyzeModifiedParagraphs() {
 
     document.getElementById("filterParagraph").value="all";
     updateFilterOptions();
-    renderComments(activeCommentId);
+    renderComments();
     updateParagraphNumbers();
     updateAnalyzeButton();
     overlay.style.display = "none";
@@ -660,7 +663,7 @@ function getDocumentStructureSignature() {
 
 document.querySelector(".ql-editor").setAttribute("spellcheck", "true");
 document.getElementById("filterType").addEventListener("change", () => {
-    renderComments(activeCommentId);
+    renderComments();
 })
 
 updateParagraphNumbers();
@@ -698,7 +701,8 @@ const originalTextArea = document.getElementById('originalText');
 const suggestedTextArea = document.getElementById('suggestedText');
 const highlightSwitch = document.getElementById("toggleHighlight");
 
-
+/*
+De cuando lo hacíamos con el párrafo
 generateBtn.addEventListener('click', async () => {
     const paragraphFilter = document.getElementById("filterParagraph").value;
     if (paragraphFilter === "all") return;
@@ -736,6 +740,8 @@ generateBtn.addEventListener('click', async () => {
     // Generamos sugerencia
     await generateSuggestion(currentModalComment);
 })
+
+ */
 // Cerar modal sin cambios
 closeModalBtn.addEventListener('click', ()=>{
     modal.style.display="none";
@@ -748,6 +754,35 @@ newSuggestionBtn.addEventListener('click', async()=>{
 });
 // Usar sugerencia
 useSuggestionBtn.addEventListener('click', () => {
+console.log(currentModalComment);
+    if (!currentModalComment) return;
+    const start = getUpdatedSentenceIndex(currentModalComment);
+    console.log("click");
+    console.log(start);
+    const originalSentence = currentModalComment.oracion;
+    const newSentence = currentModalComment.suggestion;
+
+    const Delta = Quill.import("delta");
+    console.log({
+        start,
+        originalSentence,
+        newSentence,
+        suggestedValue: suggestedTextArea.value
+    });
+    quill.updateContents(
+        new Delta()
+            .retain(start)
+            .delete(originalSentence.length)
+            .insert(newSentence)
+    );
+    suggestionModal.style.display = "none";
+    currentModalComment = null;
+    updateParagraphNumbers();
+    updateParagraphFilter();
+    hasPendingChanges=true;
+    lockComments();
+    /*
+    // Cuando era del párrafo completo
     if (!currentModalComment) return;
     const start = currentModalComment.index;
     const text = quill.getText();
@@ -770,6 +805,8 @@ useSuggestionBtn.addEventListener('click', () => {
     updateParagraphFilter();
     hasPendingChanges = true;
     lockComments();
+
+     */
 });
 
 
@@ -976,7 +1013,7 @@ const label = document.getElementById("filterParagraphLabel");
 select.addEventListener("change", updateParagraphLabel);
 
 
-function renderComments(openCommentId = null){
+function renderComments(){
     if (appMode === "write") return;
 
     const filter = document.getElementById("filterType").value;
@@ -1003,6 +1040,13 @@ function renderComments(openCommentId = null){
         if (!info) return true;
         return !/^H[1-6]$/.test(info.tag);
     });
+
+    const existsType = filtered.some(c => c.name === activeType);
+    if (!existsType){
+        activeType = null;
+        activeCommentId = null;
+        clearHighlights();
+    }
 
     // Filtro por tipo
     if (filter != "todos") {
@@ -1032,7 +1076,7 @@ function renderComments(openCommentId = null){
         panel.style.display = "block";
     }
 
-    const activeComment = comments.find(c => c.id === openCommentId);
+    const activeComment = comments.find(c => c.id === activeCommentId);
 
 
     // Para que salgan al principio los globales
@@ -1207,7 +1251,7 @@ function renderComments(openCommentId = null){
             digresion: first.description + "\nLos textos que presentan digresiones o se desvían del tema principal son más difíciles de entender.\n\nEjemplo\nSi el texto explica el cambio climático, evite incluir extensas descripciones sobre la historia de la navegación, salvo que tengan relación directa con el tema tratado.",
             enum: "Los elementos de una lista o enumeración deben presentar estructuras gramaticales similares como, por ejemplo, empezar por un sustantivo, un artículo o un infinitivo. De ese modo, se consigue una lectura más rápida y sencilla.\n\nEjemplo\nAntes:\n- Reducir emisiones.\n- La protección de bosuqes.\n- Que se mejore la eficiencia energética.\nDespués:\n- Reducir emisiones.\n- Proteger bosques.\n- Mejorar la eficiencia energética.",
             enumIncos: "Es recomendable que las listas o enumeraciones del texto mantengas siempre el mismo criterio y eviten utilizar números, letras o símbolos de forma arbitraria.",
-            baul: "Es recomendable evitar el uso de palabras baúl o palabras imprecisas para evitar malentendidos. Estas palabras pueden sustituirse por términos más concretos y específicos.\n\nEjemplo\nAntes:\nSe observaron varias cosas en el oceáno debido al cambio climático.\nDespués:\nLos sensores datelitales observaron un aumento dde 1,5ºC en la temperatura del océano debido al cambio climático.",
+            baul: "Es recomendable evitar el uso de palabras baúl o palabras imprecisas para evitar malentendidos. Estas palabras pueden sustituirse por términos más concretos y específicos.\nSi clicas sobre una palabra marcada se generará una sugerencia.\n\nEjemplo\nAntes:\nSe observaron varias cosas en el oceáno debido al cambio climático.\nDespués:\nLos sensores datelitales observaron un aumento dde 1,5ºC en la temperatura del océano debido al cambio climático.",
             rodeos: "Las perífrasis y locuciones innecesarias alargan la oración sin aportar un significado adicional. Por ello, se recomienda sustituir las expresiones complejas por verbos directos.\n\nEjemplo\nAntes:\nLlevar a cabo una evaluación.\nDespués:\nEvaluar.",
             extranjerismo: "Los extranjerismos, latinismos o arcaísmos resultan, con frecuencia, expresiones poco habituales en el español actual. Por ello, se recomienda que se sustituyan por equivalencias más actuales cuando sea posible.\n\nEjemplo\nAntes:\nAd hoc.\nDespués:\nPara este fin.",
             latinismo: "Los extranjerismos, latinismos o arcaísmos resultan, con frecuencia, expresiones poco habituales en el español actual. Por ello, se recomienda que se sustituyan por equivalencias más actuales cuando sea posible.\n\nEjemplo\nAntes:\nAd hoc.\nDespués:\nPara este fin.",
@@ -1276,14 +1320,13 @@ if (activeCommentId != null) {
               if (enableSentenceHighlight && !isGlobalStatistics) {
                   highlightByType(first.name);
               }
-              renderComments(activeCommentId);
+              renderComments();
         };
 
 
-        const groupHasActive = group.some(c => c.id === openCommentId);
+        const groupHasActive = group.some(c => c.id === activeCommentId);
 
-        const isActiveGroup = groupHasActive || (activeComment ? group[0].name === activeComment.name : false);
-
+        const isActiveGroup = group[0].name === activeType;
         if (isActiveGroup){
             desc.style.display = "block";
         }
@@ -1345,7 +1388,7 @@ function lockComments() {
   //if (appMode === "feedback") {
   //    document.getElementById("recalculateBtn").style.display = "block";
   //}
-  renderComments(activeCommentId);
+  renderComments();
 }
 
 function unlockComments() {
@@ -1462,7 +1505,7 @@ async function addCommentText() {
     calcularPorcentajesPorParrafo();
 
     updateFilterOptions();
-    renderComments(activeCommentId);
+    renderComments();
 
     hasPendingChanges = false;
     updateAnalyzeButton();
@@ -2012,6 +2055,8 @@ async function generateSuggestion(comment){
     // Mostrar overlay de bloqueo
     const overlay = document.getElementById("suggestionOverlay");
     overlay.style.display = "flex";
+    currentModalComment.sugerencia = "";
+    suggestedText.innerHTML = "";
     try {
         // Generamos la sugerencia
         const response = await fetch("/generar_sugerencia", {
@@ -2023,19 +2068,23 @@ async function generateSuggestion(comment){
                 criterio: comment.name
             })
         });
+        if (!response.ok){
+            console.error(await response.text());
+            return;
+        }
         const data = await response.json();
-        let sugerencia = data.corrected_sentence || "Sugerencia automática";
-
+        let sugerencia = data.sugerencia;
+        currentModalComment.suggestion = sugerencia;
         // Limpieza
         sugerencia = sugerencia.trim().replace(/^"""/, "").replace(/"""$/, "").replace(/^```/, "").replace(/```$/, "").replace(/^\s+|\s+$/g, "").replace(/\n{2,}/g, "\n").replace(/^\n+|\n+$/g, "");
-        suggestedTextArea.value = sugerencia;
+        suggestedText.innerHTML = highlightSuggestedSentence(comment.oracion, sugerencia, comment.palabra);
     } catch (err) {
         console.error("Error generando sugerencia:",err);
         suggestedTextArea.value = "error generando sugerencia";
     }
     overlay.style.display ="none";
 }
-
+/*
 function applyParagraphSuggestion(comment){
     if (!comment || !comment.suggestion) return;
 
@@ -2064,6 +2113,8 @@ function applyParagraphSuggestion(comment){
     updateParagraphNumbers();
     updateParagraphFilter();
 }
+
+ */
 
 // Para cerrar el popup de la sugerencia
 function checkPopupClose(){
@@ -2096,7 +2147,7 @@ function acceptSuggestion(comment){
     });
 
     // Refrescamos la lista de comentarios
-    renderComments(activeCommentId);
+    renderComments();
 }
 
 function updateGenerateSuggestionButton() {
@@ -2323,7 +2374,10 @@ function buildComment(item, paragraphText, paragraphIndex, paragraphstart){
         texto: paragraphText,
         paragraph: paragraphIndex,
         name: item.name,
-        suggestion: item.suggestion
+        suggestion: item.suggestion,
+        oracion: item.oracion,
+        palabra: item.palabra,
+        inicioFrase: item.inicioFrase
     };
 }
 
@@ -2360,6 +2414,28 @@ function getUpdatedIndex(comment) {
     return null;
 }
 
+
+function getUpdatedSentenceIndex(comment) {
+    const paragraphs = quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6");
+
+    let visibleIndex = 1;
+
+    for (const p of paragraphs) {
+        const text = p.textContent.replace(/\u200B/g, "").trim();
+        if (!text) continue;
+
+        if (visibleIndex === comment.paragraph) {
+            const blot = Quill.find(p);
+            const paragraphStart = quill.getIndex(blot);
+
+            return paragraphStart + (comment.inicioFrase - comment.paragraphStart);
+        }
+
+        visibleIndex++;
+    }
+
+    return null;
+}
 function showIntentionalityModal() {
 
     const modal = document.getElementById("intentionalityModal");
@@ -2427,4 +2503,97 @@ document.getElementById("cancelIntentionalityBtn").addEventListener("click", () 
 
 function closeIntentionalityModal() {
     document.getElementById("intentionalityModal").style.display = "none";
+}
+
+async function handleHighlightedWordClick(event) {
+    if (activeType == null) {
+        console.log("Sale: activeCommentId es null");
+        return;
+    }
+
+    const selection = document.getSelection();
+    if (!selection.rangeCount) {
+        console.log("Sale: no hay selección");
+        return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const blot = Quill.find(event.target, true);
+    if (!blot) {
+        console.log("Sale: blot es null", range.startContainer);
+        return;
+    }
+    const index = quill.getIndex(blot) + range.startOffset;
+
+    console.log("índice clic:", index);
+    comments.forEach(c => {
+    if (c.name !== activeType) return;
+
+    const start = getUpdatedIndex(c);
+    const end = start + c.length +1;
+
+
+
+    console.log({
+        palabra: c.palabra,
+        start,
+        end,
+        index,
+        dentro: index >= start && index <= end
+    });
+});
+    const comment = comments.find( c => {
+        if (c.name!==activeType) return false;
+        if (c.suggestion!=="true") return false;
+        const start = getUpdatedIndex(c);
+        const end = start + c.length;
+        return index >= start && index < end;
+    }
+    );
+    if (!comment) return;
+
+    currentModalComment = comment;
+    originalText.innerHTML = highlightOriginalSentence(comment.oracion, comment.palabra);
+    suggestedTextArea.value = "";
+
+    modal.style.display = "block";
+    const criterion = document.getElementById("suggestionCriterion");
+    criterion.textContent = `(${comment.text})`;
+    console.log(comment);
+    await generateSuggestion(comment);
+}
+
+// Para pintar las palabras cambiadas en las sugerencias
+function escapeRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function highlightOriginalSentence(sentence, word) {
+    const regex = new RegExp(`\\b${escapeRegExp(word)}\\b`, "i");
+
+    return sentence.replace(regex,
+        `<span class="original-word">$&</span>`);
+}
+function highlightSuggestedSentence(original, suggested, oldWord) {
+
+    const oldWords = original.split(/\s+/);
+    const newWords = suggested.split(/\s+/);
+
+    let replacement = null;
+
+    for(let i=0;i<Math.min(oldWords.length,newWords.length);i++){
+        if(oldWords[i] !== newWords[i]){
+            replacement = newWords[i];
+            break;
+        }
+    }
+
+    if(!replacement){
+        return suggested;
+    }
+
+    return suggested.replace(
+        replacement,
+        `<span class="suggested-word">${replacement}</span>`
+    );
 }

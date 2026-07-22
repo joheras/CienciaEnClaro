@@ -53,12 +53,7 @@ Oración:
 Palabra:
 {palabra}
 
-Devuelve la respuesta en formato JSON con esta estructura:
-{{
-"old_word": "...",
-"new_word": "...",
-"corrected_sentence": "..."
-}}
+Devuelve solo la oración modificando la palabra baúl por la alternativa.
     """)
 
     response: ChatResponse = chat(
@@ -73,5 +68,5 @@ Devuelve la respuesta en formato JSON con esta estructura:
         ],
     think= False
     )
-    sugerencia = json.loads(response.message.content)
+    sugerencia = response.message.content.strip()
     return sugerencia

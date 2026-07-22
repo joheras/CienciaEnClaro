@@ -356,7 +356,8 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "name": "extranjerismo",
                     "suggestion": "true",
                     "oracion": oracion,
-                    "palabra": palabra
+                    "palabra": palabra,
+                    "inicioFrase":inicioParrafo + sent.start_char
                 }
                 result.append(resumen)
 
@@ -366,13 +367,14 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "id": str(uuid.uuid4()),
                     "start": inicioPalabra,
                     "end": finPalabra,
-                    "text": "Baul",
+                    "text": "palabras baúl",
                     "description": f"Se debe evitar el abuso de palabra baúl.",
                     "type": "léxico-semántico",
                     "name": "baul",
                 "suggestion": "true",
                     "oracion": oracion,
-                    "palabra": palabra
+                    "palabra": palabra,
+                    "inicioFrase":inicioParrafo + sent.start_char
                 }
                 result.append(resumen)
             if palabraLarga(palabra):
@@ -386,7 +388,8 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "name": "largas",
                 "suggestion": "true",
                     "oracion": oracion,
-                    "palabra": palabra
+                    "palabra": palabra,
+                    "inicioFrase":inicioParrafo + sent.start_char
                 }
                 result.append(resumen)
             if latinism(palabra):
@@ -400,7 +403,8 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "name": "latinismo",
                 "suggestion": "true",
                     "oracion": oracion,
-                    "palabra": palabra
+                    "palabra": palabra,
+                    "inicioFrase":inicioParrafo + sent.start_char
                 }
                 result.append(resumen)
             if tecnisimos(palabra):
@@ -414,7 +418,8 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "name": "tecnicismo",
                 "suggestion": "true",
                     "oracion": oracion,
-                    "palabra": palabra
+                    "palabra": palabra,
+                    "inicioFrase":inicioParrafo + sent.start_char
                 }
                 result.append(resumen)
 
@@ -470,7 +475,7 @@ async def pragdisc_paragraph(texto, inicioParrafo):
                     "description": f"Se debe incentivar el uso de conectores variados.",
                     "type": "pragmático-discursivo",
                     "name": "conectorRepe",
-                "suggestion": "true"
+                "suggestion": "false"
                 }
                 result.append(resumen)
 
@@ -773,12 +778,17 @@ async def globales(texto, fin):
 
 @app.post("/generar_sugerencia")
 async def generar_sugerencia(request: Request):
-    data = await request.json()
-    oracion = data.get("oracion")
-    palabra = data.get("palabra")
-    criterio = data.get("criterio")
-    result = obtenerSugerencia(oracion, palabra, criterio)
-    return JSONResponse({"sugerencia": result})
+    try:
+        data = await request.json()
+        oracion = data.get("oracion")
+        palabra = data.get("palabra")
+        criterio = data.get("criterio")
+        result = obtenerSugerencia(oracion, palabra, criterio)
+        return JSONResponse({"sugerencia": result})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise
 
 if __name__ == '__main__':
     uvicorn.run(app, host="0.0.0.0", port=8000)

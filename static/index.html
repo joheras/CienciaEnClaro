@@ -221,18 +221,19 @@
 
     <!-- popup para la sugerencia del párrafo -->
     <div id="suggestionModal" class="modal">
-        <div class="modal-content">
+        <div class="suggestion-modal-content">
             <div class="modal-header">
                 <h2>Generar sugerencia</h2>
+                    <h2 id="suggestionCriterion"></h2>
             </div>
             <div class="modal-body">
                 <div class="panel">
                     <h3>Texto original</h3>
-                    <textarea id="originalText" readonly></textarea>
+                    <div id="originalText" class="suggestion-text"></div>
                 </div>
                 <div class="panel">
                     <h3>Sugerencia</h3>
-                    <textarea id="suggestedText"></textarea>
+                    <div id="suggestedText" class="suggestion-text"></div>
                 </div>
             </div>
             <div class="modal-footer">
