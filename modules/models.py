@@ -1,7 +1,8 @@
 from ollama import chat
 from ollama import ChatResponse
+import json
 
-def obtenerSugerencia(comment):
+def obtenerSugerenciaParrafo(comment):
     texto = comment.get("texto", "")
     instruccion = (f"""
     Reescribe en castellano el siguiente párrafo manteniendo toda la información. Cambia lo mínimo posible.
@@ -32,3 +33,45 @@ def obtenerSugerencia(comment):
     sugerencia = response.message.content.strip()
     return sugerencia
 
+def obtenerSugerencia(oracion, palabra, criterio):
+    instruccion = (f"""
+    Recibirás una oración y una palabra marcada como {criterio}.
+
+Tu tarea consiste únicamente en sustituir esa palabra por otra más específica.
+
+Reglas:
+- No cambies ninguna otra palabra.
+- Mantén el mismo significado.
+- Conserva el mismo tiempo verbal.
+- Conserva el mismo orden de la oración.
+- Si es necesario, adapta únicamente el género o el número del nuevo término.
+- Si no existe una alternativa mejor, responde exactamente "SIN_CAMBIOS".
+
+Oración:
+{oracion}
+
+Palabra:
+{palabra}
+
+Devuelve la respuesta en formato JSON con esta estructura:
+{{
+"old_word": "...",
+"new_word": "...",
+"corrected_sentence": "..."
+}}
+    """)
+
+    response: ChatResponse = chat(
+        #model = "nichonauta/pepita-2-2b-it-v5",
+        #model = "mistral",
+        model = "gemma4:e4b",
+        messages = [
+            {
+                "role": "user",
+                "content": instruccion
+            }
+        ],
+    think= False
+    )
+    sugerencia = json.loads(response.message.content)
+    return sugerencia

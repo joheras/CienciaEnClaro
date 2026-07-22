@@ -141,7 +141,8 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                 "text": "Párrafo-oración",
                 "description": f"El párrafo es demasiado corto, debería tener mínimo dos oraciones y tiene {parrafoCorto[1]}.",
                 "type": "morfosintaxis",
-                "name": "parrafoCorto"
+                "name": "parrafoCorto",
+                "suggestion": "false"
             }
             result.append(resumen)
         parrafoLargo = parrafo_largo(texto)
@@ -153,7 +154,8 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                 "text": "Párrafo largo",
                 "description": f"El párrafo es demasiado largo, debería tener máximo cinco oraciones y tiene {parrafoLargo[1]}.",
                 "type": "morfosintaxis",
-                "name": "parrafoLargo"
+                "name": "parrafoLargo",
+                "suggestion": "false"
             }
             result.append(resumen)
         eliptico = sujeto_eliptico(texto)
@@ -165,7 +167,8 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                 "text": "Sujeto elíptico reiterado",
                 "description": f"El párrafo contiene varias oraciones seguidas con sujeto elíptico.",
                 "type": "morfosintaxis",
-                "name": "eliptico"
+                "name": "eliptico",
+                "suggestion": "false"
             }
             result.append(resumen)
 
@@ -185,7 +188,8 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                         "text": "Oración larga",
                         "description": f"La oración es demasiado larga, debería tener máximo 20 palabras y tiene {oracionLarga[1]}.",
                         "type": "morfosintaxis",
-                        "name": "oracionLarga"
+                        "name": "oracionLarga",
+                "suggestion": "false"
                     }
                     result.append(resumen)
                 orden = orden_incorrecto(frase)
@@ -197,7 +201,8 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                         "text": "Orden sintáctico incorrecto",
                         "description": f"La oración no sigue el orden sintáctico adecuado, debería seguir la estructura sujeto-verbo-complementos.",
                         "type": "morfosintaxis",
-                        "name": "orden"
+                        "name": "orden",
+                "suggestion": "false"
                     }
                     result.append(resumen)
                 coordinada = oracion_coordinada(frase)
@@ -210,6 +215,7 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                         "description": f"Se debe evitar el abuso de oraciones coordinadas.",
                         "type": "morfosintaxis",
                         "name": "coordinada",
+                "suggestion": "false"
                     }
                     result.append(resumen)
                 yuxtapuesta = oracion_yuxtapuesta(frase)
@@ -221,7 +227,8 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                         "text": "Exceso de yuxtaposiciones",
                         "description": f"Se debe evitar el abuso de oraciones yuxtapuestas.",
                         "type": "morfosintaxis",
-                        "name": "yuxtapuesta"
+                        "name": "yuxtapuesta",
+                "suggestion": "false"
                     }
                     result.append(resumen)
 
@@ -234,7 +241,8 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                         "text": "Uso de incisos o aclaraciones",
                         "description": f"Se debe evitar el abuso de incisos.",
                         "type": "morfosintaxis",
-                        "name": "inciso"
+                        "name": "inciso",
+                "suggestion": "false"
                     }
                     #result.append(resumen)
 
@@ -259,7 +267,8 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                     "text": "Oración de relativo compleja",
                     "description": f"Se debe evitar el uso de relativos complejos.",
                     "type": "morfosintaxis",
-                    "name": "relativo"
+                    "name": "relativo",
+                "suggestion": "false"
                     }
                     result.append(resumen)
 
@@ -272,7 +281,8 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                         "text": "Uso de voz pasiva",
                         "description": f"Se debe evitar el abuso de oraciones pasivas.",
                         "type": "morfosintaxis",
-                        "name": "pasiva"
+                        "name": "pasiva",
+                "suggestion": "false"
                     }
                     result.append(resumen)
 
@@ -285,7 +295,8 @@ async def morfosintaxis_paragraph(texto, inicioParrafo):
                         "text": "Uso de formas no personales",
                         "description": f"Se debe evitar el abuso de formas no personales.",
                         "type": "morfosintaxis",
-                        "name": "nopersonal"
+                        "name": "nopersonal",
+                "suggestion": "false"
                     }
                     result.append(resumen)
 
@@ -311,6 +322,7 @@ async def morfosintaxis_text(request: Request):
 async def lexsem_paragraph(texto, inicioParrafo):
     """ Dado un párrafo devuelve un resumen de dicho párrafo con los índices léxico-semánticos que no cumplen las características deseadas"""
     result = []
+    doc  = nlp(texto)
     finParrafo = inicioParrafo + len(texto)
     if parrafoComplejo(texto):
         resumen = {
@@ -320,14 +332,16 @@ async def lexsem_paragraph(texto, inicioParrafo):
             "text": "Párrafo complejo",
             "description": f"Se deben evitar párrafos demasiado complejos.",
             "type": "léxico-semántico",
-            "name": "parrafoComplejo"
+            "name": "parrafoComplejo",
+                "suggestion": "false"
         }
         result.append(resumen)
-    if texto != '\n' and texto!='':
-        for match in re.finditer(r'\w+', texto, re.UNICODE):
+    for sent in doc.sents:
+        oracion = sent.text
+        for match in re.finditer(r'\w+', oracion, re.UNICODE):
             palabra = match.group()
-            inicioPalabra = inicioParrafo + match.start()
-            finPalabra = inicioParrafo + match.end()
+            inicioPalabra = inicioParrafo + sent.start_char + match.start()
+            finPalabra = inicioParrafo + sent.start_char + match.end()
 
             es_extranjerismo = extranjerismos(palabra)
 
@@ -339,7 +353,10 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "text": "Extranjerismo",
                     "description": f"Se debe evitar el abuso de extranjerismos.",
                     "type": "léxico-semántico",
-                    "name": "extranjerismo"
+                    "name": "extranjerismo",
+                    "suggestion": "true",
+                    "oracion": oracion,
+                    "palabra": palabra
                 }
                 result.append(resumen)
 
@@ -352,7 +369,10 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "text": "Baul",
                     "description": f"Se debe evitar el abuso de palabra baúl.",
                     "type": "léxico-semántico",
-                    "name": "baul"
+                    "name": "baul",
+                "suggestion": "true",
+                    "oracion": oracion,
+                    "palabra": palabra
                 }
                 result.append(resumen)
             if palabraLarga(palabra):
@@ -363,7 +383,10 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "text": "Revisar uso de palabras largas o derivados",
                     "description": f"Se debe evitar el uso de palabras muy largas.",
                     "type": "léxico-semántico",
-                    "name": "largas"
+                    "name": "largas",
+                "suggestion": "true",
+                    "oracion": oracion,
+                    "palabra": palabra
                 }
                 result.append(resumen)
             if latinism(palabra):
@@ -374,7 +397,10 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "text": "Latinismos",
                     "description": f"Se debe evitar el uso de latinismos.",
                     "type": "léxico-semántico",
-                    "name": "latinismo"
+                    "name": "latinismo",
+                "suggestion": "true",
+                    "oracion": oracion,
+                    "palabra": palabra
                 }
                 result.append(resumen)
             if tecnisimos(palabra):
@@ -385,7 +411,10 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "text": "Uso de tecnicismos",
                     "description": f"Se debe evitar el uso de tecnicismos.",
                     "type": "léxico-semántico",
-                    "name": "tecnicismo"
+                    "name": "tecnicismo",
+                "suggestion": "true",
+                    "oracion": oracion,
+                    "palabra": palabra
                 }
                 result.append(resumen)
 
@@ -427,7 +456,8 @@ async def pragdisc_paragraph(texto, inicioParrafo):
                     "text": "Ausencia de conectores",
                     "description": f"Se debe incentivar el uso de conectores.",
                     "type": "pragmático-discursivo",
-                    "name": "conector"
+                    "name": "conector",
+                "suggestion": "false"
                 }
                 result.append(resumen)
 
@@ -439,7 +469,8 @@ async def pragdisc_paragraph(texto, inicioParrafo):
                     "text": "Repetición de conector",
                     "description": f"Se debe incentivar el uso de conectores variados.",
                     "type": "pragmático-discursivo",
-                    "name": "conectorRepe"
+                    "name": "conectorRepe",
+                "suggestion": "true"
                 }
                 result.append(resumen)
 
@@ -452,7 +483,8 @@ async def pragdisc_paragraph(texto, inicioParrafo):
                     "text": "Revisar la puntuación de conector",
                     "description": f"Los conectores deben ir con buena puntuación.",
                     "type": "pragmático-discursivo",
-                    "name": "conectoresPunt"
+                    "name": "conectoresPunt",
+                "suggestion": "false"
                 }
                 result.append(resumen)
             inicioFrase = finFrase + 1
@@ -487,7 +519,8 @@ def legibility_paragraph(texto, inicioParrafo):
             "text": "Incumplimiento de umbrales de legibilidad (índice de Fernández-Huerta)",
             "description": fernandezHuerta[1],
             "type": "legibility",
-            "name": "fernandezHuerta"
+            "name": "fernandezHuerta",
+                "suggestion": "false"
         }
         result.append(resumen)
     szigrisztPazos = indice_szigriszt_pazos(texto)
@@ -499,7 +532,8 @@ def legibility_paragraph(texto, inicioParrafo):
             "text": "Incumplimiento de umbrales de legibilidad (índice de Szigriszt-Pazos)",
             "description": szigrisztPazos[1],
             "type": "legibility",
-            "name": "szigrisztPazos"
+            "name": "szigrisztPazos",
+                "suggestion": "false"
         }
         result.append(resumen)
         """
@@ -553,7 +587,8 @@ async def legibility_text(texto):
             "text": "Incumplimiento de umbrales de legibilidad (índice de Fernández-Huerta)",
             "description": fernandezHuerta[1],
             "type": "legibility",
-            "name": "fernandezHuerta"
+            "name": "fernandezHuerta",
+                "suggestion": "false"
         }
         resultados['global'].append(resumen)
 
@@ -566,7 +601,8 @@ async def legibility_text(texto):
             "text": "Incumplimiento de umbrales de legibilidad (índice de Szigriszt-Pazos)",
             "description": szigrisztPazos[1],
             "type": "legibility",
-            "name": "szigrisztPazos"
+            "name": "szigrisztPazos",
+                "suggestion": "false"
         }
         resultados['global'].append(resumen)
 
@@ -612,7 +648,8 @@ async def stadistics_paragraph(texto, inicioParrafo):
         "text": "Estadísticas del párrafo",
         "description": f"El párrafo tiene:\n- {caracteres} caracteres\n- {silabas} sílabas\n- {palabras} palabras\n- {frases} oraciones",
         "type": "estadistica",
-        "name": "estadística"
+        "name": "estadística",
+                "suggestion": "false"
     }
     result.append(resumen)
     return result
@@ -637,7 +674,8 @@ async def stadistics_text(texto):
         "text": "Estadísticas del texto",
         "description": f"El texto tiene:\n- {caracteres} caracteres\n- {silabas} sílabas\n- {palabras} palabras\n- {frases} frases\n\nSobre legibilidad:\n- Fernández-Huerta: {fernandez}\n- Szigriszt-Pazos: {pazos}",
         "type": "estadistica",
-        "name": "estadística"
+        "name": "estadística",
+                "suggestion": "false"
     }
     result.append(resumen)
     return {"global": result}
@@ -656,7 +694,8 @@ async def llm_text(texto, fin):
             "text": "Falta de coherencia interna",
             "description": analisis[0]['razonamiento'],
             "type": "pragmático-discursivo",
-            "name": "coherenciaInt"
+            "name": "coherenciaInt",
+                "suggestion": "false"
         }
         result.append(resumen)
     if analisis[1]['se_detecta']:
@@ -667,7 +706,8 @@ async def llm_text(texto, fin):
             "text": "Falta de progresión temática",
             "description": analisis[1]['razonamiento'],
             "type": "pragmático-discursivo",
-            "name": "progresion"
+            "name": "progresion",
+                "suggestion": "false"
         }
         result.append(resumen)
     if analisis[2]['se_detecta']:
@@ -678,7 +718,8 @@ async def llm_text(texto, fin):
             "text": "Falta de claridad entre ideas",
             "description": analisis[2]['razonamiento'],
             "type": "pragmático-discursivo",
-            "name": "claridad"
+            "name": "claridad",
+                "suggestion": "false"
         }
         result.append(resumen)
     if analisis[3]['se_detecta']:
@@ -689,7 +730,8 @@ async def llm_text(texto, fin):
             "text": "Falta de coherencia externa",
             "description": analisis[3]['razonamiento'],
             "type": "pragmático-discursivo",
-            "name": "coherenciaExt"
+            "name": "coherenciaExt",
+                "suggestion": "false"
         }
         result.append(resumen)
     if analisis[4]['se_detecta']:
@@ -700,7 +742,8 @@ async def llm_text(texto, fin):
             "text": "Posible digresión",
             "description": analisis[4]['razonamiento'],
             "type": "pragmático-discursivo",
-            "name": "digresion"
+            "name": "digresion",
+                "suggestion": "false"
         }
         result.append(resumen)
     if analisis[5]['se_detecta']:
@@ -711,7 +754,8 @@ async def llm_text(texto, fin):
             "text": "Falta de adecuación a la finalidad comunicativa.",
             "description": analisis[5]['razonamiento'],
             "type": "pragmático-discursivo",
-            "name": "finalidad"
+            "name": "finalidad",
+                "suggestion": "false"
         }
         result.append(resumen)
     return {"global":result}
@@ -730,8 +774,10 @@ async def globales(texto, fin):
 @app.post("/generar_sugerencia")
 async def generar_sugerencia(request: Request):
     data = await request.json()
-    comment = data.get("comment")
-    result = obtenerSugerencia(comment)
+    oracion = data.get("oracion")
+    palabra = data.get("palabra")
+    criterio = data.get("criterio")
+    result = obtenerSugerencia(oracion, palabra, criterio)
     return JSONResponse({"sugerencia": result})
 
 if __name__ == '__main__':

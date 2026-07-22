@@ -8,7 +8,7 @@ html, body {
 
 /* Contenedor de 2 columnas: editor + panel lateral */
 .container {
-    --left-panel-width: 300px;
+    --left-panel-width: 20%;
   display: grid;
   grid-template-columns: 1fr 6px var(--left-panel-width);
   width: 100vw;
@@ -346,7 +346,11 @@ html, body {
     box-sizing: border-box;
     word-break: break-word;
     overflow-wrap: break-word;
-    font-size: 16px;
+    /* Estilo por defecto */
+      font-family: Calibri, "Carlito", Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      text-align: left;
 }
 
 /* ===== Comentarios bloqueados ===== */
@@ -723,7 +727,7 @@ input:checked + .slider:before {
 }
 
 .ql-snow .ql-picker.ql-size .ql-picker-label[data-value=""]::before {
-  content: "16";
+  content: "12px";
 }
 
 /* Botón fuerte re-analizar */
