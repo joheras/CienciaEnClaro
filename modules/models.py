@@ -59,7 +59,8 @@ Devuelve solo la oración modificando la palabra baúl por la alternativa.
     response: ChatResponse = chat(
         #model = "nichonauta/pepita-2-2b-it-v5",
         #model = "mistral",
-        model = "gemma4:e4b",
+        #model = "gemma4:e4b",
+        model = "gemma4:12b",
         messages = [
             {
                 "role": "user",
