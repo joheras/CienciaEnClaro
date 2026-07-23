@@ -367,7 +367,7 @@ async def lexsem_paragraph(texto, inicioParrafo):
                     "id": str(uuid.uuid4()),
                     "start": inicioPalabra,
                     "end": finPalabra,
-                    "text": "palabras baúl",
+                    "text": "Palabras baúl",
                     "description": f"Se debe evitar el abuso de palabra baúl.",
                     "type": "léxico-semántico",
                     "name": "baul",
