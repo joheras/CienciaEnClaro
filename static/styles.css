@@ -8,7 +8,7 @@ html, body {
 
 /* Contenedor de 2 columnas: editor + panel lateral */
 .container {
-    --left-panel-width: 20%;
+    --left-panel-width: 25%;
   display: grid;
   grid-template-columns: 1fr 6px var(--left-panel-width);
   width: 100vw;
@@ -809,4 +809,30 @@ input:checked + .slider:before {
 
 .modal-header h2 {
     margin: 0;
+}
+
+/* Para que los tarjetones tengan parte del texto con colores*/
+.comment-morfosintaxis .comment-desc .highlight {
+    background-color: #F9E79F;
+}
+
+.comment-lexico .comment-desc .highlight {
+    background-color: #AED6F1;
+}
+
+.comment-pragmatico .comment-desc .highlight {
+    background-color: #A9DFBF;
+}
+
+.comment-accesibilidad .comment-desc .highlight {
+    background-color: #F5CBA7;
+}
+
+.comment-estadisticas .comment-desc .highlight {
+    background-color: #D7BDE2;
+}
+
+.comment-desc u {
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2px;
 }

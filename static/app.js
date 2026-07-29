@@ -1225,6 +1225,434 @@ function renderComments(){
 
          */
         const descriptionMap = {
+            parrafoCorto: `
+                <span class="highlight">Parece que el párrafo contiene una única oración, considere construir un párrafo que incluya al menos dos oraciones relacionadas entre sí.</span><br><br>
+                Los párrafos con una sola oración presentan información fragmentada y dificultan la construcción de relaciones entre las ideas.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>La temperatura media global ha aumentado durante las últimas décadas.</em><br><br>
+        
+                <u>Después:</u><br>
+                <em>La temperatura media global ha aumentado durante las últimas décadas. Este incremento se relaciona principalmente con las emisiones de gases de efecto invernadero.</em>`,
+            parrafoLargo: `
+                <span class="highlight"> Parece que el párrafo es muy largo, considere dividir la información en varios párrafos más breves, procurando que cada párrafo desarrolle una única idea principal.</span><br><br>
+                Los párrafos largos aumentan el esfuerzo de lectura, dificultan la localización de las ideas principales y favorecen la pérdida de infomración relevante.<br><br>`,
+            oracionLarga: `
+                <span class="highlight">Parece que la oración es muy larga, considere dividir la oración en varias oraciones más breves.</span><br><br>
+                Las oraciones extensas (que superan las 25 palabras) incrementan la carga cognitiva y dificultan la identificación de las relaciones sintácticas.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em> Los investigadores analizaron los datos obtenidos en diferentes estaciones meteorológicas distribuidas por diversas regiones durante varias décadas con el fin de identificar tendencias relacionadas con la temperatura y las precipitaciones.</em><br><br>
+                <u>Después:</u><br>
+                <em>Los investigadores analizaron datos de diversas estaciones meteorológicas. El estudio incluyó varias regiones y varias décadas. El objetivo fue identificar tendencias relacionadas con la temperatura y las precipitaciones.</em>`,
+            inciso: `
+            <span class="highlight">Parece que la oración contiene incisos o aclaraciones, considere eliminar los incisos innecesarios o convertirlos en oraciones independientes.</span><br><br>
+                Los incisos o aclaraciones interrumpen la lectura y dificultan la identificación de la estructura principal de la oración.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em> El informe, <span class="highlight">elaborado por un grupo internacional de expertos</span>, algunos de ellos especializados en climatología marina, fue publicado recientemente.</em><br><br>
+                <u>Después:</u><br>
+                <em>Un grupo internacional de expertos elaboró el informe. Algunos especialistas trabajaban en climatología marina. El informe se publicó recientemente.</em>`,
+            orden: `
+                <span class="highlight">Parece que la oración sigue un orden sintáctico poco natural en español, considere priorizar el orden sujeto + verbo + complementos.</span><br><br>
+                Las oraciones que siguen el orden natural del español (sujeto+verbo+complementos) requieren un menor esfuerzo de interpretación.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em> Aumentó considerablemente la temperatura media global durante el último siglo.</em><br><br>
+                <u>Después:</u><br>
+                <em>La temperatura media global aumentó considerablemente durante el último siglo.</em>`,
+            coordinada: `
+                <span class="highlight">Parece que hay un exceso de coordinaciones en la oración, considere dividir la información en varias oraciones para evitar el exceso de coordinaciones.</span><br><br>
+                Las oraciones que acumulan varios elementos unidos con conjunciones generan sensación de información poco jerarquizada y menos comprensible.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em> El estudio analizó temperaturas <span class="highlight">y</span> precipitaciones <span class="highlight">y</span> vientos <span class="highlight">y</span> humedad <span class="highlight">y</span> cobertura vegetal.</em><br><br>
+                <u>Después:</u><br>
+                <em>El estudio analizó las temperaturas y las precipitaciones. También examinó los vientos, la humedad y la cobertura vegetal.</em>`,
+            yuxtapuesta: `
+                <span class="highlight">Parece que hay un exceso de yuxtaposiciones en la oración, considere dividir la información en varias oraciones para evitar el exceso de yuxtaposiciones.</span><br><br>
+                Las oraciones que acumulan varios elementos unidos con signos de puntuación (comas y/o puntos y coma) generan sensación de información poco jerarquizada y menos comprensible.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em> El estudio analizó temperaturas<span class="highlight">,</span> precipitaciones<span class="highlight">,</span> vientos<span class="highlight">,</span> humedad<span class="highlight">,</span> cobertura vegetal<span class="highlight">,</span> heladas<span class="highlight">,</span> granizo<span class="highlight">,</span> otros fenómenos adversos.</em><br><br>
+                <u>Después:</u><br>
+                <em>El estudio analizó las temperaturas y las precipitaciones. También examinó los vientos, la humedad y la cobertura vegetal. Por último, se centró en estudiar las heladas, el granizo, así como otros fenómenos adversos.</em>`,
+            relativo: `
+                <span class="highlight">Parece que la oración de relativo es compleja, considere simplificar la estructura de la oración o acercar el antecedente (o elemento al que se refiere el relativo) a la expresión de relativo.</span><br><br>
+                Las oraciones con fórmulas de relativo encapsuladas una dentro de otra y/o alejadas de su antecedente o elemento al que se refiere se comprenden peor porque puede producirse una pérdida del referente.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em> Los modelos <span class="highlight">que</span> utilizan los investigadores <span class="highlight">que</span> trabajan en centros especializados permiten realizar proyecciones.</em><br><br>
+                <u>Después:</u><br>
+                <em>Los investigadores utilizan modelos especializados. Estos modelos permiten realizar proyecciones.</em>`,
+            concordancia: `
+                <span class="highlight">Parece que hay falta de concordancia en la oración, considere revisar la concordancia (en género, número, persona o tiempo verbal) de todos los elementos de la oración.</span><br><br>
+                La concordancia en español afecta al género, número, persona o tiempo verbal. La falta de concordancia genera dudas sobre las relaciones gramaticales.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em> Los datos <span class="highlight">obtenida</span> muestran una tendencia.</em><br><br>
+                <u>Después:</u><br>
+                <em>Los datos obtenidos muestran una tendencia.</em>`,
+            pasiva: `
+                <span class="highlight">Parece que se ha usado la voz pasiva, considere transformar la oración a voz activa.</span><br><br>
+                La voz pasiva suele resultar más compleja de interpretar que la voz activa.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em> Las mediciones <span class="highlight">fueron realizadas</span> por los investigadores.</em><br><br>
+                <u>Después:</u><br>
+                <em>Los investigadores realizaron las mediciones.</em>`,
+            eliptico: `
+                <span class="highlight">Parece que se han encadenado varias oraciones son sujeto explícito, considere explicitar el sujeto en alguna de las oraciones marcadas.</span><br><br>
+                El encadenamiento de oraciones sin sujeto explícito en el mismo párrafo puede dificultar la identificación del sujeto que realiza la acción y genera ambigüedad entre los agentes implicados.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em> La degradación de los ecosistemas locales avanza a un ritmo alarmante debido a la acumulación de residuos plásticos. Requiere de acciones urgentes y políticas globales estrictas para mitigar los efectos del cambio climático en las próximas décadas. Se busca, por lo tanto, restaurar el equilibrio natural mediante la implementación masiva de energías renovables y la reforestación de áreas protegidas. Exige también una profunda concienciación ciudadana que transforme los hábitos de consumo diario en acciones verdaderamente sostenibles.</em><br><br>
+                <u>Después:</u><br>
+                <em><span class="highlight">La degradación de los ecosistemas locales</span> avanza a un ritmo alarmante debido a la acumulación de residuos plásticos. <span class="highlight">Esta crisis ambiental</span> requiere de acciones urgentes y políticas globales estrictas para mitigar los efectos del cambio climático en las próximas décadas. Se busca, por lo tanto, restaurar el equilibrio natural mediante la implementación masiva de energías renovables y la reforestación de áreas protegidas. <span class="highlight">La situación actual</span> exige también una profunda concienciación ciudadana que transforme los hábitos de consumo diario en acciones verdaderamente sostenibles. </em>`,
+            nopersonal: `
+                <span class="highlight">Parece que se han usado formas verbales no personales en la oración, considere priorizar los verbos conjugados en lugar de los infinitivos, gerundios o participios.</span><br><br>
+                El uso de infinitivos, gerundios o participios al principio de la oración aumentan la complejidad del texto. Lo mismo ocurre cuando estas formas no van acompañadas de verbos en forma personal. <br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Para <span class="highlight">realizar</span> la evaluación y <span class="highlight">obtener</span> los resultados...</em><br><br>
+                <u>Después:</u><br>
+                <em>El equipo evaluó los datos y obtuvo los resultados.</em>`,
+            gerundio: `
+                <span class="highlight">Parece que se ha usado el gerundio de posterioridad, considere evitarlo, por ejemplo, dividiendo la información en dos oraciones.</span><br><br>
+                El uso del gerundio para expresar una acción posterior a la principal no es normativo en español.<br><br>
+                Más información: https://www.rae.es/libro-estilo-justicia/las-palabras-y-sus-grupos-problemas-y-actuaciones/gerundio/usos-incorrectos/gerundio-de-posterioridad <br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Se publicó el informe, <span class="highlight">generando</span> un intenso debate.</em><br><br>
+                <u>Después:</u><br>
+                <em>Se publicó el informe. Esta publicación generó un intenso debate.</em>`,
+            conector: `
+                <span class="highlight">Parece que hay una ausencia de conectores en el párrafo, considere introducir algún conector al inicio del párrafo o entre oraciones para conectar las ideas.</span><br><br>
+                Los conectores o marcadores discursivos ayudan a dar cohesión al texto. <br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Las temperaturas aumentaron. Las precipitaciones disminuyeron.</em><br><br>
+                <u>Después:</u><br>
+                <em>Las temperaturas aumentaron y, <span class="highlight">además</span>, las precipitaciones disminuyeron.</em>`,
+            conectorRepe: `
+                <span class="highlight">Parece que hay una repetición de conectores, considere modificar alguno de los conectores repetidos.</span><br><br>
+                La variación en el uso de los conectores o marcadores discursivos ayuda a mejorar el texto. Esta variación debe hacerse atendiendo la relación lógica entre las distintas partes de la oración o el párrafo. <br><br>
+                <strong>Ejemplo</strong><br><br>
+                Sustituir repeticiones de <em>además</em> por otros conectores o marcadores que también indiquen adición como: <em>asimismo</em>, <em>igualmente</em>, <em>por otra parte</em>, <em>además de ello</em>.`,
+            conectoresPunt: `
+                <span class="highlight">Parece que falta una coma (,) junto al conector, considere revisar la puntuación del conector o conectores resaltados en el texto.</span><br><br>
+                Los conectores van acompañados de coma cuando aparecen en el inicio de la oración o entrecomillados si están en el interior de la oración.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Sin embargo los resultados fueron concluyentes.</em><br><br>
+                <u>Después:</u><br>
+                <em>Sin embargo<span class="highlight">,</span> los resultados fueron concluyentes.</em>`,
+            secun: `
+                <span class="highlight">Parece que la oración presenta información secundaria, considere revisar la información de la oración, eliminar aquella que resulte accesoria y mantener solamente la información principal de la idea que se quiere transmitir.</span><br><br>
+                Los párrafos que presentan más de una idea, temas laterales poco justificados o gran número de detalles resultan menos comprensibles.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                Eliminar anécdotas o datos históricos que no contribuyen a la explicación principal.`,
+            destinatario: `
+                <span class="highlight">Parece que la información proporcionada podría resultar compleja/abstracta para un receptor no experto. Considere adaptarla a un destinatario con estudios medios.</span><br><br>
+                El nivel de profundidad científica en los textos divulgativos debe adecuarse a un lector sin conocimiento universitario. <br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Forzamiento radiactivo antropogénico.</em><br><br>
+                <u>Después:</u><br>
+                <em>Aumento del calor retenido por la atmósfera debido a actividades humanas.</em>`,
+            finalidad: `
+                <span class="highlight">Parece que podría haber falta de adecuación a la finalidad comunicativa de los textos divulgativos, considere ajustar el tono y la estructura del texto a los objetivos comunicativos prioritarios de la divulgación.</span><br><br>
+                Cada finalidad comunicativa requiere un determinado uso de estrategias discursivas. Los textos divulgativos suelen tener finalidades comunicativas como:<br>
+                - Informar<br>
+                - Persuadir<br>
+                - Entretener/deleitar<br>
+                - Enseñar/explicar<br>
+                - Describir<br>
+                - Aclarar<br>
+                - Fomentar el interés<br>
+                - Concienciar<br>
+                - Aconsejar<br><br>
+                <strong>Ejemplo</strong><br><br>
+                Un texto divulgativo debe priorizar la explicación antes que la discusión metodológica detallada.</em>`,
+            coherenciaInt: `
+                <span class="highlight">Parece que podría haber falta de coherencia interna en texto, considere revisarla evitando caer en reiteraciones, vacíos de información y contradicciones.</span><br><br>
+                Los textos requieren una coherencia interna entre las ideas y una progresión temática. Para lograrlo, se debe evitar caer en contradicción, reiteraciones o saltos de información. <br><br>`,
+            progresion: `
+                <span class="highlight">Parece que falta progresión temática en el texto, considere revisar la relación lógica (cronológica, causal, sumativa, contrastiva…) entre las partes/párrafos.</span><br><br>
+                La información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva…) para que el mensaje se entienda mejor.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                Definición → causas → consecuencias → soluciones.`,
+            claridad: `
+                <span class="highlight">Parece que hay falta de conexión entre las ideas, considere revisar la conexión (temporal, causal, sumativa, contrastiva…) entre las ideas. El uso de conectores y marcadores discursivos puede contribuir a conseguirlo.</span><br><br>
+                La información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva…) para que el mensaje se entienda mejor. <br><br>
+                <strong>Ejemplo</strong><br><br>
+                <span class="highlight">Como consecuencia</span>de este aumento de temperatura, los glaciares pierden masa.`,
+            coherenciaExt: `
+                <span class="highlight">Parece que podría haber falta de coherencia externa en el texto, considere revisarlo asegurándose de que cuenta con un párrafo introductorio, un desarrollo y un párrafo conclusivo.</span><br><br>
+                Los textos divulgativos disponen de una estructura básica dividida en tres partes: introducción, desarrollo y conclusión. Este tipo de textos resultan más claros cuando dicha estructura es perceptible por el lector.<br><br>`,
+            digresion: `
+                <span class="highlight">Parece que el párrafo es complejo, considere revisar la complejidad de las oraciones del párrafo. Reduzca, por ejemplo, el uso acumulado de varios de estos elementos: subordinaciones, coordinaciones, incisos, nominalizaciones y cambios temáticos.</span><br><br>
+                Los textos que presentan digresiones o se desvían del tema principal son más difíciles de entender.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                Si el texto explica el cambio climático, evite incluir extensas descripciones sobre la historia de la navegación, salvo que tengan relación directa con el tema tratado.`,
+            parrafoComplejo: `
+                <span class="highlight">Parece que la información proporcionada podría resultar compleja/abstracta para un receptor no experto. Considere adaptarla a un destinatario con estudios medios.</span><br><br>
+                El párrafo resulta complejo cuando acumulan subordinaciones, coordinaciones, incisos, nominalizaciones y cambios temáticos. La concentración de varios de estos recursos en un solo párrafo incrementa significativamente el esfuerzo de lectura. <br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>El informe, elaborado por diferentes grupos de investigación y revisado posteriormente por especialistas internacionales, analiza múltiples aspectos, que resultan fundamentales, relacionados con la temperatura, la biodiversidad, los recursos hídricos y la economía.</em><br><br>
+                <u>Después:</u><br>
+                <em>El informe fue elaborado por diversos grupos de investigación. Posteriormente, especialistas internacionales revisaron el documento. El estudio analiza aspectos fundamentales como la temperatura, la biodiversidad, los recursos hídricos y la economía.</em>`,
+            siglas: `
+                <span class="highlight">Parece que se han usado siglas o abreviaturas, considere revisar la pertinencia de su uso. En caso de que sean necesarias, se podría pensar en desplegarlas cuando se usen por primera vez en el texto.</span><br><br>
+                Los textos con siglas o abreviaturas son más difíciles de entender. Su comprensión mejora si las siglas y abreviaturas se despliegan en el primer uso.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>El análisis del IPCC evidencia alteraciones del sistema climático.</em><br><br>
+                <u>Después:</u><br>
+                <em>El <span class="highlight">informe del Grupo Intergubernamental de Expertos sobre el Cambio Climático</span> (IPCC) muestra alteraciones del sistema climático.</em>`,
+            redundancias: `
+                <span class="highlight">Parece que existen redundancias y/o formulaciones enfáticas en el texto, considere revisar este aspecto. Las construcciones absolutas y la adjetivación excesiva suelen contribuir a generar estas redundancias.</span><br><br>
+                Los textos que incorporan expresiones innecesariamente largas o repetitivas se alargan y aumentan la carga de procesamiento de la información. En este sentido, se sugiere evitar expresiones redundantes, adjetivación excesiva y construcciones absolutas.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em><span class="highlight">Terminado el minucioso análisis del deshielo</span>, los investigadores descubrieron un abismo <span class="highlight">destructivo y catastrófico</span> en los glaciares. La masa de hielo se reduce <span class="highlight">notablemente</span> en un lapso de tiempo <span class="highlight">récord</span>, lo que provocará consecuencias futuras que alterarán <span class="highlight">absolutamente</span> todo el equilibrio ecológico global, haciendo que el colapso de los ecosistemas marinos sea <span class="highlight">totalmente</span> inevitable.</em><br><br>
+                <u>Después:</u><br>
+                <em>Los investigadores cuantificaron una pérdida severa en la masa de los glaciares tras analizar el deshielo. El hielo se reduce en un periodo récord, lo que generará efectos que alterarán el equilibrio ecológico global y comprometerán la estabilidad de los ecosistemas marinos.</em>`,
+            faltaEnum: `
+                <span class="highlight">Parece que se podría incluir una enumeración para disminuir la complejidad de la información, considere hacerlo.</span><br><br>
+                Las listas o enumeraciones aligeran la carga de información en párrafos altamente informativos. Por eso, se suele recomendar que las secuencias complejas se transformen en enumeraciones.`,
+            enum: `
+                <span class="highlight">Parece que el texto de la enumeración no es uniforme, considere revisar el estilo de la enumeración del texto para asegurar su homogeneidad.</span><br><br>
+                Los elementos de una lista o enumeración deben presentar estructuras gramaticales similares como, por ejemplo, empezar por un sustantivo, un artículo o un infinitivo. De ese modo, se consigue una lectura más rápida y sencilla.
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em><ul>
+                <li>Reducir emisiones.</li>
+<li>La protección de bosques. </li>
+<li>Que se mejore la eficiencia energética. </li></ul>
+</em><br><br>
+                <u>Después:</u><br>
+                <em><ul>
+                <li><span class="highlight">Reducir</span> emisiones.</li>
+                <li><span class="highlight">Proteger</span> bosques.</li>
+                <li><span class="highlight">Mejorar</span> la eficiencia energética.</li>
+                </ul></em>`,
+            enumIncos: `
+                <span class="highlight">Parece que podría haber una inconsistencia en el sistema de listas y/o enumeraciones, considere revisar el formato de las enumeraciones del texto para asegurar su uniformidad.</span><br><br>
+                Es recomendable que las listas o enumeraciones del texto mantengan siempre el mismo criterio y eviten utilizar números, letras o símbolos de forma arbitraria.<br><br>`,
+            lexFrec: `
+                <span class="highlight">Parece que se ha usado léxico poco frecuente, considere revisar el uso de palabras pocos frecuentes en español.</span><br><br>
+                Los textos divulgativos requieren usar palabras frecuentes del español y ampliamente conocidas por los hispanohablantes para maximizar las posibilidades de que los lectores conozcan su significado. <br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Dilucidar.</em><br><br>
+                <u>Después:</u><br>
+                <em>Aclarar.</em>`,
+            baul: `
+                <span class="highlight">Parece que hay falta de precisión léxica, considere revisar el uso de palabras imprecisas (palabras baúl).</span><br><br>
+                Es recomendable evitar el uso de palabras baúl o palabras imprecisas para evitar malentendidos. Estas palabras pueden sustituirse por términos más concretos y específicos.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Los sensores satelitales observaron varias cosas en el océano debido al cambio climático.</em><br><br>
+                <u>Después:</u><br>
+                <em>Los sensores satelitales observaron un aumento de 1,5ºC en la temperatura del océano debido al cambio climático.</em>`,
+            rodeos: `
+                <span class="highlight">Parece que hay rodeos expresivos o formulaciones innecesariamente largas en el texto, considere sustituir las expresiones complejas por verbos o construcciones más directas.</span><br><br>
+                Las perífrasis y locuciones innecesarias alargan la oración sin aportar un significado adicional. Por ello, se recomienda sustituir las expresiones complejas por verbos directos.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Llevar a cabo una evaluación.</em><br><br>
+                <u>Después:</u><br>
+                <em>Evaluar.</em>`,
+            extranjerismo: `
+                <span class="highlight">Parece que se han utilizado extranjerismos, latinismos o arcaísmos, considere sustituirlos por equivalencias más actuales o ampliamente conocidas cuando sea posible.</span><br><br>
+                Los extranjerismos, latinismos o arcaísmos resultan, con frecuencia, expresiones poco habituales en el español actual. Por ello, se recomienda que se sustituyan por equivalencias más actuales cuando sea posible.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Ad hoc.</em><br><br>
+                <u>Después:</u><br>
+                <em>Para este fin.</em>`,
+            largas: `
+                <span class="highlight">Parece que se han utilizado palabras largas o derivadas que pueden dificultar la lectura, considere sustituirlas por alternativas más breves y frecuentes.</span><br><br>
+                Las palabras largas, provengan o no de otras palabras de las que derivan, resultan más difíciles de procesar. Por esa razón, se recomienda que se sustituyan por alternativas más breves.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Utilización.</em><br><br>
+                <u>Después:</u><br>
+                <em>Uso.</em>`,
+            referente: `
+                <span class="highlight">Parece que puede haberse producido una pérdida de referente en el texto, considere explicitar el referente o reformular las oraciones para evitar ambigüedades.</span><br><br>
+                La pérdida del referente (objeto, persona o idea) en un texto puede generar falta de comprensión.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>El aumento de la temperatura global está acelerando el derretimiento de los glaciares árticos, que genera una alteración drástica en las corrientes marinas del Atlántico Norte, liberando además grandes cantidades de metano a la atmósfera. Su impacto en los ecosistemas locales y globales es impredecible, por lo que los científicos exigen frenarlo antes de que sea irreversible. </em><br><br>
+                <u>Después:</u><br>
+                <em>El <span class="highlight">aumento de la temperatura global</span> está acelerando el derretimiento de los glaciares árticos. Este <span class="highlight">deshielo</span> genera una alteración drástica en las corrientes marinas del Atlántico Norte y, al mismo tiempo, libera grandes cantidades de metano a la atmósfera. Las <span class="highlight">consecuencias</span> de dicha alteración marina en los ecosistemas locales y globales son impredecibles, por lo que los científicos exigen frenar el calentamiento global antes de que sea irreversible.</em>`,
+            largas: `
+                <span class="highlight">Parece que se han utilizado palabras largas o derivadas que pueden dificultar la lectura, considere sustituirlas por alternativas más breves y frecuentes.</span><br><br>
+                Las palabras largas, provengan o no de otras palabras de las que derivan, resultan más difíciles de procesar. Por esa razón, se recomienda que se sustituyan por alternativas más breves.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Utilización.</em><br><br>
+                <u>Después:</u><br>
+                <em>Uso.</em>`,
+            ambiguo: `
+                <span class="highlight">Parece que alguna expresión admite varias interpretaciones, considere sustituirla o precisarla para evitar posibles ambigüedades.</span><br><br>
+                Se deben evitar expresiones que admiten varias interpretaciones. Para ello, se puede recurrir a la sustitución de la palabra o a precisarla con un complemento.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Los expertos están preocupados por los últimos cambios en la corriente del hemisferio norte.</em><br><br>
+                <u>Después:</u><br>
+                <em>Los expertos están preocupados por los últimos cambios en la corriente <span class="highlight">marina</span> del hemisferio norte.</em>`,
+            repeticion: `
+                <span class="highlight">Parece que hay una repetición léxica cercana en el texto, considere sustituir alguna de las repeticiones mediante sinónimos, pronombres o reformulaciones.</span><br><br>
+                Se debe evitar la repetición de palabras próximas entre sí. Para ello, se puede recurrir al uso de sinónimos, pronombres o reformulaciones.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Cambio climático... cambio climático... cambio climático...</em><br><br>
+                <u>Después:</u><br>
+                <em>Cambio climático... calentamiento global... alteración climática...</em>`,
+            elemValor: `
+                <span class="highlight">Parece que se han empleado elementos valorativos o subjetivos, considere priorizar formulaciones impersonales y basadas en la evidencia.</span><br><br>
+                Los textos divulgativos escapan de la subjetividad y los elementos valorativos. En este sentido, se recomienda priorizar las formulaciones impersonales y basadas en la evidencia.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em><span class="highlight">Es evidente</span> que esta medida es excelente.</em><br><br>
+                <u>Después:</u><br>
+                <em>Diversos estudios indican resultados positivos asociados a esta medida.</em>`,
+            tecnicismo: `
+                <span class="highlight">Parece que se han utilizado tecnicismos que pueden dificultar la comprensión del texto, considere sustituir los innecesarios y explicar aquellos que resulten imprescindibles.</span><br><br>
+                Los textos con numerosos términos especializados son más difíciles de entender. Su comprensión mejora si los tecnicismos innecesarios se sustituyen por palabras más generales y los términos necesarios se explican en el primer uso.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>La pérdida de la cubierta de hielo en el Océano Ártico genera un bucle de retroalimentación positiva que reduce drásticamente el <span class="highlight">albedo</span> de la región.</em><br><br>
+                <u>Después:</u><br>
+                <em>La pérdida de hielo en el Océano Ártico crea un efecto de bola de nieve que empeora la situación: reduce drásticamente la capacidad de la región para <span class="highlight">reflejar la luz del sol</span>.</em>`,
+            negacion: `
+                <span class="highlight">Parece que la oración acumula varias negaciones, considere reformularla en afirmativo siempre que sea posible.</span><br><br>
+                La reiteración de negaciones en la oración incrementa la complejidad interpretativa. Por ello, se recomienda reformular la oración en afirmativo.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em><span class="highlight">No</span> es infrecuente que <span class="highlight">no</span> existan diferencias.</em><br><br>
+                <u>Después:</u><br>
+                <em>Es habitual que existan pocas diferencias.</em>`,
+            negacionAbun: `
+                <span class="highlight">Parece que existe un uso abundante de formulaciones negativas en el texto, considere expresar las ideas mediante formulaciones afirmativas cuando sea posible.</span><br><br>
+                Las ideas se deben expresar con formulaciones afirmativas siempre que sea posible. La acumulación de oraciones negativas en el texto dificulta su comprensión.<br><br>`,
+            sesgo: `
+                <span class="highlight">Parece que podrían utilizarse expresiones más inclusivas, considere valorar el uso de términos colectivos, abstractos o epicenos cuando resulten adecuados.</span><br><br>
+                Si bien la RAE considera el masculino el término inclusivo, aconseja el uso de expresiones más genéricas, como los sustantivos epicenos, siempre que sea posible. Se podría valorar, pues, el uso de términos colectivos, abstractos o epicenos cuando resulten adecuados.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Los <span class="highlight">investigadores</span> deben presentar sus resultados.</em><br><br>
+                <u>Después:</u><br>
+                <em>El <span class="highlight">personal investigador</span> debe presentar sus resultados.</em>`,
+            apartados: `
+                <span class="highlight">Parece que la información podría organizarse de forma más comprensible si se crean apartados, considere estructurar el contenido en apartados y subapartados.</span><br><br>
+                La información se localiza mejor en los textos con apartados. Por esa razón, se recomienda organizar el contenido en apartados y subapartados.<br><br>`,
+            principal: `
+                <span class="highlight">Parece que la idea principal no aparece al comienzo del párrafo, considere situar la información más importante en una posición inicial.</span><br><br>
+                La información más importante se debe situar al principio del párrafo.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Tras diversos análisis y revisiones, se concluyó que la temperatura había aumentado.</em><br><br>
+                <u>Después:</u><br>
+                <em><span class="highlight">La temperatura había aumentado.</span> Esta conclusión se obtuvo tras diversos análisis y revisiones.</em>`,
+            titulo: `
+                <span class="highlight">Parece que el título ofrece poca información sobre el contenido, considere utilizar un título más descriptivo y específico.</span><br><br>
+                Los títulos deben anticipan adecuadamente el contenido para que el lector pueda prever qué información encontrará. Para ello, se recomienda utilizar títulos descriptivos y específicos.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Resultados.</em><br><br>
+                <u>Después:</u><br>
+                <em>Resultados sobre el aumento de temperatura global.</em>`,
+            subtitulo: `
+                <span class="highlight">Parece que faltan encabezados o subtítulos informativos, considere incorporar este tipo de elementos para facilitar la localización de la información.</span><br><br>
+                La información se localiza mejor en los textos con encabezados. Por esa razón, se recomienda incluir este tipo de elementos. Este tipo de elementos se utilizan para introducir las ideas principales y/o favorecer que el lector las identifique.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <em>2.1. Causas del calentamiento global.</em><br>
+                <em>2.2. Consecuencias sobre los ecosistemas.</em>`,
+            recapitulacion: `
+                <span class="highlight">Parece que no se incluyen recapitulaciones entre los distintos temas del texto, considere incorporar oraciones temáticas o recapitulativas antes de introducir nuevos contenidos.</span><br><br>
+                Los textos divulgativos deben facilitar una exploración rápida del contenido. Para ello, se debe incluir una oración temática o recapitulativa antes de cambiar el tema para favorecer la asimilación de las ideas fundamentales ya expuestas. De ese modo, se consigue recuperar brevemente las ideas principales antes de avanzar.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <em>Una vez descritas las causas del fenómeno, analizaremos ahora sus principales consecuencias.</em>`,
+            textoLargo: `
+                <span class="highlight">Parece que el texto presenta una longitud elevada para el género divulgativo, considere reducir su extensión o distribuir mejor la información.</span><br><br>
+                El texto supera la longitud habitual para el género de la difusión. Esta extensión suele situarse en las 1500 o 2000.<br><br>`,
+            negrita: `
+                <span class="highlight">Parece que la negrita se utiliza con una finalidad distinta de la habitual en divulgación, considere reservar su uso principalmente para títulos y encabezados.</span><br><br>
+                Los textos divulgativos suelen utilizar la cursiva para resaltar las palabras. El uso de la negrita está reservado para los títulos.<br><br>`,
+            cursiva: `
+                <span class="highlight">Parece que la cursiva se emplea con una finalidad distinta de la recomendada, considere reservarla para extranjerismos, neologismos o resaltado puntual.</span><br><br>
+                Se recomienda usar la cursiva únicamente para extranjerismos, neologismos o para resaltar palabras.<br><br>`,
+            subrayado: `
+                <span class="highlight">Parece que el subrayado se utiliza con una finalidad distinta de la habitual, considere reservarlo para los hipervínculos.</span><br><br>
+                El uso del subrayado está reservado únicamente a los hipervínculos.<br><br>`,
+            fernandezHuerta:first.description,
+            szigrisztPazos: first.description,
+            cultismo: `
+                <span class="highlight">Parece que se han utilizado cultismos que pueden resultar poco accesibles para algunos lectores, considere sustituirlos por alternativas más frecuentes cuando existan.</span><br><br>
+                Los cultismos pueden alejar al lector no especializado. Por ello, se recomienda no usar palabras de este tipo cuando existan alternativas más accesibles.<br><br>`,
+            coloquialismo: `
+                <span class="highlight">Parece que se han utilizado expresiones coloquiales, considere sustituirlas por formulaciones más adecuadas para un texto divulgativo.</span><br><br>
+                Los textos divulgativos deben evitar expresiones excesivamente informales. Los coloquialismos pueden reducir la percepción de rigor y profesionalidad.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Las temperaturas <span class="highlight">se dispararon</span> una barbaridad.</em><br><br>
+                <u>Después:</u><br>
+                <em>Las temperaturas <span class="highlight">aumentaron</span> de forma muy significativa.</em>`,
+            vulgarismo: `
+                <span class="highlight">Parece que se han utilizado vulgarismos o giros inapropiados, considere sustituirlos por expresiones más adecuadas a los textos divulgativos.</span><br><br>
+                Los textos divulgativos deben evitar expresiones vulgares o inapropiadas. Los vulgarismos pueden afectar a la credibilidad del documento y dificultar su difusión en contextos académicos o profesionales.<br><br>
+                Más información: <a href="https://www.rae.es/libro-estilo-lengua-espa%C3%B1ola/palabras-del-diccionario-cuyo-uso-puede-no-ser-apropiado">https://www.rae.es/libro-estilo-lengua-espa%C3%B1ola/palabras-del-diccionario-cuyo-uso-puede-no-ser-apropiado</a>`,
+            formato: `
+                <span class="highlight">Parece que existen inconsistencias de formato en el documento, considere homogeneizar los criterios de formato y presentación.</span><br><br>
+                Los textos divulgativos deben seguir criterios homogéneos de redacción y formato; y evitar la combinación de formatos.`,
+            autor:`
+                <span class="highlight">Parece que la referencia a un autor podría estar incompleta, considere añadir un hipervínculo u otra información que permita ampliar la referencia.</span><br><br>
+                Las referencias a autores suelen ir acompañadas de un hipervínculo que permita al lector ampliar la información mencionada.`,
+            ejemplo:`
+                <span class="highlight">Parece que algunos conceptos abstractos carecen de ejemplos ilustrativos, considere incorporar ejemplos concretos que faciliten su comprensión.</span><br><br>
+                Los conceptos abstractos se entienden mejor si van acompañados de ejemplos concretos. Dichos ejemplos facilitan la construcción de representaciones mentales y facilitan la comprensión de las ideas.`,
+            metaforas:`
+                <span class="highlight">Parece que se han empleado metáforas complejas, considere sustituirlas por explicaciones más directas o por metáforas más sencillas.</span><br><br>
+                El texto recurre a metáforas difíciles de interpretar. No todos los lectores comparten los mismos referentes culturales por lo que se recomienda utilizar únicamente metáforas sencillas o explicaciones literales y directas.`,
+            analogia: `
+                <span class="highlight">Parece que algunos conceptos podrían explicarse mediante analogías cotidianas, considere incorporar comparaciones basadas en experiencias comunes.</span><br><br>
+                Las analogías facilitan la comprensión de fenómenos difíciles de visualizar. Se recomienda, por tanto, utilizar comparaciones basadas en experiencias comunes.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <em>Los gases de efecto invernadero actúan de forma similar a una <span class="highlight">manta que retiene parte del calor</span> alrededor del planeta.</em>`,
+            transicion: `
+                <span class="highlight">Parece que faltan transiciones entre los distintos temas del texto, considere incorporar oraciones que faciliten el paso de un tema a otro.</span><br><br>
+                Los textos divulgativos suelen introducir oraciones de transición entre secciones, apartados o cambios temáticos. Se recomienda incorporar este tipo de construcciones.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <em>Después de examinar los cambios observados, resulta necesario analizar sus posibles impactos futuros.</em>`,
+            expresiones:`
+                <span class="highlight">Parece que se han utilizado expresiones locales o regionales, considere sustituirlas por formulaciones de uso más general para facilitar la comprensión de un público más amplio.</span><br><br>
+                Los textos dirigidos a un público amplio evitan las expresiones propias de una variedad geográfica concreta. Así se facilita la comprensión de los lectores de cualquier área geográfica. `,
+            conoPrevio: `
+                <span class="highlight">Parece que el texto presupone conocimientos previos especializados, considere introducir o explicar los conceptos necesarios para facilitar la comprensión.</span><br><br>
+                Los textos dirigidos a un público amplio deben evitar da por supuesto el conocimiento de conceptos, teorías, instituciones o procesos especializados. Por esa razón, recomienda prescindir de expresiones que presupongan conocimientos compartidos e introduzca los conceptos necesarios para comprender el texto.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em><span class="highlight">Como todos sabemos</span>, el efecto invernadero es un fenómeno ampliamente conocido.</em><br><br>
+                <u>Después:</u><br>
+                <em>El efecto invernadero es un proceso natural mediante el cual determinados gases retienen parte del calor en la atmósfera terrestre.</em>`,
+            contextualizacion: `
+                <span class="highlight">Parece que falta contextualización de algunos autores, teorías, instituciones o documentos mencionados, considere incorporar una breve explicación cuando aparezcan por primera vez.</span><br><br>
+                Los textos divulgativos deben ofrecer una breve contextualización cuando aparezca una referencia relevante a autores, teorías, instituciones o documentos por primera vez.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em>Según <span class="highlight">Kuhn</span>, este fenómeno supone un cambio de paradigma.</em><br><br>
+                <u>Después:</u><br>
+                <em>Según <span class="highlight">Thomas Kuhn, filósofo e historiador de la ciencia conocido por sus estudios sobre los cambios científicos</span>, este fenómeno supone un cambio de paradigma.</em>`,
+
+            estadística: first.description
+
+        }
+        const descriptionMapAntiguo = {
             parrafoCorto: "Los párrafos con una sola oración presentan información fragmentada y dificultan la construcción de relaciones entre las ideas.\nSe podría construir un párrafo que incluya al menos dos oraciones relacionadas entre sí.\n\nEjemplo\nAntes:\nLa temperatura media global ha aumentado durante las últimas décadas.\nDespués:\nLa temperatura media global ha aumentado durante las últimas décadas. Este incremento se relaciona principalmente con las emisiones de gases de efecto invernadero.",
             parrafoLargo: "Los párrafos largos aumentan el esfuerzo de lectura, dificultan la localización de las ideas principales y favorecen la pérdida de información relevante.\nSe podría dividir la información en varios párrafos más breves, procurando que cada párrafo desarrolle una única idea principal.",
             oracionLarga: "Las oraciones extensas (que superan las 25 palabras) incrementan la carga cognitiva y dificultan la identificación de las relaciones sintácticas.\nSe podría dividir la oración en varias oraciones más breves.\n\nEjemplo\nAntes:\nLos investigadores analizaron los datos obtenidos en diferentes estaciones meteorológicas distribuidas por diversas regiones durante varias décadas con el fin de identificar tendencias relacionadas con la temperatura y las precipitaciones.\nDespués:\nLos investigadores analizaron datos de diversas estaciones meteorológicas. El estudio incluyó varias regiones y varias décadas. El objetivo fue identificar tendencias relacionadas con la temperatura y las precipitaciones.",
@@ -1249,24 +1677,54 @@ function renderComments(){
             claridad: first.description + "\nLa información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva...) para que el mensaje se entienda mejor. Los conectores y marcadores discursivos ayudan a conseguirlo.\n\nEjemplo\nComo consecuencia de este aumento de temperatura, los glaciares pierden masa.",
             coherenciaExt: first.description + "\nLos textos divulgativos disponen de una estructura básica dividida en tres partes: introducción, desarrollo y conclusión. Este tipo de textos resultan más claros cucando dicha estructura es perceptible por el lector.",
             digresion: first.description + "\nLos textos que presentan digresiones o se desvían del tema principal son más difíciles de entender.\n\nEjemplo\nSi el texto explica el cambio climático, evite incluir extensas descripciones sobre la historia de la navegación, salvo que tengan relación directa con el tema tratado.",
+            parrafoComplejo: "El párrafo resulta complejo cuando acumulan subordinaciones, coordinaciones, incisos y nominalizaciones. La concentración de varios de estos recursos en un solo párrafo incrementa significativamente el esfuerzo de lectura.\n\nEjemplo\nAntes:\nEl informe, elaborado por diferentes grupos de investigación y revisado posteriormente por especialistas internacionales, analiza múltiples aspectos, que resultan fundamentales, relacionados con la temperatura, la biodiversidad, los recursos hídricos y la economía.\nDespués:\nEl informe fue elaborado por diversos grupos de investigación. Posteriormente, especialistas internacionales revisaron el documento. El estudio analiza aspectos fundamentales como la temperatura, la biodiversidad, los recursos hídricos y la economía.",
+            siglas:"",
+            redundancias: "",
+            faltaEnum: "",
             enum: "Los elementos de una lista o enumeración deben presentar estructuras gramaticales similares como, por ejemplo, empezar por un sustantivo, un artículo o un infinitivo. De ese modo, se consigue una lectura más rápida y sencilla.\n\nEjemplo\nAntes:\n- Reducir emisiones.\n- La protección de bosuqes.\n- Que se mejore la eficiencia energética.\nDespués:\n- Reducir emisiones.\n- Proteger bosques.\n- Mejorar la eficiencia energética.",
             enumIncos: "Es recomendable que las listas o enumeraciones del texto mantengas siempre el mismo criterio y eviten utilizar números, letras o símbolos de forma arbitraria.",
+            lexFrec: "",
             baul: "Es recomendable evitar el uso de palabras baúl o palabras imprecisas para evitar malentendidos. Estas palabras pueden sustituirse por términos más concretos y específicos.\nSi clicas sobre una palabra marcada se generará una sugerencia.\n\nEjemplo\nAntes:\nSe observaron varias cosas en el oceáno debido al cambio climático.\nDespués:\nLos sensores datelitales observaron un aumento dde 1,5ºC en la temperatura del océano debido al cambio climático.",
             rodeos: "Las perífrasis y locuciones innecesarias alargan la oración sin aportar un significado adicional. Por ello, se recomienda sustituir las expresiones complejas por verbos directos.\n\nEjemplo\nAntes:\nLlevar a cabo una evaluación.\nDespués:\nEvaluar.",
             extranjerismo: "Los extranjerismos, latinismos o arcaísmos resultan, con frecuencia, expresiones poco habituales en el español actual. Por ello, se recomienda que se sustituyan por equivalencias más actuales cuando sea posible.\n\nEjemplo\nAntes:\nAd hoc.\nDespués:\nPara este fin.",
-            latinismo: "Los extranjerismos, latinismos o arcaísmos resultan, con frecuencia, expresiones poco habituales en el español actual. Por ello, se recomienda que se sustituyan por equivalencias más actuales cuando sea posible.\n\nEjemplo\nAntes:\nAd hoc.\nDespués:\nPara este fin.",
             largas: "Las palabras largas, provengan o no de otras palabras de las que derivan, resultan más difíciles de procesar. Por esa razón, se recomienda que se sustituyan por alternativas más breves.\n\nEjemplo\nAntes:\nUtilización.\nDespués:\nUso.",
+            referente: "",
+            ambiguo: "",
+            repeticion: "",
+            elemValor: "",
             tecnicismo: "Los textos con numerosos términos especializados son más difíciles de entender. Su comprensión mejora si los tecnicismos innecesarios se sustituyen por palabras más generales y los términos necesarios se explican en el primer uso.\nEjemplo\n\nAntes:\nLa pérdida de la cubierta de hielo en el Océano Ártico genera un bucle de retroalimentación positiva que reduce drásticamente el albedo de la región.\nDespués:\nLa pérdida de hielo en el Océano Ártico crea un efecto de bola de nieve que empeora la situación: reduce drásticamente la capacidad de la región para reflejar la luz del sol.",
             negacion: "La reiteración de negaciones en la oración incrementa la complejidad interpretativa. Por ello, se recomienda reformular la oración en afirmativo.\n\nEjemplo\nAntes:\nNo es infrecuente que no existan diferencias.\nDespués:\nEs habitual que existan pocas diferencias.",
             negacionAbun: "Las ideas se deben expresar con formulaciones afirmativas siempre que sea posible. La acumulación de oraciones negativas en el texto dificulta su compresión.",
             sesgo: "Si bien la RAE considera el masculino el término inclusivo, aconseja el uso de expresiones más genéricas, como los sustantivos epicenos, siempre que sea posible. Se podría valorar, pues, el uso de términos colectivos, abstractos o epicenos cuando resulten adecuados.\n\nEjemplo\nAntes:\nLos investigadores deben presentar sus resultados.\nDespués:\nEl personal investigador debe presentar sus resultados.",
+            apartados: "",
+            principal: "",
+            titulo: "",
+            subtitulo: "",
+            recapitulacion: "",
             textoLargo: "El texto supera la longitud habitual para el género de la difusión. Esta extensión suele situarse en las 1500 o 2000.",
+            negrita: "",
+            cursiva: "",
+            subrayado: "",
             fernandezHuerta:first.description,
-            estadística: first.description,
             szigrisztPazos: first.description,
-            parrafoComplejo: "El párrafo resulta complejo cuando acumulan subordinaciones, coordinaciones, incisos y nominalizaciones. La concentración de varios de estos recursos en un solo párrafo incrementa significativamente el esfuerzo de lectura.\n\nEjemplo\nAntes:\nEl informe, elaborado por diferentes grupos de investigación y revisado posteriormente por especialistas internacionales, analiza múltiples aspectos, que resultan fundamentales, relacionados con la temperatura, la biodiversidad, los recursos hídricos y la economía.\nDespués:\nEl informe fue elaborado por diversos grupos de investigación. Posteriormente, especialistas internacionales revisaron el documento. El estudio analiza aspectos fundamentales como la temperatura, la biodiversidad, los recursos hídricos y la economía."
+            cultismo: "",
+            coloquialismo: "",
+            vulgarismo: "",
+            formato: "",
+            autor: "",
+            ejemplo: "",
+            metaforas: "",
+            analogias: "",
+            transicion: "",
+            expresiones: "",
+            conoPrevio: "",
+            contextualizacion: "",
+            latinismo: "Los extranjerismos, latinismos o arcaísmos resultan, con frecuencia, expresiones poco habituales en el español actual. Por ello, se recomienda que se sustituyan por equivalencias más actuales cuando sea posible.\n\nEjemplo\nAntes:\nAd hoc.\nDespués:\nPara este fin.",
+            estadística: first.description,
+
         }
-        desc.innerText = descriptionMap[first.name] || first.text;
+        desc.innerHTML = descriptionMap[first.name] || first.text;
+        //desc.innerText = descriptionMapAntiguo[first.name] || first.text;
 
         // Botón quitar sugerencia
         /*

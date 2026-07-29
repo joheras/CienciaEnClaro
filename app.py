@@ -677,7 +677,7 @@ async def stadistics_text(texto):
         "start": inicioParrafo,
         "end": finParrafo,
         "text": "Estadísticas del texto",
-        "description": f"El texto tiene:\n- {caracteres} caracteres\n- {silabas} sílabas\n- {palabras} palabras\n- {frases} frases\n\nSobre legibilidad:\n- Fernández-Huerta: {fernandez}\n- Szigriszt-Pazos: {pazos}",
+        "description": f"El texto tiene:<br>- {caracteres} caracteres<br>- {silabas} sílabas<br>- {palabras} palabras<br>- {frases} frases<br><br>Sobre legibilidad:<br>- Fernández-Huerta: {fernandez}<br>- Szigriszt-Pazos: {pazos}",
         "type": "estadistica",
         "name": "estadística",
                 "suggestion": "false"
