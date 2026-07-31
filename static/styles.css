@@ -836,3 +836,25 @@ input:checked + .slider:before {
     text-decoration-thickness: 2px;
     text-underline-offset: 2px;
 }
+
+
+/* Generar sugerencia al hacer click derecho */
+.context-menu {
+    display: none;
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    border-radius: 4px;
+    z-index: 9999;
+    min-width: 180px;
+}
+
+.context-menu div {
+    padding: 10px 14px;
+    cursor: pointer;
+}
+
+.context-menu div:hover {
+    background: #f0f0f0;
+}

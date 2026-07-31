@@ -33,6 +33,10 @@ const AVAILABLE_INTENTIONS = [
 ];
 let lastStructure = null;
 let originalContent = "";
+let selectedComment = null;
+
+const menu = document.getElementById("customContextMenu");
+const generateOption = document.getElementById("generateSuggestionOption");
 
 function setOriginalContent() {
     originalContent = quill.getContents();
@@ -43,6 +47,18 @@ function hasUnsavedChanges() {
     }
     return JSON.stringify(quill.getContents()) !== JSON.stringify(originalContent);
 }
+
+let lastWidth = window.innerWidth;
+
+window.addEventListener("resize", () => {
+    if (window.innerWidth !== lastWidth) {
+        lastWidth = window.innerWidth;
+
+        requestAnimationFrame(() => {
+            updateParagraphNumbers();
+        });
+    }
+});
 
 // Meter al css
 let popupDiv = document.createElement("div");
@@ -125,7 +141,7 @@ window.addEventListener('beforeunload', function(e){
 });
 
 //Al hacer click en una palabra resaltada se abre el popup de sugerencias
-quill.root.addEventListener("click", handleHighlightedWordClick);
+quill.root.addEventListener("contextmenu", handleContextMenu);
 
 
 const resizer = document.getElementById('panelResizer');
@@ -628,6 +644,9 @@ async function reanalyzeModifiedParagraphs() {
         unlockComments();
     }
 
+    activeCommentId = null;
+    activeType = null;
+    analyzedParagraphStart = null;
 
     document.getElementById("filterParagraph").value="all";
     updateFilterOptions();
@@ -754,32 +773,29 @@ newSuggestionBtn.addEventListener('click', async()=>{
 });
 // Usar sugerencia
 useSuggestionBtn.addEventListener('click', () => {
-console.log(currentModalComment);
+
     if (!currentModalComment) return;
     const start = getUpdatedSentenceIndex(currentModalComment);
-    console.log("click");
-    console.log(start);
+
     const originalSentence = currentModalComment.oracion;
     const newSentence = currentModalComment.suggestion;
 
     const Delta = Quill.import("delta");
-    console.log({
-        start,
-        originalSentence,
-        newSentence,
-        suggestedValue: suggestedTextArea.value
-    });
+
     quill.updateContents(
         new Delta()
             .retain(start)
             .delete(originalSentence.length)
             .insert(newSentence)
     );
+    modifiedParagraphs.set(currentModalComment.paragraph, true);
     suggestionModal.style.display = "none";
     currentModalComment = null;
     updateParagraphNumbers();
     updateParagraphFilter();
     hasPendingChanges=true;
+    updateAnalyzeButton();
+    updateParagraphNumbers();
     lockComments();
     /*
     // Cuando era del párrafo completo
@@ -1452,6 +1468,7 @@ function renderComments(){
             baul: `
                 <span class="highlight">Parece que hay falta de precisión léxica, considere revisar el uso de palabras imprecisas (palabras baúl).</span><br><br>
                 Es recomendable evitar el uso de palabras baúl o palabras imprecisas para evitar malentendidos. Estas palabras pueden sustituirse por términos más concretos y específicos.<br><br>
+                Al hacer click con el botón derecho en alguna palabra remarcada dará la opción de generar una sugerencia.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 <u>Antes:</u><br>
                 <em>Los sensores satelitales observaron varias cosas en el océano debido al cambio climático.</em><br><br>
@@ -2277,20 +2294,23 @@ function updateParagraphNumbers() {
         row.style.right = "6px";
         row.style.paddingRight = "6px";
         row.style.boxSizing = "border-box";
-        // Añadir asterisco si el párrafo se ha modificado
-        row.textContent = count + (analysisPerformed && modifiedParagraphs.has(count) ? " *" : "");
 
         // Si este párrafo es el analizado, le añadimos la clase
-        const blot = Quill.find(node);
+        let blot = Quill.find(node);
         if (blot){
+            const parStart = quill.getIndex(blot);
+            const bounds = quill.getBounds(parStart);
+            const wrapper = document.querySelector(".editor-wrapper");
+            row.style.top = (bounds.top-wrapper.scrollTop) + "px";
+            if (analyzedParagraphStart != null && analyzedParagraphStart === parStart) {
+                row.classList.add("active-paragraph-number");
+            }
+        }
+
+        // Añadir asterisco si el párrafo se ha modificado
         const parStart = quill.getIndex(blot);
-        const bounds = quill.getBounds(parStart);
-        const wrapper = document.querySelector(".editor-wrapper");
-        row.style.top = (bounds.top-wrapper.scrollTop) + "px";
-        if (analyzedParagraphStart != null && analyzedParagraphStart === parStart) {
-            row.classList.add("active-paragraph-number");
-        }
-        }
+        row.textContent = count + (analysisPerformed && modifiedParagraphs.has(parStart) ? " *" : "");
+
         count++;
     container.appendChild(row);
     });
@@ -2514,7 +2534,7 @@ async function generateSuggestion(comment){
     const overlay = document.getElementById("suggestionOverlay");
     overlay.style.display = "flex";
     currentModalComment.sugerencia = "";
-    suggestedText.innerHTML = "";
+    suggestedTextArea.innerHTML = "";
     try {
         // Generamos la sugerencia
         const response = await fetch("/generar_sugerencia", {
@@ -2535,10 +2555,12 @@ async function generateSuggestion(comment){
         currentModalComment.suggestion = sugerencia;
         // Limpieza
         sugerencia = sugerencia.trim().replace(/^"""/, "").replace(/"""$/, "").replace(/^```/, "").replace(/```$/, "").replace(/^\s+|\s+$/g, "").replace(/\n{2,}/g, "\n").replace(/^\n+|\n+$/g, "");
-        suggestedText.innerHTML = highlightSuggestedSentence(comment.oracion, sugerencia, comment.palabra);
+        const diff = diffWords(comment.oracion, sugerencia);
+        originalTextArea.innerHTML = diff.original;
+        suggestedTextArea.innerHTML = diff.suggested;
     } catch (err) {
         console.error("Error generando sugerencia:",err);
-        suggestedTextArea.value = "error generando sugerencia";
+        suggestedTextArea.textContent = "error generando sugerencia";
     }
     overlay.style.display ="none";
 }
@@ -2963,7 +2985,9 @@ function closeIntentionalityModal() {
     document.getElementById("intentionalityModal").style.display = "none";
 }
 
+/*
 async function handleHighlightedWordClick(event) {
+// Era de cuando se generaba la sugerencia al hacer click en una palabra
     if (activeType == null) {
         console.log("Sale: activeCommentId es null");
         return;
@@ -3021,37 +3045,145 @@ async function handleHighlightedWordClick(event) {
     await generateSuggestion(comment);
 }
 
+ */
+
+async function handleContextMenu(event) {
+    if (activeType == null) {
+        console.log("Sale: activeCommentId es null");
+        return;
+    }
+
+    const selection = document.getSelection();
+    if (!selection.rangeCount) {
+        console.log("Sale: no hay selección");
+        return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const blot = Quill.find(event.target, true);
+    if (!blot) {
+        console.log("Sale: blot es null", range.startContainer);
+        return;
+    }
+    const index = quill.getIndex(blot) + range.startOffset;
+
+    console.log("índice clic:", index);
+
+    const comment = comments.find( c => {
+        if (c.name!==activeType) return false;
+        if (c.suggestion!=="true") return false;
+        const start = getUpdatedIndex(c);
+        const end = start + c.length;
+        return index >= start && index < end;
+    }
+    );
+    if (!comment) return;
+
+    // Ahora va solo para palabras baúl
+    if (comment.name !== "baul") {
+        return;
+    }
+
+    event.preventDefault();
+
+    selectedComment = comment;
+
+    menu.style.left = event.pageX + "px";
+    menu.style.top = event.pageY + "px";
+    menu.style.display = "block";
+}
+
+generateOption.addEventListener("click", async () => {
+    if (!selectedComment)
+        return;
+
+    currentModalComment = selectedComment;
+
+    modal.style.display = "block";
+
+    document.getElementById("suggestionCriterion").textContent =
+        `(${selectedComment.text})`;
+
+    menu.style.display = "none";
+
+    suggestedTextArea.innerHTML = "";
+    originalTextArea.textContent = selectedComment.oracion;
+
+    await generateSuggestion(selectedComment);
+});
+
+document.addEventListener("click", () => {
+    menu.style.display = "none";
+})
+
 // Para pintar las palabras cambiadas en las sugerencias
 function escapeRegExp(text) {
     return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function highlightOriginalSentence(sentence, word) {
-    const regex = new RegExp(`\\b${escapeRegExp(word)}\\b`, "i");
-
-    return sentence.replace(regex,
-        `<span class="original-word">$&</span>`);
+    return diffWords(original, suggested).original;
 }
 function highlightSuggestedSentence(original, suggested, oldWord) {
+    return diffWords(original, suggested).suggested;
+}
 
-    const oldWords = original.split(/\s+/);
-    const newWords = suggested.split(/\s+/);
+function diffWords(oldText, newText) {
+    const oldWords = oldText.split(/\s+/);
+    const newWords = newText.split(/\s+/);
 
-    let replacement = null;
+    const m = oldWords.length;
+    const n = newWords.length;
 
-    for(let i=0;i<Math.min(oldWords.length,newWords.length);i++){
-        if(oldWords[i] !== newWords[i]){
-            replacement = newWords[i];
-            break;
+    const dp = Array.from({ length: m + 1 }, () =>
+        Array(n + 1).fill(0)
+    );
+
+    for (let i = m - 1; i >= 0; i--) {
+        for (let j = n - 1; j >= 0; j--) {
+            if (oldWords[i] === newWords[j]) {
+                dp[i][j] = dp[i + 1][j + 1] + 1;
+            } else {
+                dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+            }
         }
     }
 
-    if(!replacement){
-        return suggested;
+    const original = [];
+    const suggested = [];
+
+    let i = 0, j = 0;
+
+    while (i < m && j < n) {
+
+        if (oldWords[i] === newWords[j]) {
+            original.push(oldWords[i]);
+            suggested.push(newWords[j]);
+            i++;
+            j++;
+        }
+        else if (dp[i + 1][j] >= dp[i][j + 1]) {
+            original.push(`<span class="original-word">${oldWords[i]}</span>`);
+            i++;
+        }
+        else {
+            suggested.push(`<span class="suggested-word">${newWords[j]}</span>`);
+            j++;
+        }
     }
 
-    return suggested.replace(
-        replacement,
-        `<span class="suggested-word">${replacement}</span>`
-    );
+    while (i < m) {
+        original.push(`<span class="original-word">${oldWords[i]}</span>`);
+        i++;
+    }
+
+    while (j < n) {
+        suggested.push(`<span class="suggested-word">${newWords[j]}</span>`);
+        j++;
+    }
+
+    return {
+        original: original.join(" "),
+        suggested: suggested.join(" ")
+    };
 }
