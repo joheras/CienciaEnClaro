@@ -4,6 +4,7 @@
 # In[1]:
 
 import json
+from json_repair import repair_json
 import dspy
 from pydantic import BaseModel
 import dspy
@@ -99,5 +100,5 @@ def evaluate_text(texto, fin, aspectos_seleccionados=None):
     else:
         json_text = resultado.resultado_json
 
-    datos = json.loads(json_text)
+    datos = json.loads(repair_json(json_text))
     return datos
