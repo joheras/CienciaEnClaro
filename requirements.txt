@@ -62,3 +62,4 @@ json_repair
 pyspellchecker
 backoff
 redis
+jwt
