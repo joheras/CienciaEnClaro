@@ -63,3 +63,4 @@ pyspellchecker
 backoff
 redis
 PyJWT
+cryptography
