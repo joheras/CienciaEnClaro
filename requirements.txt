@@ -64,3 +64,4 @@ backoff
 redis
 PyJWT
 cryptography
+RestrictedPython
