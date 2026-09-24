@@ -66,3 +66,4 @@ PyJWT
 cryptography
 RestrictedPython
 websockets
+litellm[proxy]
