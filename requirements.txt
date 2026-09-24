@@ -59,3 +59,4 @@ weasel==1.0.0
 wrapt==2.2.1
 dspy==3.2.1
 json_repair
+pyspellchecker
