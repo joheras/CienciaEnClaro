@@ -61,3 +61,4 @@ dspy==3.2.1
 json_repair
 pyspellchecker
 backoff
+redis
