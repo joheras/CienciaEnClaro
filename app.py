@@ -7,8 +7,6 @@ import uvicorn
 import asyncio
 
 import dspy
-from litellm.proxy.management_endpoints.policy_endpoints import endpoints
-
 # Importamos los módulos
 from modules.morfosintaxis import *
 from modules.lexsem import *
