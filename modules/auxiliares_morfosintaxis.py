@@ -399,7 +399,7 @@ def concordancia(texto):
 
 
 def pasiva_perifrastica(texto):
-    """Dada una frase devuelve True si es una pasiva perifrastica y False en caso contrario.
+    """Dada una frase devuelve el inicio y fin de la construcción pasiva perifrastica.
     Una pasiva es perifrástrica si está compuesta por el verbo "ser" conjugado y un participio.
     Por ejemplo: La carta FUE ESCRITA por María."""
     doc = nlp(texto)
@@ -408,57 +408,65 @@ def pasiva_perifrastica(texto):
             # Ver si tiene como auxiliar "ser"
             for child in token.children:
                 if child.lemma_ == "ser" and child.pos_ == "AUX":
-                    return True
-    return False
+                    inicio = child.idx
+                    fin = token.idx + len(token.text)
+                    return inicio, fin
+    return None
 
 
 def pasiva_refleja(texto):
-    """Dada una frase devuelve True si es una pasiva refleja y False en caso contrario.
-    Una psiva es refleja si está compuesta por "se" y un verbo transitivo.
+    """Dada una frase devuelve el inicio y fin de la construcción pasiva refleja.
+    Una pasiva es refleja si está compuesta por "se" y un verbo transitivo.
     Por ejemplo: SE VENDIERON las entradas."""
     doc = nlp(texto)
     for token in doc:
         if token.dep_ == "expl:pass":
             # Se comprueba si hay sujeto paciente con el verbo
-            return any(child.dep_ == "nsubj" for child in token.head.children)
-    return False
+            if any(child.dep_ == "nsubj" for child in token.head.children):
+                inicio = token.idx
+                fin = token.head.idx + len(token.head.text)
+                return inicio, fin
+    return None
 
 
 def infinitivo(texto):
-    """Dada una frase devuelve True si tiene algún verbo en infinitivo.
-    En caso contrario devuelve False."""
+    """Dada una frase devuelve los verbos en infinitivos encontrados en dicha frase."""
     doc = nlp(texto)
+    resultados = []
+
     for token in doc:
         if token.pos_ == "VERB" and "Inf" in token.morph.get("VerbForm"):
             if token.head.pos_ not in ("VERB", "AUX"):
-                return True
-    return False
+                resultados.append(token)
+    return resultados
 
 
 def gerundio(texto):
-    """Dada una frase devuelve True si tiene algún verbo en gerundio.
-    En caso contrario devuelve False."""
+    """Dada una frase devuelve los verbos en gerundio encontrados en dicha frase."""
     doc = nlp(texto)
+    resultados = []
+
     for token in doc:
         if token.pos_ == "VERB" and "Ger" in token.morph.get("VerbForm"):
             # Miramos si tiene auxiliar
             tiene_aux = any(child.pos_ == "AUX" for child in token.children) or (token.head.pos_ == "AUX")
             if not tiene_aux:
-                return True
-    return False
+                resultados.append(token)
+    return resultados
 
 
 def participio(texto):
-    """Dada una frase devuelve True si tiene algún verbo en participio.
-    En caso contrario devuelve False."""
+    """Dada una frase devuelve los verbos en participio encontrados en dicha frase."""
     doc = nlp(texto)
+    resultados = []
+
     for token in doc:
         if token.pos_ == "VERB" and "Part" in token.morph.get("VerbForm"):
             # Miramos si tiene auxiliar
-            tiene_aux = any(Child.pos_ == "AUX" for Child in token.children) or (token.head.pos_ == "AUX")
+            tiene_aux = any(child.pos_ == "AUX" for child in token.children) or (token.head.pos_ == "AUX")
             if not tiene_aux:
-                return True
-    return False
+                resultados.append(token)
+    return resultados
 
 
 # Necesario para los incisos:

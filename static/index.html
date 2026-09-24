@@ -109,6 +109,7 @@
 -->
         <span class="ql-formats">
             <button id="intentionalityConfigBtn" class="toolbar-btn" title="Configuración intencionalidad"><i class="fa-solid fa-gear"></i></button>
+            <button id="generateTableBtn" class="toolbar-btn" title="Generar tabla"><i class="fa-solid fa-table"></i></button>
         </span>
 
 
@@ -117,6 +118,7 @@
     <div class="editor-wrapper">
       <div id="paragraphNumbers"></div>
       <div id="editor"></div>
+      <div id="spellcheckOverlay"></div>
     </div>
 </div>
 
@@ -250,7 +252,14 @@
             </div>
         </div>
     </div>
+</div>
 
+<div id="tableLoadingOverlay">
+    <div class="loadingContent">
+        <div class="spinner"></div>
+        <p>Generando tabla...</p>
+    </div>
+</div>
 <!-- Quill JS -->
 <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -261,6 +270,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@3.0.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+<script src="https://unpkg.com/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

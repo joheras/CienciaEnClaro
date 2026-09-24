@@ -1,4 +1,5 @@
 import textstat
+import math
 
 conectores_cronologicos = ["en primer lugar", "en segundo", "en tercero", "ante todo", "fundamentalmente",
                            "después", "por fin", "para empezar", "finalmente", "por último", "sobre todo"]
@@ -29,43 +30,38 @@ def numero_conectores(texto):
     return int(numero)
 
 
-
-def aux_conectores(texto):
-    necesita = numero_conectores(texto)
-    tiene = 0
-    conectores = {}
+def contar_conectores(texto):
     texto_min = texto.lower()
+    total = 0
+    conectores_encontrados = {}
+
     for conector in conect:
         conector_min = conector.lower()
         pos = texto_min.find(conector_min)
-        while pos!=-1:
+
+        while pos != -1:
             fin = pos + len(conector_min)
 
             antes_ok = (
-                pos == 0 or not texto[pos-1].isalnum()
+                pos == 0 or not texto[pos - 1].isalnum()
             )
+
             despues_ok = (
                 fin == len(texto) or not texto[fin].isalnum()
             )
 
             if antes_ok and despues_ok:
-                tiene = tiene + 1
-                conectores[conector_min] = conectores.get(conector_min, 0) + 1
+                total += 1
+                conectores_encontrados[conector_min] = (
+                    conectores_encontrados.get(conector_min, 0) + 1
+                )
 
-                despues = texto[fin:]
-                if not despues.startswith(","):
-                    return tiene<necesita, conectores, False, pos, conector_min
-                if pos==0:
-                    pass
-                elif texto_min[:pos].endswith(". "):
-                    pass
-                elif texto_min[:pos].endswith(", "):
-                    pass
-                elif texto_min[:pos].endswith("; "):
-                    pass
-                else:
-                    return tiene<necesita, conectores, False, pos, conector_min
-            pos = texto_min.find(conector_min, pos+1)
-    return tiene<necesita, conectores, True, None, None
+            pos = texto_min.find(conector_min, pos + 1)
+
+    return total, conectores_encontrados
+
+def numero_conectores(frases):
+    conexiones = max(0, len(frases) - 1)
+    return math.ceil(conexiones / 2)
 
 

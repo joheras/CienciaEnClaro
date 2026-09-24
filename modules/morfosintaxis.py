@@ -65,24 +65,33 @@ def error_concordancia(texto):
 
 # La mayor parte de las oraciones deben enunciarse en voz activa
 def voz_pasiva(texto):
-    """Dada una oración, devuelve True si está enunciada en voz pasiva y False en caso contrario"""
-    if pasiva_refleja(texto):
-        return True
-    if pasiva_perifrastica(texto):
-        return True
-    return False
+    """Dada una oración, devuelve el rango de la construcción pasiva o None"""
+    pasiva_re = pasiva_refleja(texto)
+    if pasiva_re:
+        return pasiva_re
+    pasiva_peri = pasiva_perifrastica(texto)
+    if pasiva_peri:
+        return pasiva_peri
+    return None
 
 # Promover el uso de verbos conjugados (mirar el uso abusivo de inifinitvos, gerundios y participios)
 def verbos_no_conjugados(texto):
-    """Dada una oración, devuelve True si encuentra algún verbo en infinitivo, gerundio o participio.
-    Devuelve False en caso contrario."""
-    if infinitivo(texto):
-        return True
-    elif gerundio(texto):
-        return True
-    elif participio(texto):
-        return True
-    return False
+    """Dada una oración, devuelve las formas verbales no personales (infinitivo, gerundio y participio) encontradas."""
+    resultados = []
+
+    infinitivos = infinitivo(texto)
+    if infinitivo:
+        resultados.extend(infinitivos)
+
+    gerundios = gerundio(texto)
+    if gerundios:
+        resultados.extend(gerundios)
+
+    participios = participio(texto)
+    if participios:
+        resultados.extend(participios)
+
+    return resultados
 
 def tiene_inciso(texto):
     """Dada una oración, devuelve True si encuentra algún verbo en infinitivo, gerundio o participio.
@@ -119,7 +128,7 @@ def sujeto_eliptico(texto):
         else:
             consecutivos=0
 
-        if consecutivos>=3:
+        if consecutivos>=2:
             return True
 
     return False

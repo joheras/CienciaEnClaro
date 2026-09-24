@@ -34,23 +34,23 @@ def detectar_palabras_baul(texto, pal):
                 return True
     return False
 
-def parrafoComplejo(texto):
-    puntuacion = 0
-    doc = nlp(texto)
-    oraciones = [sent.text for sent in doc.sents]
-    for oracion in oraciones:
-        if coordinada(oracion, 0):
-            puntuacion +=1
-        #if filtrarInciso(oracion):
-        #    puntuacion +=1
-        if relativo(oracion):
-            puntuacion +=1
+#def parrafoComplejo(texto):
+#    puntuacion = 0
+#    doc = nlp(texto)
+#    oraciones = [sent.text for sent in doc.sents]
+#    for oracion in oraciones:
+#        if coordinada(oracion, 0):
+#            puntuacion +=1
+#        #if filtrarInciso(oracion):
+#        #    puntuacion +=1
+#        if relativo(oracion):
+#            puntuacion +=1
 
-    for token in doc:
-        if token.is_alpha and nominalizada(token.text):
-            puntuacion += 1
+#    for token in doc:
+#        if token.is_alpha and nominalizada(token.text):
+#            puntuacion += 1
 
-    return puntuacion >= 5
+#    return puntuacion >= 5
 
 def palabraLarga(palabra):
     return largas(palabra)

@@ -20,6 +20,7 @@ let lastAnalyzedParagraphs = {};
 let modifiedParagraphs = new Map();
 let analysisPerformed = false;
 let textIntentions = ["enseñar-explicar"];
+let insertingTable = false;
 const AVAILABLE_INTENTIONS = [
     { value: "informar", label: "Informar" },
     { value: "persuadir", label: "Persuadir" },
@@ -35,8 +36,22 @@ let lastStructure = null;
 let originalContent = "";
 let selectedComment = null;
 
+let spellCheckMatches = [];
+
+let spellcheckTimeout = null;
+
+function scheduleSpellcheck() {
+    clearTimeout(spellcheckTimeout);
+
+    spellcheckTimeout = setTimeout(() => {
+        checkSpelling();
+    }, 800);
+}
+
 const menu = document.getElementById("customContextMenu");
 const generateOption = document.getElementById("generateSuggestionOption");
+const BLOCK_SELECTOR = "p, li, h1, h2, h3, h4, h5, h6";
+const TABLE_SELECTOR = ".generated-table";
 
 function setOriginalContent() {
     originalContent = quill.getContents();
@@ -80,6 +95,82 @@ let activeType = null;
 
 const Size = Quill.import('attributors/style/size');
 
+// Para el subrayado de las sugerencias
+const Parchment = Quill.import('parchment');
+const AppUnderline = new Parchment.Attributor.Class(
+    'appUnderline',
+    'app-underline',
+    {
+        scope: Parchment.Scope.INLINE
+    }
+);
+Quill.register(AppUnderline, true);
+
+const BlockEmbed = Quill.import('blots/block/embed');
+
+class TableBlot extends BlockEmbed {
+    static create(value) {
+        const node = super.create();
+
+        node.innerHTML = value;
+        node.setAttribute("contenteditable", "true");
+
+        return node;
+    }
+
+    static value(node) {
+        return node.innerHTML;
+    }
+}
+
+TableBlot.blotName = 'generatedTable';
+TableBlot.tagName = 'div';
+TableBlot.className = 'generated-table';
+
+Quill.register(TableBlot);
+
+document.addEventListener("keydown", function (event) {
+
+    if (event.key !== "Backspace" && event.key !== "Delete") {
+        return;
+    }
+
+    const selection = window.getSelection();
+
+    if (!selection || selection.rangeCount === 0) {
+        return;
+    }
+
+    const range = selection.getRangeAt(0);
+
+    // Comprobar dónde está el cursor
+    let node = range.commonAncestorContainer;
+
+    if (node.nodeType === Node.TEXT_NODE) {
+        node = node.parentElement;
+    }
+
+    const table = node.closest(".generated-table");
+
+    // Si no estamos dentro de una tabla, dejamos que Quill gestione el evento
+    if (!table) {
+        return;
+    }
+
+    // Estamos dentro de una tabla:
+    // impedir que Quill elimine el BlockEmbed
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    // Hacer que el navegador borre el contenido seleccionado
+    document.execCommand(
+        "delete",
+        false,
+        null
+    );
+
+}, true);
+
 Size.whitelist = [
   '10px',
   '12px',
@@ -93,10 +184,14 @@ Size.whitelist = [
 ];
 
 Quill.register(Size, true);
+Quill.register('modules/imageResize', ImageResize.default);
 
 quill = new Quill('#editor', {
     theme: 'snow',
     modules: {
+        imageResize: {
+            modules: ['Resize', 'DisplaySize']
+        },
         toolbar: {
             container: "#toolbar",
             history: {
@@ -143,6 +238,27 @@ window.addEventListener('beforeunload', function(e){
 //Al hacer click en una palabra resaltada se abre el popup de sugerencias
 quill.root.addEventListener("contextmenu", handleContextMenu);
 
+quill.root.addEventListener("scroll", () => {
+    if (spellcheckMatches) {
+        renderSpellcheck(spellcheckMatches);
+    }
+});
+
+quill.root.addEventListener("input", function(event) {
+
+    const table = event.target.closest(".generated-table");
+
+    if (!table) {
+        return;
+    }
+
+    // El usuario ha modificado el contenido de una tabla
+    lastStructure = null;
+
+    console.log("Tabla modificada: será necesario volver a analizar.");
+
+});
+
 
 const resizer = document.getElementById('panelResizer');
 const container = document.querySelector('.container');
@@ -173,7 +289,7 @@ document.addEventListener('mouseup', () => {
 });
 
 document.getElementById("newDocumentBtn").addEventListener("click", () => {
-    if (hasUnsavedChanges()){
+    if (hasUnsavedChanges()) {
 
         if (!confirm("Se eliminará todo el contenido. ¿Deseas continuar?")) {
             return;
@@ -202,8 +318,25 @@ function resetEditor() {
     // Vaciar el editor
     quill.setContents([]);
 
+    clearSpellcheck();
+
     // Limpiar comentarios
     comments = [];
+
+    lastAnalyzedParagraphs = {};
+    modifiedParagraphs.clear();
+    lastStructure = null;
+
+    analysisPerformed = false;
+    hasPendingChanges = false;
+    hasFullAnalysis = false;
+    hasParagraphAnalysis = false;
+    analyzingParagraph = false;
+    analyzedParagraphStart = null;
+    analyzedParagraphNumber = null;
+
+    activeCommentId = null;
+    activeType = null;
 
     // Limpiar numeración de párrafos
     paragraphNumbers = [];
@@ -212,6 +345,7 @@ function resetEditor() {
     updateParagraphFilter();
     renderComments();
     updateParagraphNumbers();
+    highlightParagraphFromFilter();
 
     // Restablecer otros estados si los tienes
     contenidoModificado = false;
@@ -246,8 +380,59 @@ document.getElementById("filterParagraph").addEventListener("change", () => {
 })
 document.getElementById("commentsList").style.display="none";
 
+function detectAndFormatTitles() {
+    const blocks = quill.root.querySelectorAll("p");
+
+    blocks.forEach((block) => {
+        const text = block.textContent.trim();
+
+        if (!text) return;
+
+        // No debe terminar en un signo de puntuación de cierre
+        const terminaEnPuntuacion = /[.!?:;!?]$/.test(text);
+
+        // Comprobar que el bloque está en negrita
+        const contenido = block.querySelectorAll("*");
+
+        let totalLength = text.length;
+        let boldLength = 0;
+
+        if (contenido.length === 0) {
+            if (block.style.fontWeight === "bold") {
+                boldLength = totalLength;
+            }
+        } else {
+            contenido.forEach((elemento) => {
+                if (elemento.textContent.trim()) {
+                    const estilo = window.getComputedStyle(elemento);
+                    if (
+                        estilo.fontWeight === "bold" ||
+                        parseInt(estilo.fontWeight) >= 700
+                    ) {
+                        boldLength += elemento.textContent.trim().length;
+                    }
+                }
+            });
+        }
+
+        const estaEnNegrita = boldLength >= totalLength * 0.8;
+
+        // Criterios para considerar que es un título
+        if (
+            !terminaEnPuntuacion &&
+            estaEnNegrita
+        ) {
+            const index = quill.getIndex(Quill.find(block));
+
+            quill.formatLine(index, 1, "header", 1);
+        }
+    });
+}
+
 document.getElementById("exampleTextBtn").addEventListener("click", async() => {
     try {
+        resetEditor();
+        setOriginalContent();
         const response = await fetch("/static/ejemplo.docx");
         if (!response.ok) throw new Error("No se pudo cargar el archivo");
 
@@ -263,20 +448,20 @@ document.getElementById("exampleTextBtn").addEventListener("click", async() => {
 
         //quill.setText(text);
 
-        quill.formatText(0, quill.getLength(), {color: "#000000"});
+        setTimeout(() => {
+            detectAndFormatTitles();
+            quill.formatText(0, quill.getLength(), {color: "#000000"});
+            updateParagraphNumbers();
+            updateParagraphFilter();
+            showIntentionalityModal();
+            setOriginalContent();
+        }, 0);
 
-        updateParagraphNumbers();
-        updateParagraphFilter();
-        showIntentionalityModal();
-        setOriginalContent();
     } catch (error) {
         console.error(error);
         alert("Error cargando el texto de ejemplo");
     }
 });
-
-
-
 
 document.getElementById("intentionalityConfigBtn").addEventListener("click", () => {
         showIntentionalityModal();
@@ -284,8 +469,11 @@ document.getElementById("intentionalityConfigBtn").addEventListener("click", () 
 
 let editorWasEmpty = false;
 quill.root.addEventListener("paste", () => {
+    clearSpellcheck();
     editorWasEmpty = quill.getText().trim().length===0;
     setTimeout(() => {
+
+        detectAndFormatTitles();
 
         const text = quill.getText().trim();
 
@@ -297,10 +485,12 @@ quill.root.addEventListener("paste", () => {
 });
 
 document.getElementById("loadFileBtn").addEventListener("click", () => {
+    clearSpellcheck();
     document.getElementById("fileInput").click();
 });
 
 document.getElementById("fileInput").addEventListener("change", async (e) => {
+    clearSpellcheck();
     const file = e.target.files[0];
     if (!file) return;
 
@@ -322,6 +512,10 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
             const html = result.value;
 
             quill.clipboard.dangerouslyPasteHTML(html);
+
+            setTimeout(() => {
+                detectAndFormatTitles();
+            }, 0);
 
         }
 
@@ -487,15 +681,12 @@ document.getElementById("downloadPdfBtn").addEventListener("click", () => {
 
 // Para que al hacer click en un párrafo se actualice el filtro automáticamente
 document.querySelector(".ql-editor").addEventListener("click", (e) => {
-    let p = e.target;
+    let p = e.target.closest(BLOCK_SELECTOR);
 
-    while (p && p.tagName !== "P") {
-        p = p.parentElement;
-    }
     if (!p) return;
 
     // Obtener índice del párrafo
-    const paragraphs = quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6");
+    const paragraphs = quill.root.querySelectorAll(BLOCK_SELECTOR);
     let visibleIndex = 1;
     let targetIndex = null;
 
@@ -514,6 +705,8 @@ document.querySelector(".ql-editor").addEventListener("click", (e) => {
 
     // Evitar asignar si ya está seleccionado
     if(select.value === String(targetIndex)) return;
+
+    select.value = String(targetIndex);
 
     select.dispatchEvent(new Event("change"));
 });
@@ -543,15 +736,53 @@ quill.format("align", false); // izquierda
 
 quill.on("selection-change", highlightActiveParagraph);
 
-quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6").forEach(p =>
+quill.root.querySelectorAll(BLOCK_SELECTOR).forEach(p =>
     p.classList.add("active-paragraph"));
 
 quill.on("text-change", (delta, oldDelta, source) => {
     if (source!== "user") return;
 
+    clearSpellcheck();
+
+    if(insertingTable){
+        return;
+    }
+
+    const textoActual = quill.getText().trim();
+
+    scheduleSpellcheck();
+
+    if (!textoActual){
+        comments = [];
+        lastAnalyzedParagraphs = {};
+        modifiedParagraphs.clear();
+        lastStructure = null;
+        analysisPerformed = false;
+        hasPendingChanges = false;
+
+        updateParagraphNumbers();
+        updateAnalyzeButton();
+        renderComments();
+
+        return;
+    }
+
+    const changed = getChangedParagraphs();
+
+    const structureChanged =
+        JSON.stringify(getDocumentStructureSignature()) !==
+        JSON.stringify(lastStructure);
+
+    if (!changed.length && !structureChanged) {
+        // Solo se ha modificado algo que no afecta al análisis, como una tabla
+        hasPendingChanges = false;
+        updateAnalyzeButton();
+        renderComments();
+        return;
+    }
+
     hasPendingChanges = true;
     lockComments();
-    const changed = getChangedParagraphs();
 
     changed.forEach(par => {
         modifiedParagraphs.set(par.index, true);
@@ -559,6 +790,7 @@ quill.on("text-change", (delta, oldDelta, source) => {
     updateParagraphNumbers();
     updateAnalyzeButton();
     renderComments();
+
 });
 
 //document.getElementById("addCommentBtn").onclick = addCom;
@@ -584,7 +816,7 @@ async function reanalyzeModifiedParagraphs() {
     const overlay = document.getElementById("analysisOverlay");
     overlay.style.display = "flex";
 
-    const total = changed.length +1;
+    const total = changed.length;
     let current = 0;
     resetProgress();
     updateProgress(current, total, "paragraph");
@@ -593,13 +825,15 @@ async function reanalyzeModifiedParagraphs() {
 
     const textoCompleto = quill.getText();
 
+    const paragraphs = Array.from(quill.root.querySelectorAll(BLOCK_SELECTOR))
+        .filter(x =>
+        x.textContent.replace(/\u200B/g, "").trim().length > 0);
 
     for (const par of changed) {
-        const paragraphs = quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6");
-        const p = Array.from(paragraphs).filter(x =>
-            x.textContent.replace(/\u200B/g, "").trim().length > 0)[par.index - 1];
+        const p = paragraphs[par.index - 1];
         if (!p) continue;
         const start = quill.getIndex(Quill.find(p));
+
         const data = await analyzeSingleParagraph(par.text, start);
         comments = comments.filter(c => c.paragraph !== par.index);
         data.forEach(item => {
@@ -611,11 +845,28 @@ async function reanalyzeModifiedParagraphs() {
         };
         modifiedParagraphs.delete(par.index);
         current++;
-        updateProgress(current, total, "paragraph");
-        await new Promise(r => setTimeout(r, 0));
+        if (current<changed.length){
+            updateProgress(current, total, "paragraph");
+        }
     }
+/*
+    const tables = Array.from(
+    quill.root.querySelectorAll(".generated-table")
+    );
+
+    for (let tableIndex = 0; tableIndex < tables.length; tableIndex++) {
+
+        const tableComments = await analyzeGeneratedTable(
+            tables[tableIndex],
+            tableIndex
+        );
+
+        comments.push(...tableComments);
+    }
+
+ */
     let globalComments = [];
-    updateProgress(total, total, "global");
+
     const globalResponse = await fetch("/analyse_document", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -625,6 +876,9 @@ async function reanalyzeModifiedParagraphs() {
         })
     });
     const globalData = await globalResponse.json();
+
+
+    updateProgress(total, total, "global");
 
     globalComments = (globalData.comentarios_globales || []).flatMap(c => c.global || [])
         .map(c=> ({
@@ -638,7 +892,7 @@ async function reanalyzeModifiedParagraphs() {
 
     comments.push(...globalComments);
     hasPendingChanges = modifiedParagraphs.size>0;
-    if (hasPendingChanges) {
+    if (hasPendingChanges && analysisPerformed) {
         lockComments();
     } else {
         unlockComments();
@@ -648,9 +902,9 @@ async function reanalyzeModifiedParagraphs() {
     activeType = null;
     analyzedParagraphStart = null;
 
-    document.getElementById("filterParagraph").value="all";
-    updateFilterOptions();
+    resetAnalysisFilters
     renderComments();
+    updateParagraphFilter();
     updateParagraphNumbers();
     updateAnalyzeButton();
     overlay.style.display = "none";
@@ -670,17 +924,83 @@ document.getElementById("addCommentFirst10Btn").onclick = () => {
  */
 
 function getDocumentStructureSignature() {
-    return Array.from(
-        quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6")
-    )
-    .filter(n => n.textContent.trim())
-    .map(n => ({
-        tag: n.tagName,
-        text: n.textContent.replace(/\u200B/g, "").trim()
-    }));
+
+    const elements = Array.from(
+        quill.root.querySelectorAll(
+            //`${BLOCK_SELECTOR}, .generated-table`
+            BLOCK_SELECTOR
+        )
+    );
+
+    return elements
+        .filter(n =>
+             n.textContent
+                .replace(/\u200B/g, "")
+                .trim()
+        )
+        .map(n => {
+/*
+            // Tabla generada
+            if (n.classList.contains("generated-table")) {
+
+                const table = n.querySelector("table");
+
+                if (!table) {
+                    return {
+                        tag: "TABLE",
+                        text: ""
+                    };
+                }
+
+                const partes = [];
+
+                // Caption
+                const caption = table.querySelector("caption");
+
+                if (caption) {
+                    partes.push(
+                        caption.textContent
+                            .replace(/\u200B/g, "")
+                            .trim()
+                    );
+                }
+
+                // Filas
+                table.querySelectorAll("tr").forEach(row => {
+
+                    const celdas = Array.from(
+                        row.querySelectorAll("th, td")
+                    )
+                    .map(cell =>
+                        cell.textContent
+                            .replace(/\u200B/g, "")
+                            .trim()
+                    )
+                    .filter(Boolean);
+
+                    if (celdas.length > 0) {
+                        partes.push(celdas.join(" "));
+                    }
+                });
+
+                return {
+                    tag: "TABLE",
+                    text: partes.join("\n")
+                };
+            }
+
+ */
+
+            // Párrafos, títulos, etc.
+            return {
+                tag: n.tagName,
+                text: n.textContent
+                    .replace(/\u200B/g, "")
+                    .trim()
+            };
+        });
 }
 
-document.querySelector(".ql-editor").setAttribute("spellcheck", "true");
 document.getElementById("filterType").addEventListener("change", () => {
     renderComments();
 })
@@ -694,7 +1014,7 @@ const feedBackBtn = document.getElementById("feedbackModeBtn");
 //const analysisBtn = document.getElementById("analysisModeBtn");
 //writeBtn.onclick = () => setMode("write");
 document.getElementById("feedbackModeBtn").addEventListener("click", async() => {
-    if (hasPendingChanges) {
+    if (hasPendingChanges && analysisPerformed) {
         await reanalyzeModifiedParagraphs();
     } else {
         await addCommentText();
@@ -776,12 +1096,10 @@ useSuggestionBtn.addEventListener('click', () => {
 
     if (!currentModalComment) return;
     const start = getUpdatedSentenceIndex(currentModalComment);
-
     const originalSentence = currentModalComment.oracion;
     const newSentence = currentModalComment.suggestion;
 
     const Delta = Quill.import("delta");
-
     quill.updateContents(
         new Delta()
             .retain(start)
@@ -869,6 +1187,9 @@ function setMode(mode) {
     //document.getElementById("addCommentFirst10Btn").style.display = isFeedback ? "block" : "none";
     document.getElementById("analysisContainer").style.display = isAnalysis ? "block" : "none";
     document.getElementById("analyzeBtn").style.display = isAnalysis ? "block" : "none";
+    document.getElementById("filterType").addEventListener("change", () => {
+        updateParagraphFilterState();
+    });
     document.querySelector(".highlight-switch-block").style.display = showFilter ? "inline-flex" : "none";
 
     //if (isFeedback && hasPendingChanges){
@@ -958,6 +1279,7 @@ function updateFilterOptions() {
     } else {
         select.value = "todos";
     }
+    updateParagraphFilterState();
 }
 
 function updateParagraphFilter() {
@@ -976,6 +1298,7 @@ function updateParagraphFilter() {
     allOption.textContent = "Todos";
     select.appendChild(allOption);
 
+    // Párrafos
     let count = 1;
 
     paragraph.forEach(({node, text}, index) => {
@@ -990,6 +1313,21 @@ function updateParagraphFilter() {
         }
     });
 
+    // Tablas
+    const tables = Array.from(
+        quill.root.querySelectorAll(".generated-table")
+    );
+
+    tables.forEach((table, tableIndex) => {
+        const tableValue = -(tableIndex + 2); // la primera tabla empieza en -2
+
+        const option = document.createElement("option");
+        option.value = tableValue;
+        option.textContent = `Tabla ${tableIndex + 1}`;
+
+        select.appendChild(option);
+    });
+
     // Si había un filtro previo, lo restauramos. Si no ponemos el texto completo
     if([...select.options].some(opt => String(opt.value) === String(previousValue))) {
         select.value = String(previousValue);
@@ -997,6 +1335,30 @@ function updateParagraphFilter() {
         select.value = "all";
     }
     updateParagraphLabel();
+}
+function updateParagraphFilterState() {
+    const filterType = document.getElementById("filterType");
+    const filterParagraph = document.getElementById("filterParagraph");
+
+    if (filterType.value === "legibility") {
+        filterParagraph.value = "all";
+        filterParagraph.disabled = true;
+
+        filterParagraph.dispatchEvent(new Event("change"));
+    } else {
+        filterParagraph.disabled = false;
+    }
+
+    updateParagraphLabel();
+}
+
+function resetAnalysisFilters() {
+    document.getElementById("filterParagraph").value = "all";
+    document.getElementById("filterType").value = "Todos";
+
+    updateParagraphFilter();
+    updateFilterOptions();
+    highlightParagraphFromFilter();
 }
 
 // Para saber el texto de qué tipo es
@@ -1026,11 +1388,13 @@ function updateParagraphLabel() {
 
 const select = document.getElementById("filterParagraph");
 const label = document.getElementById("filterParagraphLabel");
-select.addEventListener("change", updateParagraphLabel);
 
+select.addEventListener("change", () => {
+    updateParagraphLabel
+});
 
 function renderComments(){
-    if (appMode === "write") return;
+    //if (appMode === "write") return;
 
     const filter = document.getElementById("filterType").value;
     const paragraphFilter = document.getElementById("filterParagraph").value;
@@ -1081,12 +1445,22 @@ function renderComments(){
     }
 
     if (filtered.length === 0) {
-        panel.style.display="block";
-        panel.innerHTML=`
-        <div class="no-comments">
-            No se han detectado comentarios.
-        </div>
-    `;
+        if (analysisPerformed) {
+            panel.style.display = "block";
+            panel.innerHTML = `
+            <div class="no-comments">
+                No se han detectado comentarios.
+            </div>
+        `;
+        } else {
+
+        }
+        panel.style.display = "block";
+            panel.innerHTML = `
+            <div class="no-comments">
+                Analiza el documento para obtener comentarios.
+            </div>
+        `;
         return;
     } else {
         panel.style.display = "block";
@@ -1124,7 +1498,6 @@ function renderComments(){
     // Renderizar comentarios
     Object.values(grouped).forEach(group  => {
         const first = group[0];  // Como todos los text deberían ser iguales, nos quedaremos con el del primero
-
         const tipo = first.name;
 
 
@@ -1142,7 +1515,7 @@ function renderComments(){
         // Cabecera (texto + etiqueta tipo)
         const title = document.createElement("div");
         title.className = "comment-title";
-        title.style.cursor = "pointer";
+        div.style.cursor = "pointer";
 
 
         const textSpan = document.createElement("span");
@@ -1240,6 +1613,7 @@ function renderComments(){
         desc.innerText = "Descripción: " + paragraphText + descriptionMap[first.name];
 
          */
+
         const descriptionMap = {
             parrafoCorto: `
                 <span class="highlight">Parece que el párrafo contiene una única oración, considere construir un párrafo que incluya al menos dos oraciones relacionadas entre sí.</span><br><br>
@@ -1252,10 +1626,11 @@ function renderComments(){
                 <em>La temperatura media global ha aumentado durante las últimas décadas. Este incremento se relaciona principalmente con las emisiones de gases de efecto invernadero.</em>`,
             parrafoLargo: `
                 <span class="highlight"> Parece que el párrafo es muy largo, considere dividir la información en varios párrafos más breves, procurando que cada párrafo desarrolle una única idea principal.</span><br><br>
-                Los párrafos largos aumentan el esfuerzo de lectura, dificultan la localización de las ideas principales y favorecen la pérdida de infomración relevante.<br><br>`,
+                Los párrafos largos aumentan el esfuerzo de lectura, dificultan la localización de las ideas principales y favorecen la pérdida de información relevante.<br><br>`,
             oracionLarga: `
                 <span class="highlight">Parece que la oración es muy larga, considere dividir la oración en varias oraciones más breves.</span><br><br>
                 Las oraciones extensas (que superan las 25 palabras) incrementan la carga cognitiva y dificultan la identificación de las relaciones sintácticas.<br><br>
+                Para saber la longitud de una oración pon el ratón sobre ella.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 <u>Antes:</u><br>
                 <em> Los investigadores analizaron los datos obtenidos en diferentes estaciones meteorológicas distribuidas por diversas regiones durante varias décadas con el fin de identificar tendencias relacionadas con la temperatura y las precipitaciones.</em><br><br>
@@ -1269,6 +1644,15 @@ function renderComments(){
                 <em> El informe, <span class="highlight">elaborado por un grupo internacional de expertos</span>, algunos de ellos especializados en climatología marina, fue publicado recientemente.</em><br><br>
                 <u>Después:</u><br>
                 <em>Un grupo internacional de expertos elaboró el informe. Algunos especialistas trabajaban en climatología marina. El informe se publicó recientemente.</em>`,
+            modificador:  `
+            <span class="highlight">Parece que la oración contiene un uso de complementos entre sujeto y verbo, considere reorganizar la oración para situar el complemento (o modificador/adyacente) al final de la oración y evitar que aparezca entre sujeto y verbo.</span><br><br>
+                La separación del sujeto y el verbo con modificadores, adyacentes o complementos dificulta la identificación de losnúcleos de la oración.<br><br>
+                <strong>Ejemplo</strong><br><br>
+                <u>Antes:</u><br>
+                <em> Los científicos, <span class="highlight">tras analizar miles de registros</span>, concluyeron que la temperatura había aumentado.</em><br><br>
+                <u>Después:</u><br>
+                <em>Los científicos concluyeron que la temperatura había aumentado tras analizar miles de registros.</em>`,
+
             orden: `
                 <span class="highlight">Parece que la oración sigue un orden sintáctico poco natural en español, considere priorizar el orden sujeto + verbo + complementos.</span><br><br>
                 Las oraciones que siguen el orden natural del español (sujeto+verbo+complementos) requieren un menor esfuerzo de interpretación.<br><br>
@@ -1389,28 +1773,34 @@ function renderComments(){
                 - Concienciar<br>
                 - Aconsejar<br><br>
                 <strong>Ejemplo</strong><br><br>
-                Un texto divulgativo debe priorizar la explicación antes que la discusión metodológica detallada.</em>`,
+                Un texto divulgativo debe priorizar la explicación antes que la discusión metodológica detallada.</em><br><br>
+            ${first.description || ""}`,
             coherenciaInt: `
                 <span class="highlight">Parece que podría haber falta de coherencia interna en texto, considere revisarla evitando caer en reiteraciones, vacíos de información y contradicciones.</span><br><br>
-                Los textos requieren una coherencia interna entre las ideas y una progresión temática. Para lograrlo, se debe evitar caer en contradicción, reiteraciones o saltos de información. <br><br>`,
+                Los textos requieren una coherencia interna entre las ideas y una progresión temática. Para lograrlo, se debe evitar caer en contradicción, reiteraciones o saltos de información. <br><br>
+                ${first.description || ""}`,
             progresion: `
                 <span class="highlight">Parece que falta progresión temática en el texto, considere revisar la relación lógica (cronológica, causal, sumativa, contrastiva…) entre las partes/párrafos.</span><br><br>
                 La información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva…) para que el mensaje se entienda mejor.<br><br>
                 <strong>Ejemplo</strong><br><br>
-                Definición → causas → consecuencias → soluciones.`,
+                Definición → causas → consecuencias → soluciones.<br><br>
+                ${first.description || ""}`,
             claridad: `
                 <span class="highlight">Parece que hay falta de conexión entre las ideas, considere revisar la conexión (temporal, causal, sumativa, contrastiva…) entre las ideas. El uso de conectores y marcadores discursivos puede contribuir a conseguirlo.</span><br><br>
                 La información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva…) para que el mensaje se entienda mejor. <br><br>
                 <strong>Ejemplo</strong><br><br>
-                <span class="highlight">Como consecuencia</span>de este aumento de temperatura, los glaciares pierden masa.`,
+                <span class="highlight">Como consecuencia</span> de este aumento de temperatura, los glaciares pierden masa.<br><br>
+                ${first.description || ""}`,
             coherenciaExt: `
                 <span class="highlight">Parece que podría haber falta de coherencia externa en el texto, considere revisarlo asegurándose de que cuenta con un párrafo introductorio, un desarrollo y un párrafo conclusivo.</span><br><br>
-                Los textos divulgativos disponen de una estructura básica dividida en tres partes: introducción, desarrollo y conclusión. Este tipo de textos resultan más claros cuando dicha estructura es perceptible por el lector.<br><br>`,
+                Los textos divulgativos disponen de una estructura básica dividida en tres partes: introducción, desarrollo y conclusión. Este tipo de textos resultan más claros cuando dicha estructura es perceptible por el lector.<br><br>
+                ${first.description || ""}`,
             digresion: `
                 <span class="highlight">Parece que el párrafo es complejo, considere revisar la complejidad de las oraciones del párrafo. Reduzca, por ejemplo, el uso acumulado de varios de estos elementos: subordinaciones, coordinaciones, incisos, nominalizaciones y cambios temáticos.</span><br><br>
                 Los textos que presentan digresiones o se desvían del tema principal son más difíciles de entender.<br><br>
                 <strong>Ejemplo</strong><br><br>
-                Si el texto explica el cambio climático, evite incluir extensas descripciones sobre la historia de la navegación, salvo que tengan relación directa con el tema tratado.`,
+                Si el texto explica el cambio climático, evite incluir extensas descripciones sobre la historia de la navegación, salvo que tengan relación directa con el tema tratado.<br><br>
+                ${first.description || ""}`,
             parrafoComplejo: `
                 <span class="highlight">Parece que la información proporcionada podría resultar compleja/abstracta para un receptor no experto. Considere adaptarla a un destinatario con estudios medios.</span><br><br>
                 El párrafo resulta complejo cuando acumulan subordinaciones, coordinaciones, incisos, nominalizaciones y cambios temáticos. La concentración de varios de estos recursos en un solo párrafo incrementa significativamente el esfuerzo de lectura. <br><br>
@@ -1445,9 +1835,9 @@ function renderComments(){
                 <u>Antes:</u><br>
                 <em><ul>
                 <li>Reducir emisiones.</li>
-<li>La protección de bosques. </li>
-<li>Que se mejore la eficiencia energética. </li></ul>
-</em><br><br>
+                <li>La protección de bosques. </li>
+                <li>Que se mejore la eficiencia energética. </li></ul>
+                </em><br><br>
                 <u>Después:</u><br>
                 <em><ul>
                 <li><span class="highlight">Reducir</span> emisiones.</li>
@@ -1460,6 +1850,7 @@ function renderComments(){
             lexFrec: `
                 <span class="highlight">Parece que se ha usado léxico poco frecuente, considere revisar el uso de palabras pocos frecuentes en español.</span><br><br>
                 Los textos divulgativos requieren usar palabras frecuentes del español y ampliamente conocidas por los hispanohablantes para maximizar las posibilidades de que los lectores conozcan su significado. <br><br>
+                Al hacer click con el botón derecho en alguna palabra remarcada dará la opción de generar una sugerencia.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 <u>Antes:</u><br>
                 <em>Dilucidar.</em><br><br>
@@ -1485,19 +1876,12 @@ function renderComments(){
             extranjerismo: `
                 <span class="highlight">Parece que se han utilizado extranjerismos, latinismos o arcaísmos, considere sustituirlos por equivalencias más actuales o ampliamente conocidas cuando sea posible.</span><br><br>
                 Los extranjerismos, latinismos o arcaísmos resultan, con frecuencia, expresiones poco habituales en el español actual. Por ello, se recomienda que se sustituyan por equivalencias más actuales cuando sea posible.<br><br>
+                Al hacer click con el botón derecho en alguna palabra remarcada dará la opción de generar una sugerencia.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 <u>Antes:</u><br>
                 <em>Ad hoc.</em><br><br>
                 <u>Después:</u><br>
                 <em>Para este fin.</em>`,
-            largas: `
-                <span class="highlight">Parece que se han utilizado palabras largas o derivadas que pueden dificultar la lectura, considere sustituirlas por alternativas más breves y frecuentes.</span><br><br>
-                Las palabras largas, provengan o no de otras palabras de las que derivan, resultan más difíciles de procesar. Por esa razón, se recomienda que se sustituyan por alternativas más breves.<br><br>
-                <strong>Ejemplo</strong><br><br>
-                <u>Antes:</u><br>
-                <em>Utilización.</em><br><br>
-                <u>Después:</u><br>
-                <em>Uso.</em>`,
             referente: `
                 <span class="highlight">Parece que puede haberse producido una pérdida de referente en el texto, considere explicitar el referente o reformular las oraciones para evitar ambigüedades.</span><br><br>
                 La pérdida del referente (objeto, persona o idea) en un texto puede generar falta de comprensión.<br><br>
@@ -1517,6 +1901,7 @@ function renderComments(){
             ambiguo: `
                 <span class="highlight">Parece que alguna expresión admite varias interpretaciones, considere sustituirla o precisarla para evitar posibles ambigüedades.</span><br><br>
                 Se deben evitar expresiones que admiten varias interpretaciones. Para ello, se puede recurrir a la sustitución de la palabra o a precisarla con un complemento.<br><br>
+                Al hacer click con el botón derecho en alguna palabra remarcada dará la opción de generar una sugerencia.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 <u>Antes:</u><br>
                 <em>Los expertos están preocupados por los últimos cambios en la corriente del hemisferio norte.</em><br><br>
@@ -1541,6 +1926,7 @@ function renderComments(){
             tecnicismo: `
                 <span class="highlight">Parece que se han utilizado tecnicismos que pueden dificultar la comprensión del texto, considere sustituir los innecesarios y explicar aquellos que resulten imprescindibles.</span><br><br>
                 Los textos con numerosos términos especializados son más difíciles de entender. Su comprensión mejora si los tecnicismos innecesarios se sustituyen por palabras más generales y los términos necesarios se explican en el primer uso.<br><br>
+                Al hacer click con el botón derecho en alguna palabra remarcada dará la opción de generar una sugerencia.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 <u>Antes:</u><br>
                 <em>La pérdida de la cubierta de hielo en el Océano Ártico genera un bucle de retroalimentación positiva que reduce drásticamente el <span class="highlight">albedo</span> de la región.</em><br><br>
@@ -1615,6 +2001,7 @@ function renderComments(){
             coloquialismo: `
                 <span class="highlight">Parece que se han utilizado expresiones coloquiales, considere sustituirlas por formulaciones más adecuadas para un texto divulgativo.</span><br><br>
                 Los textos divulgativos deben evitar expresiones excesivamente informales. Los coloquialismos pueden reducir la percepción de rigor y profesionalidad.<br><br>
+                Al hacer click con el botón derecho en alguna palabra remarcada dará la opción de generar una sugerencia.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 <u>Antes:</u><br>
                 <em>Las temperaturas <span class="highlight">se dispararon</span> una barbaridad.</em><br><br>
@@ -1623,7 +2010,8 @@ function renderComments(){
             vulgarismo: `
                 <span class="highlight">Parece que se han utilizado vulgarismos o giros inapropiados, considere sustituirlos por expresiones más adecuadas a los textos divulgativos.</span><br><br>
                 Los textos divulgativos deben evitar expresiones vulgares o inapropiadas. Los vulgarismos pueden afectar a la credibilidad del documento y dificultar su difusión en contextos académicos o profesionales.<br><br>
-                Más información: <a href="https://www.rae.es/libro-estilo-lengua-espa%C3%B1ola/palabras-del-diccionario-cuyo-uso-puede-no-ser-apropiado">https://www.rae.es/libro-estilo-lengua-espa%C3%B1ola/palabras-del-diccionario-cuyo-uso-puede-no-ser-apropiado</a>`,
+                Más información: <a href="https://www.rae.es/libro-estilo-lengua-espa%C3%B1ola/palabras-del-diccionario-cuyo-uso-puede-no-ser-apropiado" target="_blank" rel="noopener noreferrer">https://www.rae.es/libro-estilo-lengua-espa%C3%B1ola/palabras-del-diccionario-cuyo-uso-puede-no-ser-apropiado</a>
+                Al hacer click con el botón derecho en alguna palabra remarcada dará la opción de generar una sugerencia.<br><br>`,
             formato: `
                 <span class="highlight">Parece que existen inconsistencias de formato en el documento, considere homogeneizar los criterios de formato y presentación.</span><br><br>
                 Los textos divulgativos deben seguir criterios homogéneos de redacción y formato; y evitar la combinación de formatos.`,
@@ -1776,7 +2164,8 @@ if (activeCommentId != null) {
          */
         let btn = null;
 
-        title.onclick = () => {
+        div.onclick = (event) => {
+            if(event.target.closest("a, button, input, select, textarea")) return;
               //Si está bloqueado no se puede clicar el comentario
               if (commentsLocked) return;
 
@@ -1878,12 +2267,15 @@ async function addCommentText() {
     modifiedParagraphs.clear();
     hasFullAnalysis = true;
     hasParagraphAnalysis = false;
+/*
     if (appMode === "write") {
         alert("Cambia a modo Feedback para analizar el texto.");
         return;
     }
-    highlightParagraphs = false;
 
+
+ */
+    highlightParagraphs = false;
     unlockComments();
     analyzedParagraphStart = null;
     updateParagraphNumbers();
@@ -1891,29 +2283,19 @@ async function addCommentText() {
 
     const textoCompleto = quill.getText().trim();
 
-    comments = [];
-    let id;
-    let text1;
-    let start;
-    let length;
-    let description;
-    let suggestion;
-    let error;
-    let original;
-    let type;
-    let name;
-    let texto;
-    let paragraph;
 
+    comments = [];
+
+    let original;
     // Mostrar overlay de bloqueo
     const overlay = document.getElementById("analysisOverlay");
     overlay.style.display = "flex";
 
-    const paragraphs = quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6");
+    const paragraphs = quill.root.querySelectorAll(BLOCK_SELECTOR);
     let visibleIndex = 1;
 
     const paragraphsArray = Array.from(paragraphs).filter(p =>
-    p.textContent.replace(/\u200B/g, "").trim().length > 0);
+        p.textContent.replace(/\u200B/g, "").trim().length > 0);
 
     const total = paragraphsArray.length;
     let current = 0;
@@ -1930,6 +2312,7 @@ async function addCommentText() {
         totalOracionesPorParrafo[visibleIndex] = oraciones.length;
 
         const start = quill.getIndex(Quill.find(p));
+
         const data = await analyzeSingleParagraph(text, start);
 
         data.forEach(item => {
@@ -1951,35 +2334,55 @@ async function addCommentText() {
         });
         visibleIndex++;
         current++;
+
         updateProgress(current, total, "paragraph");
         await new Promise(r => setTimeout(r, 0));
     }
-    updateProgress(total, total, "global")
+/*
+    const tables = Array.from(
+        quill.root.querySelectorAll(".generated-table")
+    );
+
+    for (let tableIndex = 0; tableIndex < tables.length; tableIndex++) {
+
+        const tableComments = await analyzeGeneratedTable(
+            tables[tableIndex],
+            tableIndex
+        );
+
+        comments.push(...tableComments);
+    }
+
+ */
+
     let globalComments = [];
+    updateProgress(total, total, "global");
     const globalResponse = await fetch("/analyse_document", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
             texto: textoCompleto,
-            intencionalidad: textIntentions
-        })
+            intencionalidad: textIntentions })
     });
     const globalData = await globalResponse.json();
 
+
+    updateProgress(total+1, total, "global");
+
     globalComments = (globalData.comentarios_globales || []).flatMap(c => c.global || [])
         .map(c=> ({
-        ...c,
-        global: true,
-        paragraphStart: -1,
-        index: -1,
-        localIndex: -1,
-        paragraph: -1
-    }));
+            ...c,
+            global: true,
+            paragraphStart: -1,
+            index: -1,
+            localIndex: -1,
+            paragraph: -1 }));
 
     comments.push(...globalComments);
     calcularPorcentajesPorParrafo();
 
-    updateFilterOptions();
+    resetAnalysisFilters
+
     renderComments();
 
     hasPendingChanges = false;
@@ -2004,7 +2407,7 @@ async function addCommentParagraph() {
         alert("Cambia a modo feedback para analizar el párrafo.");
         return;
     }
-    quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6").forEach(p =>
+    quill.root.querySelectorAll(BLOCK_SELECTOR).forEach(p =>
         p.classList.remove("active-paragraph"));
 
     highlightParagraphs = true;
@@ -2036,7 +2439,7 @@ async function addCommentParagraph() {
     const paragraphStart = quill.getIndex(blot);
     analyzedParagraphStart = paragraphStart;
  */
-    const paragraphs = quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6");
+    const paragraphs = quill.root.querySelectorAll(BLOCK_SELECTOR);
     let currentParagraphNumber = null;
     let visibleIndex = 1;
 
@@ -2047,7 +2450,10 @@ async function addCommentParagraph() {
                 currentParagraphNumber = visibleIndex;
                 p.classList.add("active-paragraph");
 
-                lastAnalyzedParagraphs[currentParagraphNumber] = {paragraphText};
+                lastAnalyzedParagraphs[currentParagraphNumber] = {
+                    text: paragraphText,
+                    tag: p.tagName
+                };
 
             } else {
                 p.classList.remove("active-paragraph");
@@ -2122,7 +2528,7 @@ async function addCommentParagraph() {
                 comments.push(item)
             } else {
                 comments.push(
-                    buildComment(item, text, null, start)
+                    buildComment(item, text, currentParagraphNumber, start)
                 );
             }
         });
@@ -2130,7 +2536,7 @@ async function addCommentParagraph() {
         await new Promise(r => setTimeout(r, 0));
     }
 
-
+    resetAnalysisFilters
     updateFilterOptions();
     renderComments(activeCommentId);
     analyzingParagraph = false;
@@ -2151,7 +2557,7 @@ async function handleAnalyzeButton() {
 }
 
 function getParagraphNumberFromIndex(index) {
-    const paragraphs = quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6");
+    const paragraphs = quill.root.querySelectorAll(BLOCK_SELECTOR);
     let visibleIndex = 1;
 
     for (let i=0; i<paragraphs.length; i++) {
@@ -2173,7 +2579,7 @@ function getParagraphNumberFromIndex(index) {
 }
 
 function getVisibleParagraphs() {
-    return Array.from(quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6"))
+    return Array.from(quill.root.querySelectorAll(BLOCK_SELECTOR))
         .map(p => ({
             node: p,
             text: p.textContent.replace(/\u200B/g, "").trim()
@@ -2279,7 +2685,14 @@ function updateParagraphNumbers() {
     const container = document.getElementById("paragraphNumbers");
     container.innerHTML = "";
 
-    const blocks = Array.from(quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6"));
+    const wrapper = document.querySelector(".editor-wrapper");
+    const editorRect = quill.root.getBoundingClientRect();
+
+    const blocks = Array.from(
+        quill.root.querySelectorAll(BLOCK_SELECTOR)
+    ).filter(node => {
+        return !node.closest(".generated-table")
+    });
     let count = 1;
 
     blocks.forEach(node => {
@@ -2295,45 +2708,66 @@ function updateParagraphNumbers() {
         row.style.paddingRight = "6px";
         row.style.boxSizing = "border-box";
 
+        const rect = node.getBoundingClientRect();
+
+        row.style.top = (rect.top - editorRect.top + quill.root.scrollTop) + "px";
+
         // Si este párrafo es el analizado, le añadimos la clase
         let blot = Quill.find(node);
-        if (blot){
+        if (blot) {
             const parStart = quill.getIndex(blot);
-            const bounds = quill.getBounds(parStart);
-            const wrapper = document.querySelector(".editor-wrapper");
-            row.style.top = (bounds.top-wrapper.scrollTop) + "px";
-            if (analyzedParagraphStart != null && analyzedParagraphStart === parStart) {
-                row.classList.add("active-paragraph-number");
+            if (blot) {
+                const parStart = quill.getIndex(blot);
+
+                if (
+                    analyzedParagraphStart != null &&
+                    analyzedParagraphStart === parStart
+                ) {
+                    row.classList.add("active-paragraph-number");
+                }
             }
+// El índice de modifiedParagraphs es el número visible
+            row.textContent =
+                count +
+                (
+                    analysisPerformed &&
+                    modifiedParagraphs.has(count)
+                        ? " *"
+                        : ""
+                );
+
+            count++;
+
+            container.appendChild(row);
+        }
+        ;
+
+        const lastNode = blocks[blocks.length - 1];
+
+        if (lastNode) {
+
+            const rect = lastNode.getBoundingClientRect();
+
+            const spacer = document.createElement("div");
+
+            spacer.style.position = "absolute";
+            spacer.style.top =
+                quill.root.scrollHeight + "px";
+
+            spacer.style.height = rect.height + "px";
+            spacer.style.width = "100%";
+
+            container.appendChild(spacer);
         }
 
-        // Añadir asterisco si el párrafo se ha modificado
-        const parStart = quill.getIndex(blot);
-        row.textContent = count + (analysisPerformed && modifiedParagraphs.has(parStart) ? " *" : "");
-
-        count++;
-    container.appendChild(row);
+        attachParagraphHover();
     });
-    const lastNode = blocks[blocks.length - 1];
-
-if (lastNode) {
-    const rect = lastNode.getBoundingClientRect();
-
-    const spacer = document.createElement("div");
-    spacer.style.position = "absolute";
-    spacer.style.top = quill.root.scrollHeight + "px";
-    spacer.style.height = rect.height + "px";
-    spacer.style.width = "100%";
-
-    container.appendChild(spacer);
-}
-    attachParagraphHover();
 }
 
 // Para que la sugerencia me aparezca en el número del contador de párrafo
 function attachParagraphHover() {
     const container = document.getElementById("paragraphNumbers");
-    const paragraphs = quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6");
+    const paragraphs = quill.root.querySelectorAll(BLOCK_SELECTOR);
 
     paragraphs.forEach((p, idx) => {
         const numberDiv = container.children[idx];
@@ -2471,15 +2905,15 @@ function highlightActiveParagraph(){
     const [leaf] = quill.getLeaf(index);
     if (!leaf) return;
 
-    // Subimos hasta el párrafo <p> que lo contiene
+
     let p = leaf.domNode;
-    while (p && p.tagName!=="P") {
+    while (p && !p.matches(BLOCK_SELECTOR)) {
         p = p.parentElement;
     }
     if (!p) return;
 
     // Quitar clase a todos los párrafos
-    quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6").forEach(p =>
+    quill.root.querySelectorAll(BLOCK_SELECTOR).forEach(p =>
     p.classList.remove("active-paragraph"));
 
     // Activamos este párrafo
@@ -2497,14 +2931,35 @@ function highlightActiveParagraph(){
 
 function highlightParagraphFromFilter() {
     const paragraphFilter = document.getElementById("filterParagraph").value;
-    const paragraphs = quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6");
+    const paragraphs = quill.root.querySelectorAll(BLOCK_SELECTOR);
+    const tables = quill.root.querySelectorAll(".generated-table");
+
+    // Si todavía no se ha analizado, que todos los párrafos se muestren como activos
+    if (!analysisPerformed) {
+        paragraphs.forEach(p => p.classList.add("active-paragraph"));
+        tables.forEach(table => table.classList.add("active-paragraph"));
+        return;
+    }
 
     // Quitar clase a todos
     paragraphs.forEach(p => p.classList.remove("active-paragraph"));
+    tables.forEach(table => table.classList.remove("active-paragraph"));
 
     // Si es "Texto completo" activar todos
     if (paragraphFilter === "all") {
         paragraphs.forEach(p => p.classList.add("active-paragraph"));
+        tables.forEach(table => table.classList.add("active-paragraph"));
+        return;
+    }
+
+    const selectedValue = Number(paragraphFilter);
+
+    if (selectedValue <= -2) {
+        const tableIndex = -selectedValue - 2;
+        const table = tables[tableIndex];
+        if (table) {
+            table.classList.add("active-paragraph");
+        }
         return;
     }
 
@@ -2533,7 +2988,7 @@ async function generateSuggestion(comment){
     // Mostrar overlay de bloqueo
     const overlay = document.getElementById("suggestionOverlay");
     overlay.style.display = "flex";
-    currentModalComment.sugerencia = "";
+    currentModalComment.suggestion = "";
     suggestedTextArea.innerHTML = "";
     try {
         // Generamos la sugerencia
@@ -2555,6 +3010,7 @@ async function generateSuggestion(comment){
         currentModalComment.suggestion = sugerencia;
         // Limpieza
         sugerencia = sugerencia.trim().replace(/^"""/, "").replace(/"""$/, "").replace(/^```/, "").replace(/```$/, "").replace(/^\s+|\s+$/g, "").replace(/\n{2,}/g, "\n").replace(/^\n+|\n+$/g, "");
+
         const diff = diffWords(comment.oracion, sugerencia);
         originalTextArea.innerHTML = diff.original;
         suggestedTextArea.innerHTML = diff.suggested;
@@ -2616,7 +3072,7 @@ function acceptSuggestion(comment){
     lockComments();
 
     // Hacer que el párrafo aceptado se vea negro
-    const paragraphs = quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6");
+    const paragraphs = quill.root.querySelectorAll(BLOCK_SELECTOR);
     paragraphs.forEach(p => {
         const blot = Quill.find(p);
         const parStart = quill.getIndex(blot);
@@ -2642,7 +3098,7 @@ function updateGenerateSuggestionButton() {
 }
 
 function getTotalParagraphs() {
-    const paragraphs = quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6");
+    const paragraphs = quill.root.querySelectorAll(BLOCK_SELECTOR);
     let count = 0;
 
     paragraphs.forEach(p => {
@@ -2728,8 +3184,11 @@ function getSentenceIndexInParagraph(paragraphText, localIndex) {
     return null;
 }
 
+
+
 // Para marcar las oraciones
-function highlightError(index, length, type) {
+function highlightError(index, length, type, suggestion = false, description, name, isActive) {
+
     const colors = {
         "morfosintaxis": "#F9E79F",
         "léxico-semántico": "#AED6F1",
@@ -2743,15 +3202,36 @@ function highlightError(index, length, type) {
     quill.formatText(index, length, {
         background: color
     });
+
+    if ((suggestion === true || suggestion === "true") && isActive) {
+        quill.formatText(index, length, {
+            appUnderline: true
+        });
+    }
+
+    if (name==="oracionLarga") {
+        const [leaf] = quill.getLeaf(index);
+        if (leaf && leaf.parent && leaf.parent.domNode) {
+            leaf.parent.domNode.title = description + " palabras.";
+        }
+    }
 }
 function clearHighlights() {
-    quill.formatText(0, quill.getLength(), {background: false});
+    quill.formatText(0, quill.getLength(), {
+        background: false,
+        appUnderline: false
+    });
+    //clearTableHighlights();
 }
 function highlightByType(type) {
     clearHighlights();
     if(!enableSentenceHighlight) return;
+
     const paragraphFilter = document.getElementById("filterParagraph").value;
-    const selectedParagraph = paragraphFilter !== "all" ? Number(paragraphFilter) : null;
+    const selectedParagraph = paragraphFilter !== "all"
+        ? Number(paragraphFilter)
+        : null;
+
     comments.forEach(c => {
         if (c.name !== type) return;
         /*
@@ -2766,13 +3246,139 @@ function highlightByType(type) {
             return;
         }
 
-        if (c.global || c.paragraph === -1){
+        if (c.global){
             return;
         }
+        if (c.table) {
+            highlightTableError(c);
+            return;
+        }
+        if (c.paragraph === -1) return;
+
         const index = getUpdatedIndex(c);
-        //highlightError(c.index, c.length, c.name);
-        highlightError(index, c.length, c.type);
+        const isActive = c.name === activeType;
+
+        highlightError(index, c.length, c.type, c.suggestion, c.description, c.name, isActive);
+
     })
+}
+
+function highlightTableError(comment) {
+    const table = quill.root.querySelector(
+        `.generated-table[data-table-index="${comment.tableIndex}"]`
+    );
+
+    if (!table)
+    {
+        console.log("No se encontró la tabla:", comment.tableIndex);
+        return;
+    }
+
+    const cell = table.querySelector(
+        `[data-table-cell-id="${comment.tableCellId}"]`
+    );
+
+    if (!cell)
+    {
+        console.log("No se encontró la celda:", comment.tableCellId);
+        return;
+    }
+
+    const colors = {
+        "morfosintaxis": "#F9E79F",
+        "léxico-semántico": "#AED6F1",
+        "pragmático-discursivo": "#A9DFBF",
+        "accesibilidad": "#F5CBA7",
+        "estadísticas": "#D7BDE2"
+    };
+
+    const color = colors[comment.type] || "#fff3a0";
+
+    const text = cell.dataset.analysisText || "";
+
+    const start = comment.localIndex;
+    const end = start + comment.length;
+
+    if (start < 0 || start >= text.length) {
+        console.log("Posición inválida:", {
+            text,
+            start,
+            end,
+            comment
+        });
+        return;
+    }
+
+    const walker = document.createTreeWalker(
+        cell,
+        NodeFilter.SHOW_TEXT
+    );
+
+    let currentPosition = 0;
+    let node;
+
+    while (node = walker.nextNode()) {
+        if (node.parentElement?.dataset.tableHighlight === "true") {
+            currentPosition += node.textContent.length;
+            continue;
+        }
+
+        const nodeStart = currentPosition;
+        const nodeEnd = currentPosition + node.textContent.length;
+
+        if (end > nodeStart && start < nodeEnd) {
+
+            const localStart = Math.max(0, start - nodeStart);
+            const localEnd = Math.min(
+                node.textContent.length,
+                end - nodeStart
+            );
+
+            if (localStart >= localEnd) {
+                currentPosition = nodeEnd;
+                continue;
+            }
+
+            const range = document.createRange();
+
+            range.setStart(node, localStart);
+            range.setEnd(node, localEnd);
+
+            const span = document.createElement("span");
+            span.style.backgroundColor = color;
+            span.dataset.tableHighlight ="true";
+
+            range.surroundContents(span);
+        }
+
+        currentPosition = nodeEnd;
+    }
+}
+
+function findTextNodeAtOffset(container, offset) {
+
+    const walker = document.createTreeWalker(
+        container,
+        NodeFilter.SHOW_TEXT
+    );
+
+    let currentOffset = 0;
+
+    while (walker.nextNode()) {
+
+        const node = walker.currentNode;
+        const length = node.textContent.length;
+
+        if (offset >= currentOffset &&
+            offset <= currentOffset + length) {
+
+            return node;
+        }
+
+        currentOffset += length;
+    }
+
+    return null;
 }
 
 /*
@@ -2793,7 +3399,7 @@ function forceLockEditing() {
 
 // Párrafos que han cambiado
 function getChangedParagraphs() {
-    const paragraphs = quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6");
+    const paragraphs = quill.root.querySelectorAll(BLOCK_SELECTOR);
     let changes = [];
     let visibleIndex = 1;
     paragraphs.forEach(p => {
@@ -2817,19 +3423,21 @@ function updateProgress(current, total, mode="paragraph") {
     const bar = document.getElementById("progressBar");
     const text = document.getElementById("progressText");
     const message = document.getElementById("loadingMessage");
-    const percent = Math.round(((current) / ((total+1))) * 100);
+
+    const totalSteps = total + 1;
+
+    const percent = Math.round((current) / (totalSteps) * 100);
+
     if (mode === "paragraph"){
-        message.textContent = `Analizando párrafo ${current+1} de ${total}...`;
+        const paragraphNumber = Math.min(current+1, total);
+        message.textContent = `Analizando párrafo ${paragraphNumber} de ${total}...`;
     } else {
         message.textContent = "Analizando texto completo...";
     }
 
-
     bar.style.width = `${percent}%`;
-    text.textContent = `${percent}%`;
+    text.textContent = `${percent}%`; }
 
-
-}
 function resetProgress() {
     document.getElementById("progressBar").style.width = "0%";
     document.getElementById("progressText").textContent = "0%";
@@ -2854,7 +3462,6 @@ function buildComment(item, paragraphText, paragraphIndex, paragraphstart){
         texto: paragraphText,
         paragraph: paragraphIndex,
         name: item.name,
-        suggestion: item.suggestion,
         oracion: item.oracion,
         palabra: item.palabra,
         inicioFrase: item.inicioFrase
@@ -2862,7 +3469,7 @@ function buildComment(item, paragraphText, paragraphIndex, paragraphstart){
 }
 
 function getUpdatedIndex(comment) {
-    const paragraphs = quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6");
+    const paragraphs = quill.root.querySelectorAll(BLOCK_SELECTOR);
 
     let visibleIndex = 1;
 
@@ -2896,7 +3503,7 @@ function getUpdatedIndex(comment) {
 
 
 function getUpdatedSentenceIndex(comment) {
-    const paragraphs = quill.root.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6");
+    const paragraphs = quill.root.querySelectorAll(BLOCK_SELECTOR    );
 
     let visibleIndex = 1;
 
@@ -3067,8 +3674,6 @@ async function handleContextMenu(event) {
     }
     const index = quill.getIndex(blot) + range.startOffset;
 
-    console.log("índice clic:", index);
-
     const comment = comments.find( c => {
         if (c.name!==activeType) return false;
         if (c.suggestion!=="true") return false;
@@ -3079,8 +3684,20 @@ async function handleContextMenu(event) {
     );
     if (!comment) return;
 
-    // Ahora va solo para palabras baúl
-    if (comment.name !== "baul") {
+
+    // Criterios que permiten sugerencia
+    const criteriosConSugerencia = [
+        "baul",
+        "lexFrec",
+        "extranjerismo",
+        "ambiguo",
+        "tecnicismo",
+        "coloquialismo",
+        "vulgarismo",
+        "largas"
+    ];
+
+    if (!criteriosConSugerencia.includes(comment.name)) {
         return;
     }
 
@@ -3187,3 +3804,322 @@ function diffWords(oldText, newText) {
         suggested: suggested.join(" ")
     };
 }
+
+// Para el botón que genera las tablas
+async function generarTablaSeleccion() {
+
+    const range = quill.getSelection();
+
+    if (!range || range.length === 0) {
+        alert("Selecciona el texto que quieres convertir en tabla.");
+        return;
+    }
+
+    const textoSeleccionado = quill.getText(
+        range.index,
+        range.length
+    ).trim();
+
+    if (!textoSeleccionado) {
+        alert("Selecciona un texto válido.");
+        return;
+    }
+
+
+    const loadingOverlay = document.getElementById("tableLoadingOverlay");
+    loadingOverlay.classList.add("active");
+
+    try {
+
+        const response = await fetch("/generar_tabla", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                texto: textoSeleccionado
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+
+        if (data.success) {
+
+            // Posición final de la selección
+            const seleccionFin = range.index + range.length;
+
+            // Obtener el último párrafo que forma parte de la selección
+            const [ultimoParrafo] = quill.getLine(seleccionFin - 1);
+
+            if (!ultimoParrafo) {
+                return;
+            }
+
+            // Posición inicial del último párrafo
+            const ultimoParrafoStart = quill.getIndex(ultimoParrafo);
+
+            // Longitud del último párrafo
+            const ultimoParrafoLength = ultimoParrafo.length();
+
+            // Insertar justo al final del último párrafo,
+            // antes del salto de línea de Quill
+            const posicionTabla =
+                ultimoParrafoStart + ultimoParrafoLength;
+
+            insertingTable = true;
+
+            // Insertar la tabla
+            quill.insertEmbed(
+                posicionTabla,
+                'generatedTable',
+                data.html,
+                'user'
+            );
+
+            insertingTable = false;
+            updateParagraphNumbers();
+
+            //lastStructure = getDocumentAnalysisSignature();
+
+            // Añadir salto de línea después de la tabla
+
+            // Aquí decidiremos qué hacer con la tabla
+        } else {
+            alert(data.message);
+            console.log("Razón:", data.reason);
+        }
+
+    } catch (error) {
+        console.error("Error generando tabla:", error);
+        alert("Ha ocurrido un error al generar la tabla.");
+    } finally {
+        loadingOverlay.classList.remove("active");
+    }
+}
+document.getElementById("generateTableBtn")
+    .addEventListener("click", generarTablaSeleccion);
+
+function getTextoParaAnalisis() {
+    const clone = quill.root.cloneNode(true);
+
+    // Convertir cada tabla en su contenido textual
+    clone.querySelectorAll(".generated-table").forEach(tableWrapper => {
+
+        const table = tableWrapper.querySelector("table");
+
+        if (!table) {
+            tableWrapper.remove();
+            return;
+        }
+
+        const partes = [];
+
+        // Caption
+        const caption = table.querySelector("caption");
+        if (caption) {
+            partes.push(caption.textContent.trim());
+        }
+
+        // Filas
+        table.querySelectorAll("tr").forEach(row => {
+            const celdas = Array.from(
+                row.querySelectorAll("th, td")
+            ).map(cell => cell.textContent.trim());
+
+            if (celdas.length > 0) {
+                partes.push(celdas.join(" "));
+            }
+        });
+
+        // Sustituir el wrapper de la tabla por su texto
+        const textoTabla = document.createTextNode(
+            partes.join("\n")
+        );
+
+        tableWrapper.replaceWith(textoTabla);
+    });
+
+    return clone.textContent
+        .replace(/\u200B/g, "")
+        .trim();
+}
+
+function getDocumentAnalysisSignature() {
+    return getTextoParaAnalisis();
+}
+
+function renderSpellcheck(matches) {
+    const overlay = document.getElementById("spellcheckOverlay");
+
+    if (!overlay) return;
+
+    overlay.innerHTML = "";
+
+    const editorRect = quill.root.getBoundingClientRect();
+    const overlayRect = overlay.getBoundingClientRect();
+
+    matches.forEach(match => {
+        const bounds = quill.getBounds(
+            match.offset,
+            match.length
+        );
+
+        const error = document.createElement("div");
+
+        error.classList.add(
+            "spell-error",
+            match.tipo === "ortografia"
+                ? "spell-ortografia"
+                : "spell-puntuacion"
+        );
+
+        // Convertimos las coordenadas de Quill
+        // a coordenadas relativas al overlay
+        error.style.left =
+            `${editorRect.left - overlayRect.left + bounds.left}px`;
+
+        error.style.top =
+            `${editorRect.top - overlayRect.top + bounds.top + bounds.height - 3}px`;
+
+        error.style.width =
+            `${Math.max(bounds.width, 4)}px`;
+
+        overlay.appendChild(error);
+    });
+}
+
+function clearSpellcheck() {
+    const overlay = document.getElementById("spellcheckOverlay");
+
+    if (overlay) {
+        overlay.innerHTML = "";
+    }
+
+    spellcheckMatches = [];
+}
+
+async function checkSpelling() {
+    const texto = quill.getText();
+
+    if (!texto.trim()) {
+        clearSpellcheck();
+        return;
+    }
+
+    try {
+        const response = await fetch("/spellcheck", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                texto: texto
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Error /spellcheck:", {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText
+            });
+            return;
+        }
+
+        const data = await response.json();
+
+        console.log("Respuesta del corrector:", data);
+
+        spellcheckMatches = data.matches || [];
+        renderSpellcheck(spellcheckMatches);
+
+        renderSpellcheck(data.matches || []);
+
+    } catch (error) {
+        console.error("Error en el corrector:", error);
+    }
+}
+
+/*
+
+async function analyzeGeneratedTable(table, tableIndex) {
+
+    table.dataset.tableIndex = tableIndex;
+
+    // -2 = primera tabla, -3 = segunda, etc.
+    const tableParagraph = -(tableIndex + 2);
+
+    const cells = Array.from(
+        table.querySelectorAll("th, td")
+    );
+
+    const tableComments = [];
+
+    for (let cellIndex = 0; cellIndex < cells.length; cellIndex++) {
+
+        const cell = cells[cellIndex];
+
+        const text = cell.innerText
+            .replace(/\u200B/g, "")
+            .trim();
+
+        if (!text) continue;
+
+        const tableCellId =
+            `table-${tableIndex}-cell-${cellIndex}`;
+
+        cell.dataset.tableCellId = tableCellId;
+        cell.dataset.analysisText = text;
+
+        const data = await analyzeSingleParagraph(
+            text,
+            0
+        );
+
+        data.forEach(item => {
+
+            const comment = buildComment(
+                item,
+                text,
+                tableParagraph,  // -2, -3, -4...
+                0
+            );
+
+            comment.table = true;
+            comment.tableIndex = tableIndex;
+            comment.cellIndex = cellIndex;
+            comment.tableCellId = tableCellId;
+
+            comment.localIndex = item.start;
+            comment.length = item.end - item.start;
+
+            tableComments.push(comment);
+        });
+    }
+
+    return tableComments;
+}
+
+function clearTableHighlights() {
+
+    const tables = quill.root.querySelectorAll(".generated-table");
+
+    tables.forEach(table => {
+
+        const spans = table.querySelectorAll(
+            'span[data-table-highlight="true"]'
+        );
+
+        spans.forEach(span => {
+            span.replaceWith(...span.childNodes);
+        });
+    });
+}
+
+ */
