@@ -85,7 +85,7 @@ def evaluate_sentences(texto):
     criterios_oracion = []
 
     for i, resultado in enumerate(resultados_oracion):
-        if resultado["type"]["noul"]>0.5:
+        if resultado["noul"]>0.5:
             criterios_oracion.append(instrucciones_oracion[i])
 
     perdida_referente = "Existe pérdida de referente cuando no se puede identificar claramente a qué persona, objeto, concepto o entidad se refiere una expresión posterior del párrafo. Puede ocurrir si un pronombre, demostrativo o expresión nominal no tiene un antecedente claro, si hay varios antecedentes posibles o si la referencia no puede relacionarse fácilmente con la información previa. ¿Existe pérdida de referente en el texto?"
@@ -105,7 +105,7 @@ def evaluate_sentences(texto):
     criterios_parrafo = []
 
     for i, resultado in enumerate(resultados_parrafo):
-        if resultado["type"]["noul"]>0.5:
+        if resultado["noul"]>0.5:
             criterios_parrafo.append(instrucciones_parrafo[i])
 
     resultados = ev_sentences(texto, aspectos_seleccionados=criterios_oracion, aspectos_parrafo_seleccionados=criterios_parrafo)
@@ -148,7 +148,7 @@ def evaluate_words(texto):
     criterios = []
 
     for i, resultado in enumerate(resultados_palabras):
-        if resultado["type"]["noul"]>0.5:
+        if resultado["noul"]>0.5:
             criterios.append(instrucciones[i])
 
     resultados = ev_words(texto, aspectos_seleccionados=criterios)
