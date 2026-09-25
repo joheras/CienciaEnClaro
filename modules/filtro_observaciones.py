@@ -137,7 +137,7 @@ def evaluate_words(texto):
     instrucciones = {
         0: "siglas",
         1: "lexico_poco_frecuente",
-        2: "palabras_baul",
+        2: "palabra_baul",
         3: "extranjerismo",
         4: "ambigua",
         5: "elemento_valorativo",
