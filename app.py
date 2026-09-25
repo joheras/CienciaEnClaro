@@ -1169,7 +1169,7 @@ async def llm_text(texto, fin):
             "start": inicioParrafo,
             "end": finParrafo,
             "text": "Falta de coherencia interna",
-            "description": analisis[0]['razonamiento'],
+            "description": analisis[0],
             "type": "pragmático-discursivo",
             "name": "coherenciaInt",
                 "suggestion": "false"
@@ -1181,7 +1181,7 @@ async def llm_text(texto, fin):
             "start": inicioParrafo,
             "end": finParrafo,
             "text": "Falta de progresión temática",
-            "description": analisis[1]['razonamiento'],
+            "description": analisis[1],
             "type": "pragmático-discursivo",
             "name": "progresion",
                 "suggestion": "false"
@@ -1193,19 +1193,19 @@ async def llm_text(texto, fin):
             "start": inicioParrafo,
             "end": finParrafo,
             "text": "Falta de conexión entre ideas",
-            "description": analisis[2]['razonamiento'],
+            "description": analisis[2],
             "type": "pragmático-discursivo",
             "name": "claridad",
                 "suggestion": "false"
         }
         result.append(resumen)
-    if analisis[3]['se_detecta']:
+    if analisis[3]['noul']>0.5:
         resumen = {
             "id": str(uuid.uuid4()),
             "start": inicioParrafo,
             "end": finParrafo,
             "text": "Falta de coherencia externa",
-            "description": analisis[3]['razonamiento'],
+            "description": analisis[3],
             "type": "pragmático-discursivo",
             "name": "coherenciaExt",
                 "suggestion": "false"
@@ -1217,7 +1217,7 @@ async def llm_text(texto, fin):
             "start": inicioParrafo,
             "end": finParrafo,
             "text": "Posible digresión",
-            "description": analisis[4]['razonamiento'],
+            "description": analisis[4],
             "type": "pragmático-discursivo",
             "name": "digresion",
                 "suggestion": "false"
@@ -1229,7 +1229,7 @@ async def llm_text(texto, fin):
             "start": inicioParrafo,
             "end": finParrafo,
             "text": "Falta de adecuación a la finalidad comunicativa",
-            "description": analisis[5]['razonamiento'],
+            "description": analisis[5],
             "type": "pragmático-discursivo",
             "name": "finalidad",
                 "suggestion": "false"
@@ -1241,7 +1241,7 @@ async def llm_text(texto, fin):
             "start": inicioParrafo,
             "end": finParrafo,
             "text": "Falta de adecuación al destinatario",
-            "description": analisis[6]['razonamiento'],
+            "description": analisis[6],
             "type": "pragmático-discursivo",
             "name": "destinatario",
             "suggestion": "false"
@@ -1253,7 +1253,7 @@ async def llm_text(texto, fin):
             "start": inicioParrafo,
             "end": finParrafo,
             "text": "Incluir apartados",
-            "description": analisis[7]['razonamiento'],
+            "description": analisis[7],
             "type": "pragmático-discursivo",
             "name": "apartados",
             "suggestion": "false"

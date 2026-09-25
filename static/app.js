@@ -1774,33 +1774,33 @@ function renderComments(){
                 - Aconsejar<br><br>
                 <strong>Ejemplo</strong><br><br>
                 Un texto divulgativo debe priorizar la explicación antes que la discusión metodológica detallada.</em><br><br>
-            ${first.description || ""}`,
+            `,
             coherenciaInt: `
                 <span class="highlight">Parece que podría haber falta de coherencia interna en texto, considere revisarla evitando caer en reiteraciones, vacíos de información y contradicciones.</span><br><br>
                 Los textos requieren una coherencia interna entre las ideas y una progresión temática. Para lograrlo, se debe evitar caer en contradicción, reiteraciones o saltos de información. <br><br>
-                ${first.description || ""}`,
+                `,
             progresion: `
                 <span class="highlight">Parece que falta progresión temática en el texto, considere revisar la relación lógica (cronológica, causal, sumativa, contrastiva…) entre las partes/párrafos.</span><br><br>
                 La información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva…) para que el mensaje se entienda mejor.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 Definición → causas → consecuencias → soluciones.<br><br>
-                ${first.description || ""}`,
+                `,
             claridad: `
                 <span class="highlight">Parece que hay falta de conexión entre las ideas, considere revisar la conexión (temporal, causal, sumativa, contrastiva…) entre las ideas. El uso de conectores y marcadores discursivos puede contribuir a conseguirlo.</span><br><br>
                 La información debe seguir siempre una relación lógica (temporal, de causa-efecto, sumativa, contrastiva…) para que el mensaje se entienda mejor. <br><br>
                 <strong>Ejemplo</strong><br><br>
                 <span class="highlight">Como consecuencia</span> de este aumento de temperatura, los glaciares pierden masa.<br><br>
-                ${first.description || ""}`,
+                `,
             coherenciaExt: `
                 <span class="highlight">Parece que podría haber falta de coherencia externa en el texto, considere revisarlo asegurándose de que cuenta con un párrafo introductorio, un desarrollo y un párrafo conclusivo.</span><br><br>
                 Los textos divulgativos disponen de una estructura básica dividida en tres partes: introducción, desarrollo y conclusión. Este tipo de textos resultan más claros cuando dicha estructura es perceptible por el lector.<br><br>
-                ${first.description || ""}`,
+                `,
             digresion: `
                 <span class="highlight">Parece que el párrafo es complejo, considere revisar la complejidad de las oraciones del párrafo. Reduzca, por ejemplo, el uso acumulado de varios de estos elementos: subordinaciones, coordinaciones, incisos, nominalizaciones y cambios temáticos.</span><br><br>
                 Los textos que presentan digresiones o se desvían del tema principal son más difíciles de entender.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 Si el texto explica el cambio climático, evite incluir extensas descripciones sobre la historia de la navegación, salvo que tengan relación directa con el tema tratado.<br><br>
-                ${first.description || ""}`,
+                `,
             parrafoComplejo: `
                 <span class="highlight">Parece que la información proporcionada podría resultar compleja/abstracta para un receptor no experto. Considere adaptarla a un destinatario con estudios medios.</span><br><br>
                 El párrafo resulta complejo cuando acumulan subordinaciones, coordinaciones, incisos, nominalizaciones y cambios temáticos. La concentración de varios de estos recursos en un solo párrafo incrementa significativamente el esfuerzo de lectura. <br><br>
