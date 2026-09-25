@@ -61,5 +61,4 @@ dspy==3.2.1
 json_repair
 pyspellchecker
 # A partir de aquí me los instalo para openjev
-torchvision
 transformers
