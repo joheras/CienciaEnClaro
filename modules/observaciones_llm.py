@@ -6,9 +6,6 @@
 import json
 from json_repair import repair_json
 import dspy
-from litellm.proxy.common_utils.callback_utils import initialize_callbacks_on_proxy
-from pydantic import BaseModel
-import dspy
 import re
 
 #lm = dspy.LM('ollama_chat/gemma4:12b', api_base='http://localhost:11434', think=False)
@@ -20,308 +17,200 @@ dspy.configure(lm=lm)
 def get_aspectos(fin):
     if isinstance(fin, list):
         fin = ", ".join(fin)
+
     return {
         "coherencia_interna": """
-    Existe falta de coherencia interna cuando las ideas de un texto presentan contradicciones, incompatibilidades lógicas, reiteraciones innecesarias o saltos informativos que dificultan la comprensión global del mensaje. Se manifiesta cuando una afirmación contradice otra, cuando se repite información sin aportar contenido nuevo o cuando se introducen ideas sin relación clara con el contenido previo.
-    """,
+Detecta falta de coherencia interna si hay contradicciones o incompatibilidades lógicas, reiteraciones innecesarias o saltos informativos sin relación clara con el contenido previo que dificultan la comprensión global.
+""",
 
         "progresion_tematica": """
-    Existe falta de progresión temática cuando las ideas no avanzan de forma ordenada y el texto no desarrolla gradualmente la información. Se manifiesta mediante cambios bruscos de tema, introducción de información sin conexión con lo anterior o ausencia de relaciones lógicas entre las distintas partes del texto. La progresión temática adecuada implica que cada idea amplíe, complemente o desarrolle la información previamente presentada.
-    """,
+Detecta falta de progresión temática si las ideas no avanzan de forma ordenada: hay cambios bruscos de tema, información sin conexión con lo anterior o ausencia de relaciones lógicas. Cada idea debería ampliar, complementar o desarrollar la información previa.
+""",
 
         "claridad_ideas": """
-    Existe falta de claridad entre ideas cuando las relaciones entre las distintas partes del texto no resultan evidentes para el lector. Se manifiesta por la ausencia o el uso inadecuado de conectores y marcadores discursivos, así como por la falta de relaciones explícitas de causa-efecto, secuencia temporal, contraste, ejemplificación o adición. Como consecuencia, el lector puede tener dificultades para comprender cómo se conectan las ideas entre sí.
-    """,
+Detecta falta de claridad entre ideas si sus relaciones no son evidentes para el lector. Puede deberse a ausencia o uso inadecuado de conectores o marcadores, o a relaciones no explícitas de causa-efecto, secuencia temporal, contraste, ejemplificación o adición.
+""",
 
         "coherencia_externa": """
-    Existe falta de coherencia externa cuando la organización global del texto no se ajusta a la estructura esperada para un texto divulgativo. Se manifiesta cuando no se distinguen claramente la introducción, el desarrollo y la conclusión, cuando alguna de estas partes está ausente o cuando su organización dificulta la comprensión del propósito general del texto. Un texto presenta coherencia externa cuando su estructura global resulta clara, ordenada y fácilmente reconocible por el lector.
-    """,
+Detecta falta de coherencia externa si la organización global no se ajusta a la estructura esperada de un texto divulgativo: introducción, desarrollo y conclusión no se distinguen claramente, falta alguna de estas partes o su organización dificulta comprender el propósito general.
+""",
 
         "posible_disgresion": """
-    Existe una posible digresión cuando el texto incorpora información, comentarios o desarrollos que se alejan del tema principal sin contribuir de forma clara a su explicación o desarrollo. Se manifiesta mediante la introducción de ideas secundarias, ejemplos o detalles que interrumpen el hilo argumental y desvían la atención del lector. Un texto presenta una digresión cuando una parte significativa de su contenido no guarda una relación directa con el propósito comunicativo o con el tema central tratado.
-    """,
+Detecta posible digresión si se incorpora información, comentarios o desarrollos que se alejan del tema principal sin contribuir claramente a su explicación o desarrollo. Incluye ideas secundarias, ejemplos o detalles que interrumpen el hilo y desvían la atención. Márcala cuando una parte significativa del contenido no guarde relación directa con el tema central o propósito comunicativo.
+""",
 
-        "finalidad_comunicativa": """
-    Existe una falta de adecuación a la finalidad comunicativa cuando el contenido, la organización o el tono del texto no contribuyen al propósito principal de {fin}. Se manifiesta cuando el texto se desvía de su objetivo comunicativo, incorpora información o recursos que no favorecen dicha finalidad o desarrolla el tema de una manera incompatible con el propósito previsto. 
-    Un texto mantiene la finalidad comunicativa cuando todas sus partes contribuyen de forma coherente a {fin}.""",
+        "finalidad_comunicativa": f"""
+Detecta falta de adecuación a la finalidad comunicativa cuando el contenido, la organización o el tono no contribuyen al propósito principal de {fin}, o cuando el texto se desvía de él, incorpora recursos que no lo favorecen o desarrolla el tema de forma incompatible con dicho propósito.
+""",
 
         "destinatario": """
-        Existe falta de adecuación al destinatario cuando el texto utiliza un nivel
-    de lenguaje, unos conocimientos previos, una cantidad de información o una
-    forma de explicar los contenidos que no se ajustan a un adulto que ha
-    finalizado la educación secundaria obligatoria (ESO).
-        """,
-        "apartados": """
-        Determina si sería recomendable organizar el texto en varios apartados
-        diferenciados mediante títulos o encabezados.
+Detecta falta de adecuación al destinatario si el nivel de lenguaje, los conocimientos previos, la cantidad de información o la forma de explicar los contenidos no se ajustan a un adulto que ha finalizado la ESO.
+""",
 
-        Debe marcarse como true cuando el texto completo contiene varias partes
-        o bloques temáticos claramente diferenciados y la división mediante
-        apartados ayudaría al lector a comprender mejor la estructura del
-        contenido, localizar información o seguir la explicación.
-        """
+        "apartados": """
+Marca true si el texto contiene varias partes o bloques temáticos claramente diferenciados y sería recomendable dividirlos mediante títulos o encabezados para facilitar la comprensión de la estructura, localizar información o seguir la explicación. En caso contrario, marca false.
+"""
     }
 
 def get_aspectos_parrafo():
     return {
         "perdida_referente": """
-        Existe pérdida de referente cuando el lector no puede identificar
-        con claridad a qué persona, objeto, concepto o entidad se refiere
-        una expresión utilizada posteriormente en el párrafo.
+Detecta pérdida de referente cuando no se puede identificar claramente a qué persona, objeto, concepto o entidad se refiere una expresión posterior del párrafo. Puede ocurrir si un pronombre, demostrativo o expresión nominal no tiene un antecedente claro, si hay varios antecedentes posibles o si la referencia no puede relacionarse fácilmente con la información previa.
+""",
 
-        Puede producirse, por ejemplo, cuando se utiliza un pronombre,
-        demostrativo, expresión nominal o referencia similar cuyo antecedente
-        no está suficientemente claro, cuando existen varios posibles
-        antecedentes y no se puede determinar cuál es el correcto, o cuando
-        se introduce una referencia que el lector no puede relacionar
-        fácilmente con la información presentada anteriormente.
-        """,
         "uso_abundante_negativas": """
-    Existe un uso abundante de formulaciones negativas cuando en un mismo
-    párrafo dos o más oraciones presentan una acumulación de elementos o
-    expresiones de modalidad negativa, de manera que la presencia reiterada
-    de estas formulaciones puede dificultar la comprensión del texto.
+Detecta uso abundante de formulaciones negativas solo si se cumplen ambas condiciones:
+1. Al menos dos oraciones del párrafo contienen una acumulación de elementos o expresiones de modalidad negativa. 
+2. La repetición de estas formulaciones tiene una presencia relevante en el párrafo.
 
-    Para considerar que existe este aspecto, deben cumplirse ambas condiciones:
-    - al menos dos oraciones del párrafo contienen una acumulación de
-      elementos de modalidad negativa;
-    - la repetición de estas formulaciones tiene una presencia relevante
-      en el párrafo.
+No lo detectes por varias negaciones aisladas ni por una negación normal en una sola oración.
+""",
 
-    No debe detectarse únicamente porque el párrafo contenga varias
-    negaciones aisladas. Tampoco debe considerarse problemática la presencia
-    normal de una negación en una oración.
-    """,
         "idea_principal": """
-        Existe una presentación tardía de la idea principal cuando la idea
-        principal o el mensaje central del párrafo no aparece al principio,
-        sino que se introduce después de información secundaria,
-        contextual, explicativa o de otro tipo.
+Detecta presentación tardía de la idea principal cuando el mensaje central del párrafo aparece después de una parte significativa de información secundaria, contextual o explicativa, de modo que el lector debe avanzar bastante para identificarlo.
 
-        Debe marcarse como true cuando el lector necesita leer una parte
-        significativa del párrafo antes de identificar con claridad cuál es
-        la idea principal que se quiere transmitir.
-
-        Debe marcarse como false cuando la idea principal aparece al comienzo
-        del párrafo y las oraciones posteriores la desarrollan, explican,
-        justifican o amplían.
-        """
+Marca false si la idea principal aparece al comienzo y las oraciones posteriores la desarrollan, explican, justifican o amplían.
+"""
     }
 
 def get_aspectos_oracion():
     return {
         "inciso": """
-            Existe un inciso cuando una construcción interrumpe la estructura principal
-            de la oración para introducir información adicional, aclaratoria o secundaria.
-            Puede aparecer entre comas, paréntesis, rayas u otros signos equivalentes.
+        Detecta un inciso cuando una construcción interrumpe la estructura principal de la oración para añadir información adicional, aclaratoria o secundaria. Puede aparecer entre comas, paréntesis, rayas u otros signos equivalentes.
 
-            No deben considerarse incisos las comas que simplemente separan elementos
-            de una enumeración ni las que forman parte de la estructura sintáctica normal
-            de la oración.
-            """,
+        No consideres incisos las comas que separan elementos de una enumeración ni las que forman parte de la estructura sintáctica normal.
+        """,
 
         "modificador": """
-            Existe un modificador o complemento entre el sujeto y el verbo cuando,
-            una vez identificado el sujeto principal de la oración, aparece entre este
-            y su verbo principal una información adicional que interrumpe la relación
-            directa entre sujeto y verbo.
-            
-            Debe detectarse únicamente cuando el modificador o complemento se sitúa
-        realmente entre el sujeto y su verbo principal. No deben considerarse
-        modificaciones que formen parte del propio sujeto ni complementos que
-        aparezcan después del verbo.
-            
-            """,
+        Detecta un modificador o complemento entre el sujeto y su verbo principal cuando una información adicional interrumpe su relación directa.
+
+        Solo debe detectarse si está realmente entre el sujeto y el verbo principal. No consideres modificaciones que formen parte del propio sujeto ni complementos posteriores al verbo.
+        """,
+
         "coordinada": """
         Detecta si la oración contiene tres o más proposiciones coordinadas.
-        
-        Una PROPOSICIÓN COORDINADA es una proposición u oración que está al mismo nivel sintáctico que otra proposición y que se une a ella mediante un
-        NEXO COORDINANTE EXPLÍCITO.
-        
-        Los nexos coordinantes pueden ser, entre otros, "y", "e", "ni", "o", "u", "pero", "sino", etc.
 
-        Solo debe considerarse coordinación cuando el nexo une proposiciones u oraciones, no cuando une palabras o grupos de palabras.
-        
+        Una proposición coordinada está al mismo nivel sintáctico que otra y se une a ella mediante un nexo coordinante explícito, como "y", "e", "ni", "o", "u", "pero", "sino", etc.
+
+        Solo cuenta la coordinación cuando el nexo une proposiciones u oraciones, no palabras o grupos de palabras.
         """,
+
         "yuxtaposicion": """
         Detecta si la oración contiene tres o más proposiciones yuxtapuestas.
-        
-        Una PROPOSICIÓN YUXTAPUESTA es una proposición u oración que está al mismo nivel sintáctico que otra proposición y
-        que se relaciona con ella sin un nexo coordinante explícito, utilizando únicamente un SIGNO DE PUNTUACIÓN.
-        
-        Los signos de puntuación pueden ser, entre otros, coma (","), punto y coma (";") y dos puntos (":").
-        
-        Solo debe considerarse yuxtaposición cuando el signo de puntuación separa dos proposiciones u oraciones del mismo nivel sintáctico
 
+        Una proposición yuxtapuesta está al mismo nivel sintáctico que otra y se relaciona con ella sin nexo coordinante explícito, únicamente mediante un signo de puntuación, como coma, punto y coma o dos puntos.
+
+        Solo cuenta la yuxtaposición cuando el signo separa dos proposiciones u oraciones del mismo nivel sintáctico.
         """,
+
         "relativa": """
-        Detecta si existe una ORACIÓN DE RELATIVO COMPLEJA debido a la
-    estructura o a la distancia entre la oración de relativo y su
-    antecedente.
+        Detecta si existe una oración de relativo compleja por su estructura o por la distancia entre la relativa y su antecedente.
 
-    Una ORACIÓN DE RELATIVO es una oración subordinada que modifica o se
-    refiere a un antecedente o elemento anterior. Se considera que una oración de relativo es COMPLEJA cuando presenta
-    alguna de las siguientes características:
-
-    1. RELATIVOS ENCAPSULADOS:
-       Una oración de relativo aparece dentro de otra oración de relativo,
-       de manera que una estructura relativa queda incluida dentro de otra.
-
-    2. RELATIVO ALEJADO DE SU ANTECEDENTE:
-       La oración de relativo está separada de su antecedente por una
-       cantidad considerable de material lingüístico, especialmente cuando
-       entre ambos aparecen otras proposiciones, incisos u otros elementos
-       que pueden dificultar la identificación del referente.
+        Es compleja si cumple al menos una de estas condiciones:
+        1. Relativos encapsulados: una oración de relativo aparece dentro de otra oración de relativo.
+        2. Relativo alejado de su antecedente: existe una cantidad considerable de material entre ambos, especialmente otras proposiciones, incisos u otros elementos que dificulten identificar el referente.
         """,
+
         "concordancia": """
-        Existe falta de concordancia cuando se produce un error gramatical de
-    concordancia dentro de la oración.
-    Debe detectarse únicamente cuando exista una discordancia gramatical
-    real. No deben marcarse como errores las construcciones que sean
-    gramaticalmente correctas aunque puedan resultar menos habituales o
-    complejas.
+        Detecta errores gramaticales reales de concordancia dentro de la oración.
+
+        No marques construcciones gramaticalmente correctas aunque sean menos habituales o complejas.
         """,
+
         "gerundio": """
-        Existe un uso erróneo del gerundio cuando el gerundio expresa una acción
-        posterior a la acción principal de la oración. En español normativo, el
-        gerundio debe expresar normalmente una acción simultánea o anterior a la
-        acción principal, pero no una acción que ocurre posteriormente.
-    
-        Debe detectarse especialmente cuando una oración presenta una estructura
-        en la que primero ocurre la acción expresada por el verbo principal y,
-        posteriormente, ocurre la acción expresada por el gerundio.
+        Detecta un uso erróneo del gerundio cuando expresa una acción posterior a la principal. Normativamente, el gerundio debe expresar normalmente una acción simultánea o anterior, no posterior.
+
+        Presta especial atención a estructuras donde primero ocurre la acción del verbo principal y después la expresada por el gerundio.
         """,
+
         "redundancia": """
-                Existe redundancia cuando la oración repite innecesariamente una misma
-                información, idea o significado mediante palabras o expresiones que no
-                aportan contenido nuevo. Debe detectarse únicamente cuando exista una repetición innecesaria de significado.
-            """,
+        Detecta redundancia cuando se repite innecesariamente una misma información, idea o significado mediante palabras o expresiones que no aportan contenido nuevo.
+
+        Solo debe detectarse cuando la repetición sea innecesaria.
+        """,
 
         "enfasis": """
-                Existe una formulación enfática cuando la oración utiliza expresiones
-                intensificadoras, reiterativas o enfáticas que no aportan información
-                necesaria y que pueden hacer que el mensaje resulte más complejo o
-                menos directo. Debe detectarse únicamente cuando el énfasis sea innecesario para transmitir el significado.
-            """,
-        "rodeos": """
-        Existe un rodeo expresivo cuando una idea puede expresarse de forma
-    más directa, sencilla y concisa mediante un verbo simple, pero se
-    utiliza una construcción más larga o perifrástica que aporta una
-    complejidad innecesaria.
+        Detecta una formulación enfática cuando contiene expresiones intensificadoras, reiterativas o enfáticas innecesarias que pueden hacer el mensaje más complejo o menos directo.
 
-    Debe detectarse cuando una expresión nominal o una construcción
-    equivalente puede sustituirse por un verbo simple sin cambiar
-    significativamente el significado.
+        Solo debe detectarse cuando el énfasis sea innecesario para transmitir el significado.
         """,
+
+        "rodeos": """
+        Detecta un rodeo expresivo cuando una idea puede expresarse de forma más directa, sencilla y concisa mediante un verbo simple, pero se usa una construcción más larga o perifrástica que añade complejidad innecesaria.
+
+        Debe poder sustituirse la expresión nominal o construcción equivalente por un verbo simple sin cambiar significativamente el significado.
+        """,
+
         "negativas": """
-    Detecta si la oración contiene dos o más elementos de negación que aparecen combinados dentro de la misma estructura oracional.
-    Considera como elementos de modalidad negativa tanto:
-        1. Partículas, pronombres o determinantes negativos explícitos (como "no", "jamás", "ningún", etc)
-        2. Palabras o expresiones con significado negativo (como "infrecuente", "desleal", "imposible", etc)
-    """,
+        Detecta si la oración contiene dos o más elementos de negación combinados en la misma estructura.
+
+        Cuenta como elementos negativos:
+        1. Partículas, pronombres o determinantes negativos explícitos ("no", "jamás", "ningún", etc.).
+        2. Palabras o expresiones con significado negativo ("infrecuente", "desleal", "imposible", etc.).
+        """,
 
         "info_secundaria": """
-        Existe información secundaria en la oración cuando esta contiene una
-        información adicional que no es necesaria para comprender la idea
-        principal de la oración, pero que se introduce como contenido
-        complementario, aclaratorio o accesorio.
-    
-        Debe detectarse cuando la oración combina una idea principal claramente
-        identificable con uno o varios datos secundarios que pueden dificultar
-        innecesariamente la comprensión del mensaje.
+        Detecta información secundaria cuando la oración contiene contenido adicional no necesario para comprender la idea principal, introducido como información complementaria, aclaratoria o accesoria.
+
+        Debe detectarse cuando una idea principal claramente identificable se combina con uno o varios datos secundarios que pueden dificultar innecesariamente la comprensión.
         """
     }
 
 def get_aspectos_palabra():
     return {
         "sigla": """
-        Existe una sigla cuando la palabra o secuencia analizada está formada
-        por las letras iniciales de varias palabras y se utiliza como una
-        denominación abreviada, por ejemplo, OMS, ONU, UE o ADN.
+        Detecta una sigla cuando la palabra o secuencia está formada por las iniciales de varias palabras y funciona como denominación abreviada (p. ej., OMS, ONU, UE, ADN).
 
-        Debe detectarse únicamente cuando se trate realmente de una sigla y cuando
-        su significado no esté explicado o sea desconocido para el lector en el contexto del texto.
-        Si una sigla aparece acompañada de su denominación completa o de
-        una explicación que permita conocer su significado, no debe marcarse como sigla.
-        
-        No deben marcarse como siglas las palabras escritas completamente
-        en mayúsculas que sean palabras comunes.
+        Solo debe detectarse si es realmente una sigla y su significado no está explicado ni puede conocerse por el contexto. Si aparece acompañada de su denominación completa o de una explicación suficiente, no la marques.
+
+        No marques como siglas las palabras comunes escritas completamente en mayúsculas.
         """,
 
         "lexico_poco_frecuente": """
-        Existe léxico poco frecuente cuando la palabra es poco habitual en
-        el uso general del español y puede resultar desconocida para una
-        parte importante de los lectores.
+        Detecta léxico poco frecuente cuando la palabra es poco habitual en el uso general del español y puede resultar desconocida para una parte importante de los lectores.
 
-        Debe tenerse en cuenta la frecuencia de uso general de la palabra
-        y no únicamente que sea una palabra larga, culta o especializada.
-        No deben marcarse automáticamente los tecnicismos, ya que estos
-        tienen una categoría específica.
+        Valora su frecuencia de uso general, no solo que sea larga, culta o especializada. No marques automáticamente los tecnicismos, que tienen una categoría específica.
         """,
 
         "palabra_baul": """
-        Existe una palabra baúl cuando una palabra tiene un significado
-        excesivamente general o impreciso y sustituye a una expresión más
-        concreta que permitiría transmitir la información con mayor precisión.
+        Detecta una palabra baúl cuando su significado es excesivamente general o impreciso y sustituye a una expresión más concreta que transmitiría la información con mayor precisión.
 
-        Deben detectarse palabras cuyo significado resulta demasiado
-        inespecífico en el contexto concreto en el que aparecen.
+        Debe resultar demasiado inespecífica en el contexto concreto.
         """,
 
         "extranjerismo": """
-        Existe un extranjerismo cuando la palabra procede de otra lengua
-        y se utiliza en español manteniendo una forma o uso propio de la
-        lengua de origen.
+        Detecta un extranjerismo cuando la palabra procede de otra lengua y se utiliza en español manteniendo una forma o uso propio de la lengua de origen.
 
-        Debe detectarse únicamente cuando la palabra utilizada sea realmente
-        un extranjerismo en el contexto analizado.
+        Solo debe detectarse cuando sea realmente un extranjerismo en el contexto analizado.
         """,
 
         "ambigua": """
-        Existe ambigüedad léxica cuando la palabra puede interpretarse de
-        distintas maneras relevantes en el contexto y su significado no
-        puede determinarse con suficiente claridad.
+        Detecta ambigüedad léxica cuando la palabra admite interpretaciones relevantes distintas en el contexto y su significado no puede determinarse con suficiente claridad.
 
-        No debe marcarse una palabra simplemente porque tenga varios
-        significados posibles en el diccionario. La ambigüedad debe afectar
-        a la interpretación del texto concreto.
+        No marques una palabra solo porque tenga varios significados en el diccionario: la ambigüedad debe afectar al texto concreto.
         """,
 
         "elemento_valorativo": """
-        Existe un elemento valorativo cuando la palabra expresa una
-        valoración, juicio, opinión o apreciación subjetiva sobre una
-        persona, objeto, situación o hecho.
+        Detecta un elemento valorativo cuando la palabra expresa una valoración, juicio, opinión o apreciación subjetiva sobre una persona, objeto, situación o hecho.
         """,
 
         "tecnicismo": """
-        Existe un tecnicismo cuando la palabra pertenece de manera específica
-        al vocabulario especializado de un ámbito científico, técnico,
-        profesional o académico y puede resultar poco familiar para lectores
-        no especializados.
+        Detecta un tecnicismo cuando la palabra pertenece específicamente al vocabulario especializado de un ámbito científico, técnico, profesional o académico y puede resultar poco familiar para lectores no especializados.
 
-        Debe detectarse únicamente cuando el uso de la palabra tenga un
-        carácter especializado en el contexto analizado.
+        Solo debe detectarse cuando tenga un uso especializado en el contexto.
         """,
 
         "coloquialismo": """
-        Existe un coloquialismo cuando la palabra o expresión pertenece
-        principalmente al registro coloquial o informal de la lengua y puede
-        resultar inadecuada en un texto divulgativo dirigido a un público
-        general.
+        Detecta un coloquialismo cuando la palabra o expresión pertenece principalmente al registro coloquial o informal y puede resultar inadecuada en un texto divulgativo dirigido a un público general.
 
-        No deben marcarse como coloquialismos las palabras de uso general
-        simplemente porque puedan aparecer también en conversaciones
-        informales.
+        No marques palabras de uso general solo porque también puedan aparecer en conversaciones informales.
         """,
 
         "vulgarismo": """
-        Existe un vulgarismo cuando la palabra presenta una forma o un uso
-        considerado incorrecto o no normativo en el español estándar.
+        Detecta un vulgarismo cuando la palabra presenta una forma o uso incorrecto o no normativo en el español estándar.
 
-        Debe detectarse únicamente cuando exista un uso lingüístico realmente
-        no normativo. No deben marcarse como vulgarismos las variantes
-        regionales o las formas coloquiales que sean correctas.
-        """,
+        Solo debe detectarse ante un uso realmente no normativo. No marques variantes regionales ni formas coloquiales que sean correctas.
+        """
     }
 
 
@@ -364,13 +253,13 @@ class EvaluarParrafo(dspy.Signature):
         desc="Párrafo completo que debe analizarse."
     )
     oraciones = dspy.InputField(
-        desc="Lista de oraciones del párrafo, con su número y posición."
+        desc="Oraciones numeradas del párrafo."
     )
     aspectos_oracion = dspy.InputField(
-        desc="Lista de aspectos que deben evaluarse individualmente en cada oración."
+        desc="Aspectos que deben detectarse en cada oración."
     )
     aspectos_parrafo = dspy.InputField(
-        desc = "Lista de aspectos que deben evaluarse teniendo en cuenta el párrafo completo y las relaciones entre sus oraciones."
+        desc = "Aspectos que deben detectarse en el párrafo completo."
     )
 
     resultado_json = dspy.OutputField(
@@ -419,7 +308,7 @@ class EvaluarPalabras(dspy.Signature):
     )
 
     aspectos_palabra = dspy.InputField(
-        desc="Lista de aspectos que deben evaluarse para cada palabra."
+        desc="Aspectos que deben evaluarse para cada palabra."
     )
 
     resultado_json = dspy.OutputField(
@@ -459,56 +348,53 @@ evaluador_palabras = dspy.Predict(EvaluarPalabras)
 
 
 
-def evaluate_text(texto, fin, aspectos_seleccionados=None):
-    aspectos_dict = get_aspectos(fin)
-    if aspectos_seleccionados is None:
-        aspectos_seleccionados = aspectos_dict.keys()
+#def evaluate_text(texto, fin, aspectos_seleccionados=None):
+#    aspectos_dict = get_aspectos(fin)
+#    if aspectos_seleccionados is None:
+#        aspectos_seleccionados = list(aspectos_dict.keys())
 
-    aspectos = [
-        {
-            "nombre": nombre,
-            "descripcion": aspectos_dict[nombre]
-        }
-        for nombre in aspectos_seleccionados]
+#    aspectos = [
+#        {
+#            "nombre": nombre,
+#            "descripcion": aspectos_dict[nombre]
+#        }
+#        for nombre in aspectos_seleccionados
+#        if nombre in aspectos_dict
+#    ]
 
-    resultado = evaluador(
-        texto=texto,
-        aspectos=aspectos
-    )
-    if "```json" in resultado.resultado_json:
-        json_text = resultado.resultado_json.split("```json", 1)[1].split("```", 1)[0]
-    else:
-        json_text = resultado.resultado_json
+#    resultado = evaluador(
+#        texto=texto,
+#        aspectos=aspectos
+#    )
+#    json_text = resultado.resultado_json.strip()
 
-    datos = json.loads(repair_json(json_text))
-    if isinstance(datos, dict):
+#    if "```json" in json_text:
+#        json_text = json_text.split("```json", 1)[1].split("```", 1)[0].strip()
+#    elif "```" in json_text:
+#        json_text = json_text.replace("```", "").strip()
 
-        datos_normalizados = []
+#    datos = json.loads(repair_json(json_text))
+#    if isinstance(datos, dict):
 
-        for nombre, valor in datos.items():
+#        datos_normalizados = []
+
+#        for nombre, valor in datos.items():
 
             # Convertir "True"/"False" en booleanos
-            if isinstance(valor, str):
-                valor_lower = valor.strip().lower()
+#            if isinstance(valor, str):
+#                se_detecta = valor.strip().lower() == "true"
+#            else:
+#                se_detecta = bool(valor)
 
-                if valor_lower == "true":
-                    se_detecta = True
-                elif valor_lower == "false":
-                    se_detecta = False
-                else:
-                    se_detecta = False
-            else:
-                se_detecta = bool(valor)
+#            datos_normalizados.append({
+#                "aspecto": nombre,
+#                "se_detecta": se_detecta,
+#                "razonamiento": ""
+#            })
 
-            datos_normalizados.append({
-                "aspecto": nombre,
-                "se_detecta": se_detecta,
-                "razonamiento": ""
-            })
+#        datos = datos_normalizados
 
-        datos = datos_normalizados
-
-    return datos
+#    return datos
 
 def separar_oraciones(texto):
     """
@@ -538,7 +424,7 @@ def separar_oraciones(texto):
         })
     return oraciones
 
-def evaluate_sentences(texto, aspectos_seleccionados=None, aspectos_parrafo_seleccionados=None):
+def ev_sentences(texto, aspectos_seleccionados=None, aspectos_parrafo_seleccionados=None):
     oraciones = separar_oraciones(texto)
     aspectos_oracion_dict = get_aspectos_oracion()
     aspectos_parrafo_dict = get_aspectos_parrafo()
@@ -554,14 +440,15 @@ def evaluate_sentences(texto, aspectos_seleccionados=None, aspectos_parrafo_sele
             "descripcion": aspectos_oracion_dict[nombre]
         }
         for nombre in aspectos_seleccionados
+        if nombre in aspectos_oracion_dict
     ]
     aspectos_parrafo = [
         {
-            "nivel": "parrafo",
             "nombre": nombre,
             "descripcion": aspectos_parrafo_dict[nombre]
         }
         for nombre in aspectos_parrafo_seleccionados
+        if nombre in aspectos_parrafo_dict
     ]
 
     oraciones_info = [
@@ -572,6 +459,12 @@ def evaluate_sentences(texto, aspectos_seleccionados=None, aspectos_parrafo_sele
         for i, item in enumerate(oraciones)
     ]
 
+    if not oraciones:
+        return {
+            "oracion": [],
+            "parrafo": []
+        }
+
     resultado = evaluador_parrafo(
         parrafo = texto,
         oraciones = oraciones_info,
@@ -579,34 +472,40 @@ def evaluate_sentences(texto, aspectos_seleccionados=None, aspectos_parrafo_sele
         aspectos_parrafo = aspectos_parrafo
     )
 
-    if "```json" in resultado.resultado_json:
+    json_text = resultado.resultado_json.strip()
+
+    if "```json" in json_text:
         json_text = (
-            resultado.resultado_json
+            json_text
             .split("```json", 1)[1]
             .split("```", 1)[0]
+            .strip()
         )
-    else:
-        json_text = resultado.resultado_json
+    elif "```" in json_text:
+        json_text = json_text.split("```", "").strip()
 
     datos = json.loads(repair_json(json_text))
+
+    if not isinstance(datos, dict):
+        return {
+            "oracion": [],
+            "parrafo": []
+        }
+
+    resultados_oraciones = datos.get("oracion", [])
+    resultados_parrafo = datos.get("parrafo", [])
 
     oraciones_detectadas = {
         "oracion": [],
         "parrafo": []
     }
-    if isinstance(datos, list):
-        resultados_oraciones = datos
-        resultados_parrafo = []
-    elif isinstance(datos, dict):
-        resultados_oraciones = datos.get("oracion", [])
-        resultados_parrafo = datos.get("parrafo", [])
-    else:
-        resultados_oraciones = []
-        resultados_parrafo = []
 
     for resultado_oracion in resultados_oraciones:
 
-        numero = resultado_oracion["oracion"]
+        if not isinstance(resultado_oracion, dict):
+            continue
+
+        numero = resultado_oracion.get("oracion")
 
         # Comprobar que el número es válido
         if not isinstance(numero, int):
@@ -617,13 +516,13 @@ def evaluate_sentences(texto, aspectos_seleccionados=None, aspectos_parrafo_sele
 
         item = oraciones[numero-1]
 
-        aspectos_resultado = resultado_oracion.get("aspectos", [])
+        aspectos = resultado_oracion.get("aspectos", [])
 
-        if not isinstance(aspectos_resultado, list):
+        if not isinstance(aspectos, list):
             print("ERROR: 'aspectos' no es una lista")
             continue
 
-        for aspecto in aspectos_resultado:
+        for aspecto in aspectos:
 
             if not isinstance(aspecto, dict):
                 print("ERROR: el aspecto no es un diccionario")
@@ -638,6 +537,9 @@ def evaluate_sentences(texto, aspectos_seleccionados=None, aspectos_parrafo_sele
                 })
 
     for aspecto in resultados_parrafo:
+        if not isinstance(aspecto, dict):
+            continue
+
         if aspecto.get("se_detecta", False):
             oraciones_detectadas["parrafo"].append({
                 "aspecto": aspecto.get("aspecto", ""),
@@ -666,7 +568,7 @@ def separar_palabras(texto):
 
     return palabras
 
-def evaluate_words(texto, aspectos_seleccionados=None):
+def ev_words(texto, aspectos_seleccionados=None):
 
     palabras = separar_palabras(texto)
     oraciones = separar_oraciones(texto)

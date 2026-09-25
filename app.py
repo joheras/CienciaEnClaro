@@ -14,6 +14,7 @@ from modules.legibility import *
 from modules.models import *
 from modules.pragdisc import *
 from modules.observaciones_llm import *
+from modules.filtro_observaciones import *
 
 from spellchecker import SpellChecker
 import re
@@ -1162,7 +1163,7 @@ async def llm_text(texto, fin):
     inicioParrafo = 0
     finParrafo = inicioParrafo + len(texto)
     analisis = evaluate_text(texto, fin)
-    if analisis[0]['se_detecta']:
+    if analisis[0]['noul']>0.5:
         resumen = {
             "id": str(uuid.uuid4()),
             "start": inicioParrafo,
@@ -1174,7 +1175,7 @@ async def llm_text(texto, fin):
                 "suggestion": "false"
         }
         result.append(resumen)
-    if analisis[1]['se_detecta']:
+    if analisis[1]['noul']>0.5:
         resumen = {
             "id": str(uuid.uuid4()),
             "start": inicioParrafo,
@@ -1186,7 +1187,7 @@ async def llm_text(texto, fin):
                 "suggestion": "false"
         }
         result.append(resumen)
-    if analisis[2]['se_detecta']:
+    if analisis[2]['noul']>0.5:
         resumen = {
             "id": str(uuid.uuid4()),
             "start": inicioParrafo,
@@ -1210,7 +1211,7 @@ async def llm_text(texto, fin):
                 "suggestion": "false"
         }
         result.append(resumen)
-    if analisis[4]['se_detecta']:
+    if analisis[4]['noul']>0.5:
         resumen = {
             "id": str(uuid.uuid4()),
             "start": inicioParrafo,
@@ -1222,7 +1223,7 @@ async def llm_text(texto, fin):
                 "suggestion": "false"
         }
         result.append(resumen)
-    if analisis[5]['se_detecta']:
+    if analisis[5]['noul']>0.5:
         resumen = {
             "id": str(uuid.uuid4()),
             "start": inicioParrafo,
@@ -1234,7 +1235,7 @@ async def llm_text(texto, fin):
                 "suggestion": "false"
         }
         result.append(resumen)
-    if analisis[6]['se_detecta']:
+    if analisis[6]['noul']>0.5:
         resumen = {
             "id": str(uuid.uuid4()),
             "start": inicioParrafo,
@@ -1246,7 +1247,7 @@ async def llm_text(texto, fin):
             "suggestion": "false"
         }
         result.append(resumen)
-    if analisis[7]['se_detecta']:
+    if analisis[7]['noul']>0.5:
         resumen = {
             "id": str(uuid.uuid4()),
             "start": inicioParrafo,

@@ -4034,8 +4034,6 @@ async function checkSpelling() {
 
         const data = await response.json();
 
-        console.log("Respuesta del corrector:", data);
-
         spellcheckMatches = data.matches || [];
         renderSpellcheck(spellcheckMatches);
 
