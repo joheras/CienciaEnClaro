@@ -135,7 +135,7 @@ def evaluate_words(texto):
              {"type": "noul", "instructions": vulgarismo, "options": ["no", "yes"]}])
 
     instrucciones = {
-        0: "siglas",
+        0: "sigla",
         1: "lexico_poco_frecuente",
         2: "palabra_baul",
         3: "extranjerismo",
