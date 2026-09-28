@@ -151,7 +151,8 @@ def evaluate_words(texto):
                 "inicio": inicio_oracion,
                 "fin": fin_oracion,
                 "aspecto": criterio,
-                "oracion": texto_oracion
+                "oracion": texto_oracion,
+                "inicioFrase": inicio_oracion
             })
 
     #instrucciones = {
