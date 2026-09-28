@@ -113,43 +113,63 @@ def evaluate_sentences(texto):
     return resultados
 
 def evaluate_words(texto):
-    siglas= "Existe una sigla cuando la palabra o secuencia está formada por las iniciales de varias palabras y funciona como denominación abreviada (p. ej., OMS, ONU, UE, ADN). ¿Existe una sigla cuyo significado no está explicado ni puede conocerse por el contexto?"
-    lexico_poco_fercuente = "Existe léxico poco frecuente cuando una palabra es poco habitual en el uso general del español y puede resultar desconocida para una parte importante de los lectores. ¿Hay alguna palabra poco frecuente en el texto?"
-    palabra_baul = "Existe una palabra baúl cuando su significado es excesivamente general o impreciso y sustituye a una expresión más concreta que transmitiría la información con mayor precisión. Debe resultar demasiado inespecífica en el contexto concreto. ¿Hay alguna palabra baúl en el texto?"
-    extranjerismo = "Existe un extranjerismo cuando una palabra procede de otra lengua y se utiliza en español manteniendo una forma o uso propio de la lengua de origen. ¿Hay algún extranjerismo en el texto?"
-    ambigua = "Existe ambigüedad léxica cuando una palabra admite interpretaciones relevantes distintas en el contexto y su significado no puede determinarse con suficiente claridad. ¿Existe ambigüedad léxica en el texto?"
-    elemento_valorativo = "Existe un elemento valorativo cuando una palabra expresa una valoración, juicio, opinión o apreciación subjetiva sobre una persona, objeto, situación o hecho. ¿Existe algún elemento valorativo en el texto?"
-    tecnicismo = "Existe un tecnicismo cuando una palabra pertenece específicamente al vocabulario especializado de un ámbito científico, técnico, profesional o académico y puede resultar poco familiar para lectores no especializados. ¿Existe algún tecnicismo de uso especializado en el texto?"
-    coloquialismo = "Existe un coloquialismo cuando una palabra o expresión pertenece principalmente al registro coloquial o informal y puede resultar inadecuada en un texto divulgativo dirigido a un público general. ¿Existe algún coloquialismo en el texto?"
-    vulgarismo = "Existe un vulgarismo cuando una palabra presenta una forma o uso incorrecto o no normativo en el español estándar. ¿Hay algún vulgarismo en el texto?"
-
-    resultados_palabras = jev.decide(texto,
-    [{"type": "noul", "instructions": siglas, "options": ["no", "yes"]},
-             {"type": "noul", "instructions": lexico_poco_fercuente, "options": ["no", "yes"]},
-             {"type": "noul", "instructions": palabra_baul, "options": ["no", "yes"]},
-             {"type": "noul", "instructions": extranjerismo, "options": ["no", "yes"]},
-             {"type": "noul", "instructions": ambigua, "options": ["no", "yes"]},
-             {"type": "noul", "instructions": elemento_valorativo, "options": ["no", "yes"]},
-             {"type": "noul", "instructions": tecnicismo, "options": ["no", "yes"]},
-             {"type": "noul", "instructions": coloquialismo, "options": ["no", "yes"]},
-             {"type": "noul", "instructions": vulgarismo, "options": ["no", "yes"]}])
-
-    instrucciones = {
-        0: "sigla",
-        1: "lexico_poco_frecuente",
-        2: "palabra_baul",
-        3: "extranjerismo",
-        4: "ambigua",
-        5: "elemento_valorativo",
-        6: "tecnicismo",
-        7: "coloquialismo",
-        8: "vulgarismo"
+    aspectos = {
+        "siglas": "Existe una sigla cuando la palabra o secuencia está formada por las iniciales de varias palabras y funciona como denominación abreviada (p. ej., OMS, ONU, UE, ADN). ¿Existe una sigla cuyo significado no está explicado ni puede conocerse por el contexto?",
+        "lexico_poco_frecuente": "Existe léxico poco frecuente cuando una palabra es poco habitual en el uso general del español y puede resultar desconocida para una parte importante de los lectores. ¿Hay alguna palabra poco frecuente en el texto?",
+        "palabra_baul": "Existe una palabra baúl cuando su significado es excesivamente general o impreciso y sustituye a una expresión más concreta que transmitiría la información con mayor precisión. Debe resultar demasiado inespecífica en el contexto concreto. ¿Hay alguna palabra baúl en el texto?",
+        "extranjerismo": "Existe un extranjerismo cuando una palabra procede de otra lengua y se utiliza en español manteniendo una forma o uso propio de la lengua de origen. ¿Hay algún extranjerismo en el texto?",
+        "ambigua": "Existe ambigüedad léxica cuando una palabra admite interpretaciones relevantes distintas en el contexto y su significado no puede determinarse con suficiente claridad. ¿Existe ambigüedad léxica en el texto?",
+        "elemento_valorativo": "Existe un elemento valorativo cuando una palabra expresa una valoración, juicio, opinión o apreciación subjetiva sobre una persona, objeto, situación o hecho. ¿Existe algún elemento valorativo en el texto?",
+        "tecnicismo": "Existe un tecnicismo cuando una palabra pertenece específicamente al vocabulario especializado de un ámbito científico, técnico, profesional o académico y puede resultar poco familiar para lectores no especializados. ¿Existe algún tecnicismo de uso especializado en el texto?",
+        "coloquialismo": "Existe un coloquialismo cuando una palabra o expresión pertenece principalmente al registro coloquial o informal y puede resultar inadecuada en un texto divulgativo dirigido a un público general. ¿Existe algún coloquialismo en el texto?",
+        "vulgarismo": "Existe un vulgarismo cuando una palabra presenta una forma o uso incorrecto o no normativo en el español estándar. ¿Hay algún vulgarismo en el texto?"
     }
-    criterios = []
 
-    for i, resultado in enumerate(resultados_palabras):
-        if resultado["noul"]>0.5:
-            criterios.append(instrucciones[i])
+    oraciones = separar_oraciones(texto)
 
-    resultados = ev_words(texto, aspectos_seleccionados=criterios)
+    resultados = []
+
+    for oracion in oraciones:
+        texto_oracion = oracion["oracion"]
+        inicio_oracion = oracion["inicio"]
+        fin_oracion = inicio_oracion + len(texto_oracion)
+
+        evaluaciones = jev.decide(texto_oracion,
+            [
+                {
+                    "type": "noul",
+                    "instructions": descripcion,
+                    "options": ["no", "yes"]
+                }
+                for descripcion in aspectos.values()
+                ]
+            )
+    for criterio, evaluacion in zip(aspectos.keys(), evaluaciones):
+        if evaluacion["noul"]>0.5:
+            resultados.append({
+                "palabra": "",
+                "inicio": inicio_oracion,
+                "fin": fin_oracion,
+                "aspecto": criterio,
+                "oracion": texto_oracion
+            })
+
+    #instrucciones = {
+    #    0: "sigla",
+    #    1: "lexico_poco_frecuente",
+    #    2: "palabra_baul",
+    #    3: "extranjerismo",
+    #    4: "ambigua",
+    #    5: "elemento_valorativo",
+    #    6: "tecnicismo",
+    #    7: "coloquialismo",
+    #    8: "vulgarismo"
+    #}
+    #criterios = []
+
+    #for i, resultado in enumerate(resultados_palabras):
+    #    if resultado["noul"]>0.5:
+    #        criterios.append(instrucciones[i])
+
+    #resultados = ev_words(texto, aspectos_seleccionados=criterios)
     return resultados

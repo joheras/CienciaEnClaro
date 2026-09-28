@@ -81,51 +81,107 @@ def obtenerSugerencia(oracion, palabra, criterio):
         "Sustituye la palabra por una alternativa más clara y adecuada para un lector general."
     )
 
-    instruccion = f"""
-    Recibirás una oración y una palabra marcada como "{criterio}".
+    if palabra:
 
-    Tu tarea consiste únicamente en sustituir esa palabra por una
-    alternativa adecuada según el problema detectado.
-
-    Problema detectado:
-    {instruccion_criterio}
-
-    Reglas:
-    - No cambies ninguna otra palabra de la oración.
-    - Mantén el significado original.
-    - Mantén el mismo tiempo y modo verbal, si la palabra marcada es un verbo.
-    - Conserva el mismo orden de la oración.
-    - Mantén el género y el número cuando corresponda.
-    - La alternativa debe ser natural en el contexto de la oración.
-    - No añadas información nueva.
-    - No elimines información relevante.
-    - Si no existe una alternativa adecuada, responde exactamente "SIN_CAMBIOS".
+        instruccion = f"""
+        Recibirás una oración y una palabra marcada como "{criterio}".
     
-    La palabra o expresión generada DEBE cumplir TODAS las siguientes
-    condiciones:
-    - Debe ser léxico frecuente y habitual en español.
-    - No debe ser una palabra baúl o de significado excesivamente general.
-    - No debe ser un extranjerismo.
-    - No debe ser un tecnicismo.
-    - No debe ser un cultismo.
-    - No debe ser un coloquialismo.
-    - No debe ser un vulgarismo.
-    - No debe ser un localismo o regionalismo.
-    - No debe tener más de 10 letras.
-    - No debe tener más de 5 sílabas.
+        Tu tarea consiste únicamente en sustituir esa palabra por una
+        alternativa adecuada según el problema detectado.
+    
+        Problema detectado:
+        {instruccion_criterio}
+    
+        Reglas:
+        - No cambies ninguna otra palabra de la oración.
+        - Mantén el significado original.
+        - Mantén el mismo tiempo y modo verbal, si la palabra marcada es un verbo.
+        - Conserva el mismo orden de la oración.
+        - Mantén el género y el número cuando corresponda.
+        - La alternativa debe ser natural en el contexto de la oración.
+        - No añadas información nueva.
+        - No elimines información relevante.
+        - Si no existe una alternativa adecuada, responde exactamente "SIN_CAMBIOS".
+        
+        La palabra o expresión generada DEBE cumplir TODAS las siguientes
+        condiciones:
+        - Debe ser léxico frecuente y habitual en español.
+        - No debe ser una palabra baúl o de significado excesivamente general.
+        - No debe ser un extranjerismo.
+        - No debe ser un tecnicismo.
+        - No debe ser un cultismo.
+        - No debe ser un coloquialismo.
+        - No debe ser un vulgarismo.
+        - No debe ser un localismo o regionalismo.
+        - No debe tener más de 10 letras.
+        - No debe tener más de 5 sílabas.
+    
+        Oración:
+        {oracion}
+    
+        Palabra marcada:
+        {palabra}
+    
+        Criterio:
+        {criterio}
+    
+        Devuelve únicamente la oración completa con la palabra sustituida.
+        No añadas explicaciones, comillas ni comentarios.
+        """
+    else:
+        instruccion = f"""
+        Recibirás una oración en la que se ha detectado el criterio
+        "{criterio}".
 
-    Oración:
-    {oracion}
+        Tu tarea consiste en revisar TODAS las palabras de la oración y
+        sustituir ÚNICAMENTE aquellas que presenten el problema indicado
+        por ese criterio.
 
-    Palabra marcada:
-    {palabra}
+        Problema detectado:
+        {instruccion_criterio}
 
-    Criterio:
-    {criterio}
+        REGLA PRINCIPAL:
+        - Cambia TODAS y SOLO las palabras que cumplan el criterio "{criterio}".
+        - No cambies ninguna palabra que no cumpla ese criterio.
+        - Puede haber una o varias palabras que deban modificarse.
+        - No debes modificar palabras por otros motivos diferentes al criterio
+          indicado.
 
-    Devuelve únicamente la oración completa con la palabra sustituida.
-    No añadas explicaciones, comillas ni comentarios.
-    """
+        Reglas:
+        - Mantén el significado original.
+        - No añadas información nueva.
+        - No elimines información relevante.
+        - Conserva el orden de la oración.
+        - Mantén el tiempo y modo verbal cuando corresponda.
+        - Mantén el género y el número cuando corresponda.
+        - Las sustituciones deben ser naturales en el contexto.
+        - Si una palabra cumple el criterio pero no existe una alternativa
+          adecuada, mantenla sin cambios.
+        - Si ninguna palabra necesita ser modificada, responde exactamente
+          "SIN_CAMBIOS".
+
+        Toda palabra o expresión que utilices como sustitución DEBE cumplir
+        también estas condiciones:
+        - Debe ser léxico frecuente y habitual en español.
+        - No debe ser una palabra baúl o de significado excesivamente general.
+        - No debe ser un extranjerismo.
+        - No debe ser un tecnicismo.
+        - No debe ser un cultismo.
+        - No debe ser un coloquialismo.
+        - No debe ser un vulgarismo.
+        - No debe ser un localismo o regionalismo.
+        - No debe tener más de 10 letras.
+        - No debe tener más de 5 sílabas.
+
+        Oración:
+        {oracion}
+
+        Criterio que debes corregir:
+        {criterio}
+
+        Devuelve únicamente la oración completa con las sustituciones realizadas.
+        No añadas explicaciones, comillas ni comentarios.
+        """
 
     response: ChatResponse = chat(
         #model = "nichonauta/pepita-2-2b-it-v5",
