@@ -311,25 +311,7 @@ document.getElementById("toggleHighlight").addEventListener("change", (e) => {
     }
 });
 
-document.getElementById("closeSuggestionModal").addEventListener(
-    "click",
-    closeSuggestionInfoModal
-);
 
-document.getElementById("suggestionModalOk").addEventListener(
-    "click",
-    closeSuggestionInfoModal
-);
-
-// Cerrar también haciendo clic fuera del cuadro
-document.getElementById("suggestionInfoModal").addEventListener(
-    "click",
-    function(event) {
-        if (event.target === this) {
-            closeSuggestionInfoModal();
-        }
-    }
-);
 
 function resetEditor() {
     // Vaciar el editor
@@ -2410,22 +2392,8 @@ async function addCommentText() {
     overlay.style.display ="none";
     analysisPerformed=true;
     lastStructure = getDocumentStructureSignature();
-    if (!suggestionInfoShown) {
-        showSuggestionInfoModal();
-        suggestionInfoShown = true;
-    }
-}
 
-function showSuggestionInfoModal() {
-    const modal = document.getElementById("suggestionInfoModal");
-    modal.style.display = "flex";
 }
-
-function closeSuggestionInfoModal() {
-    const modal = document.getElementById("suggestionInfoModal");
-    modal.style.display = "none";
-}
-
 
 
 // Añadir comentarios del párrafo seleccionado

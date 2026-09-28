@@ -553,46 +553,69 @@ html, body {
     gap: 10px;
 }
 
-.suggestion-modal-content h3 {
-    margin-top: 0;
-    margin-bottom: 18px;
+.first-analysis-modal {
+    display: none;
+    position: fixed;
+    z-index: 10001;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+
+    align-items: center;
+    justify-content: center;
 }
 
-.suggestion-modal-content p {
-    margin: 10px 0;
-    line-height: 1.5;
+.first-analysis-modal-content {
+    position: relative;
+    width: 330px;
+    max-width: calc(100% - 30px);
+    padding: 22px 24px;
+    background: #fefefe;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    text-align: center;
 }
 
-.suggestion-modal-close {
+.first-analysis-modal-content h3 {
+    margin: 0 0 12px;
+    font-size: 18px;
+}
+
+.first-analysis-modal-content p {
+    margin: 8px 0;
+    line-height: 1.4;
+    font-size: 14px;
+}
+
+.first-analysis-modal-close {
     position: absolute;
-    top: 10px;
-    right: 14px;
+    top: 6px;
+    right: 10px;
 
     border: none;
     background: none;
-    font-size: 28px;
+    font-size: 22px;
     cursor: pointer;
     color: #666;
 }
 
-.suggestion-modal-close:hover {
+.first-analysis-modal-close:hover {
     color: #222;
 }
 
-.suggestion-modal-button {
-    margin-top: 20px;
-    padding: 10px 24px;
+.first-analysis-modal-button {
+    margin-top: 14px;
+    padding: 7px 20px;
 
     border: none;
-    border-radius: 6px;
+    border-radius: 5px;
     background: #3EC4CF;
     color: white;
 
-    font-size: 15px;
+    font-size: 14px;
     cursor: pointer;
 }
 
-.suggestion-modal-button:hover {
+.first-analysis-modal-button:hover {
     opacity: 0.9;
 }
 
