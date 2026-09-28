@@ -1,6 +1,5 @@
 let quill;
 let comments = [];
-let commentIdCounter = 1;
 let commentsLocked = false;
 let isHoveringNumber = false;
 let isHoveringPopup = false;
@@ -13,7 +12,6 @@ let analyzedParagraphNumber = null;
 let totalOracionesPorParrafo = {};
 let conteoErroresPorTipoParrafo = {};
 let porcentajesPorTipoParrafo = {};
-let currentParagraphFilter = "all";
 let activeCommentId = null;
 let enableSentenceHighlight = true;
 let lastAnalyzedParagraphs = {};
@@ -36,9 +34,8 @@ let lastStructure = null;
 let originalContent = "";
 let selectedComment = null;
 
-let spellCheckMatches = [];
-
 let spellcheckTimeout = null;
+let suggestionInfoShown = false;
 
 function scheduleSpellcheck() {
     clearTimeout(spellcheckTimeout);
@@ -312,7 +309,27 @@ document.getElementById("toggleHighlight").addEventListener("change", (e) => {
             highlightByType(activeType);
         }
     }
-})
+});
+
+document.getElementById("closeSuggestionModal").addEventListener(
+    "click",
+    closeSuggestionInfoModal
+);
+
+document.getElementById("suggestionModalOk").addEventListener(
+    "click",
+    closeSuggestionInfoModal
+);
+
+// Cerrar también haciendo clic fuera del cuadro
+document.getElementById("suggestionInfoModal").addEventListener(
+    "click",
+    function(event) {
+        if (event.target === this) {
+            closeSuggestionInfoModal();
+        }
+    }
+);
 
 function resetEditor() {
     // Vaciar el editor
@@ -389,7 +406,7 @@ function detectAndFormatTitles() {
         if (!text) return;
 
         // No debe terminar en un signo de puntuación de cierre
-        const terminaEnPuntuacion = /[.!?:;!?]$/.test(text);
+        const terminaEnPuntuacion = /[.!?:;]$/.test(text);
 
         // Comprobar que el bloque está en negrita
         const contenido = block.querySelectorAll("*");
@@ -1850,7 +1867,7 @@ function renderComments(){
             lexFrec: `
                 <span class="highlight">Parece que se ha usado léxico poco frecuente, considere revisar el uso de palabras pocos frecuentes en español.</span><br><br>
                 Los textos divulgativos requieren usar palabras frecuentes del español y ampliamente conocidas por los hispanohablantes para maximizar las posibilidades de que los lectores conozcan su significado. <br><br>
-                Al hacer click con el botón derecho en alguna palabra remarcada dará la opción de generar una sugerencia.<br><br>
+                Al hacer click con el botón derecho en alguna oración remarcada dará la opción de generar una sugerencia.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 <u>Antes:</u><br>
                 <em>Dilucidar.</em><br><br>
@@ -1876,7 +1893,7 @@ function renderComments(){
             extranjerismo: `
                 <span class="highlight">Parece que se han utilizado extranjerismos, latinismos o arcaísmos, considere sustituirlos por equivalencias más actuales o ampliamente conocidas cuando sea posible.</span><br><br>
                 Los extranjerismos, latinismos o arcaísmos resultan, con frecuencia, expresiones poco habituales en el español actual. Por ello, se recomienda que se sustituyan por equivalencias más actuales cuando sea posible.<br><br>
-                Al hacer click con el botón derecho en alguna palabra remarcada dará la opción de generar una sugerencia.<br><br>
+                Al hacer click con el botón derecho en alguna oración remarcada dará la opción de generar una sugerencia.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 <u>Antes:</u><br>
                 <em>Ad hoc.</em><br><br>
@@ -1901,7 +1918,7 @@ function renderComments(){
             ambiguo: `
                 <span class="highlight">Parece que alguna expresión admite varias interpretaciones, considere sustituirla o precisarla para evitar posibles ambigüedades.</span><br><br>
                 Se deben evitar expresiones que admiten varias interpretaciones. Para ello, se puede recurrir a la sustitución de la palabra o a precisarla con un complemento.<br><br>
-                Al hacer click con el botón derecho en alguna palabra remarcada dará la opción de generar una sugerencia.<br><br>
+                Al hacer click con el botón derecho en alguna oración remarcada dará la opción de generar una sugerencia.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 <u>Antes:</u><br>
                 <em>Los expertos están preocupados por los últimos cambios en la corriente del hemisferio norte.</em><br><br>
@@ -1926,7 +1943,7 @@ function renderComments(){
             tecnicismo: `
                 <span class="highlight">Parece que se han utilizado tecnicismos que pueden dificultar la comprensión del texto, considere sustituir los innecesarios y explicar aquellos que resulten imprescindibles.</span><br><br>
                 Los textos con numerosos términos especializados son más difíciles de entender. Su comprensión mejora si los tecnicismos innecesarios se sustituyen por palabras más generales y los términos necesarios se explican en el primer uso.<br><br>
-                Al hacer click con el botón derecho en alguna palabra remarcada dará la opción de generar una sugerencia.<br><br>
+                Al hacer click con el botón derecho en alguna oración remarcada dará la opción de generar una sugerencia.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 <u>Antes:</u><br>
                 <em>La pérdida de la cubierta de hielo en el Océano Ártico genera un bucle de retroalimentación positiva que reduce drásticamente el <span class="highlight">albedo</span> de la región.</em><br><br>
@@ -2001,7 +2018,7 @@ function renderComments(){
             coloquialismo: `
                 <span class="highlight">Parece que se han utilizado expresiones coloquiales, considere sustituirlas por formulaciones más adecuadas para un texto divulgativo.</span><br><br>
                 Los textos divulgativos deben evitar expresiones excesivamente informales. Los coloquialismos pueden reducir la percepción de rigor y profesionalidad.<br><br>
-                Al hacer click con el botón derecho en alguna palabra remarcada dará la opción de generar una sugerencia.<br><br>
+                Al hacer click con el botón derecho en alguna oración remarcada dará la opción de generar una sugerencia.<br><br>
                 <strong>Ejemplo</strong><br><br>
                 <u>Antes:</u><br>
                 <em>Las temperaturas <span class="highlight">se dispararon</span> una barbaridad.</em><br><br>
@@ -2011,7 +2028,7 @@ function renderComments(){
                 <span class="highlight">Parece que se han utilizado vulgarismos o giros inapropiados, considere sustituirlos por expresiones más adecuadas a los textos divulgativos.</span><br><br>
                 Los textos divulgativos deben evitar expresiones vulgares o inapropiadas. Los vulgarismos pueden afectar a la credibilidad del documento y dificultar su difusión en contextos académicos o profesionales.<br><br>
                 Más información: <a href="https://www.rae.es/libro-estilo-lengua-espa%C3%B1ola/palabras-del-diccionario-cuyo-uso-puede-no-ser-apropiado" target="_blank" rel="noopener noreferrer">https://www.rae.es/libro-estilo-lengua-espa%C3%B1ola/palabras-del-diccionario-cuyo-uso-puede-no-ser-apropiado</a>
-                Al hacer click con el botón derecho en alguna palabra remarcada dará la opción de generar una sugerencia.<br><br>`,
+                Al hacer click con el botón derecho en alguna oración remarcada dará la opción de generar una sugerencia.<br><br>`,
             formato: `
                 <span class="highlight">Parece que existen inconsistencias de formato en el documento, considere homogeneizar los criterios de formato y presentación.</span><br><br>
                 Los textos divulgativos deben seguir criterios homogéneos de redacción y formato; y evitar la combinación de formatos.`,
@@ -2393,7 +2410,23 @@ async function addCommentText() {
     overlay.style.display ="none";
     analysisPerformed=true;
     lastStructure = getDocumentStructureSignature();
+    if (!suggestionInfoShown) {
+        showSuggestionInfoModal();
+        suggestionInfoShown = true;
+    }
 }
+
+function showSuggestionInfoModal() {
+    const modal = document.getElementById("suggestionInfoModal");
+    modal.style.display = "flex";
+}
+
+function closeSuggestionInfoModal() {
+    const modal = document.getElementById("suggestionInfoModal");
+    modal.style.display = "none";
+}
+
+
 
 // Añadir comentarios del párrafo seleccionado
 async function addCommentParagraph() {

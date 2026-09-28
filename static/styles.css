@@ -530,6 +530,17 @@ html, body {
   background-color: rgba(0, 0, 0, 0.5);
 }
 
+.suggestion-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+
+    align-items: center;
+    justify-content: center;
+}
+
 .suggestion-modal-content{
   background-color: #fefefe;
     margin: 3% auto;
@@ -540,6 +551,49 @@ html, body {
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+.suggestion-modal-content h3 {
+    margin-top: 0;
+    margin-bottom: 18px;
+}
+
+.suggestion-modal-content p {
+    margin: 10px 0;
+    line-height: 1.5;
+}
+
+.suggestion-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+
+    border: none;
+    background: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: #666;
+}
+
+.suggestion-modal-close:hover {
+    color: #222;
+}
+
+.suggestion-modal-button {
+    margin-top: 20px;
+    padding: 10px 24px;
+
+    border: none;
+    border-radius: 6px;
+    background: #3EC4CF;
+    color: white;
+
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.suggestion-modal-button:hover {
+    opacity: 0.9;
 }
 
 .modal-body {

@@ -43,74 +43,123 @@ def evaluate_text(texto, fin):
     return resultados
 
 def evaluate_sentences(texto):
-    inciso = "Existe un inciso cuando una construcción interrumpe la estructura principal de la oración para añadir información adicional, aclaratoria o secundaria. Puede aparecer entre comas, paréntesis, rayas u otros signos equivalentes. No consideres incisos las comas que separan elementos de una enumeración ni las que forman parte de la estructura sintáctica normal. ¿Existe alguna oración con inciso en el texto?"
-    modificador = "Existe un modificador o complemento entre el sujeto y su verbo principal cuando una información adicional interrumpe su relación directa. Solo debe detectarse si está realmente entre el sujeto y el verbo principal. No consideres modificaciones que formen parte del propio sujeto ni complementos posteriores al verbo. ¿Existe alguna oración con un modificador entre el sujeto y el verbo principal en el texto?"
-    coordinada = "Existe una oración coordinada si la oración contiene tres o más proposiciones coordinadas. Una proposición coordinada está al mismo nivel sintáctico que otra y se une a ella mediante un nexo coordinante explícito, como 'y', 'e', 'ni', 'o', 'u', 'pero', 'sino', etc. Solo cuenta la coordinación cuando el nexo une proposiciones u oraciones, no palabras o grupos de palabras. ¿Existe alguna oración coordinada en el texto?"
-    yuxtaposicion = "Existe una oración yuxtapuesta si la oración contiene tres o más proposiciones yuxtapuestas. Una proposición yuxtapuesta está al mismo nivel sintáctico que otra y se relaciona con ella sin nexo coordinante explícito, únicamente mediante un signo de puntuación, como coma, punto y coma o dos puntos. Solo cuenta la yuxtaposición cuando el signo separa dos proposiciones u oraciones del mismo nivel sintáctico. ¿Existe alguna oración yuxtapuesta en el texto?"
-    relativa = "Existe una oración de relativo compleja por su estructura o por la distancia entre la relativa y su antecedente. Es compleja si cumple al menos una de estas condiciones: 1. Relativos encapsulados: una oración de relativo aparece dentro de otra oración de relativo. 2. Relativo alejado de su antecedente: existe una cantidad considerable de material entre ambos, especialmente otras proposiciones, incisos u otros elementos que dificulten identificar el referente. ¿Existe alguna oración de relativo compleja en el texto?"
-    concordancia = "¿Existe alguna oración con errores gramaticales de concordancia en el texto?"
-    gerundio = "Existe un uso erróneo del gerundio cuando expresa una acción posterior a la principal. Normativamente, el gerundio debe expresar normalmente una acción simultánea o anterior, no posterior. Presta especial atención a estructuras donde primero ocurre la acción del verbo principal y después la expresada por el gerundio. ¿Existe un uso erróneo del gerundio?"
-    redundancia = "Existe redundancia cuando se repite innecesariamente una misma información, idea o significado mediante palabras o expresiones que no aportan contenido nuevo. ¿Existe alguna oración con redundancia innecesaria en el texto?"
-    enfasis = "Existe una formulación enfática cuando contiene expresiones intensificadoras, reiterativas o enfáticas innecesarias que pueden hacer el mensaje más complejo o menos directo. ¿Existe alguna oración con énfasis innecesario para transmitir el significado?"
-    rodeos = "Existe un rodeo expresivo cuando una idea puede expresarse de forma más directa, sencilla y concisa mediante un verbo simple, pero se usa una construcción más larga o perifrástica que añade complejidad innecesaria. Debe poder sustituirse la expresión nominal o construcción equivalente por un verbo simple sin cambiar significativamente el significado. ¿Existe algún rodeo en el texto?"
-    negativas = "Existe una oración negativa cuando contiene dos o más elementos de negación combinados en la misma estructura. Cuenta como elementos negativos: 1. Partículas, pronombres o determinantes negativos explícitos ('no', 'jamás', 'ningún', etc.). 2. Palabras o expresiones con significado negativo ('infrecuente', 'desleal', 'imposible', etc.). ¿Existe alguna oración negativa en el texto?"
-    secundaria = "Existe información secundaria cuando la oración contiene contenido adicional no necesario para comprender la idea principal, introducido como información complementaria, aclaratoria o accesoria. Se dice cuando una idea principal claramente identificable se combina con uno o varios datos secundarios que pueden dificultar innecesariamente la comprensión. ¿Existe información secundaria en el texto?"
-
-    resultados_oracion = jev.decide(texto,
-        [{"type": "noul", "instructions": inciso, "options": ["no", "yes"]},
-         {"type": "noul", "instructions": modificador, "options": ["no", "yes"]},
-         {"type": "noul", "instructions": coordinada, "options": ["no", "yes"]},
-         {"type": "noul", "instructions": yuxtaposicion, "options": ["no", "yes"]},
-         {"type": "noul", "instructions": relativa, "options": ["no", "yes"]},
-         {"type": "noul", "instructions": concordancia, "options": ["no", "yes"]},
-         {"type": "noul", "instructions": gerundio, "options": ["no", "yes"]},
-         {"type": "noul", "instructions": redundancia, "options": ["no", "yes"]},
-         {"type": "noul", "instructions": enfasis, "options": ["no", "yes"]},
-         {"type": "noul", "instructions": rodeos, "options": ["no", "yes"]},
-         {"type": "noul", "instructions": negativas, "options": ["no", "yes"]},
-         {"type": "noul", "instructions": secundaria, "options": ["no", "yes"]}])
-
-    instrucciones_oracion = {0: "inciso",
-                     1: "modificador",
-                     2: "coordinadada",
-                     3: "yuxtaposicion",
-                     4: "relativa",
-                     5: "concordancia",
-                     6: "gerundio",
-                     7: "redundancia",
-                     8: "enfasis",
-                     9: "rodeos",
-                     10:"negativas",
-                     11: "secundaria"}
-    criterios_oracion = []
-
-    for i, resultado in enumerate(resultados_oracion):
-        if resultado["noul"]>0.5:
-            criterios_oracion.append(instrucciones_oracion[i])
-
-    perdida_referente = "Existe pérdida de referente cuando no se puede identificar claramente a qué persona, objeto, concepto o entidad se refiere una expresión posterior del párrafo. Puede ocurrir si un pronombre, demostrativo o expresión nominal no tiene un antecedente claro, si hay varios antecedentes posibles o si la referencia no puede relacionarse fácilmente con la información previa. ¿Existe pérdida de referente en el texto?"
-    uso_abundante_negativas = "Existe un uso abundante de formulaciones negativas solo si se cumplen ambas condiciones: 1. Al menos dos oraciones del párrafo contienen una acumulación de elementos o expresiones de modalidad negativa.  2. La repetición de estas formulaciones tiene una presencia relevante en el párrafo. ¿Existe un uso abundante de formulaciones negativas en el texto?"
-    idea_principal = "Existe presentación tardía de la idea principal cuando el mensaje central del párrafo aparece después de una parte significativa de información secundaria, contextual o explicativa, de modo que el lector debe avanzar bastante para identificarlo. ¿Existe presentación tardía de la idea principal en el texto?"
-
-    resultados_parrafo = jev.decide(texto,
-                                    [{"type": "noul", "instructions": perdida_referente, "options": ["no", "yes"]},
-                                     {"type": "noul", "instructions": uso_abundante_negativas, "options": ["no", "yes"]},
-                                     {"type": "noul", "instructions": idea_principal, "options": ["no", "yes"]}])
-
-    instrucciones_parrafo = {
-        0: "perdida_referente",
-        1: "uso_abundante_negativas",
-        2: "idea_principal"
+    aspectos_oracion = {
+        "inciso": "Existe un inciso cuando una construcción interrumpe la estructura principal de la oración para añadir información adicional, aclaratoria o secundaria. Puede aparecer entre comas, paréntesis, rayas u otros signos equivalentes. No consideres incisos las comas que separan elementos de una enumeración ni las que forman parte de la estructura sintáctica normal. ¿Existe alguna oración con inciso en el texto?",
+    "modificador": "Existe un modificador o complemento entre el sujeto y su verbo principal cuando una información adicional interrumpe su relación directa. Solo debe detectarse si está realmente entre el sujeto y el verbo principal. No consideres modificaciones que formen parte del propio sujeto ni complementos posteriores al verbo. ¿Existe alguna oración con un modificador entre el sujeto y el verbo principal en el texto?",
+    "coordinada": "Existe una oración coordinada si la oración contiene tres o más proposiciones coordinadas. Una proposición coordinada está al mismo nivel sintáctico que otra y se une a ella mediante un nexo coordinante explícito, como 'y', 'e', 'ni', 'o', 'u', 'pero', 'sino', etc. Solo cuenta la coordinación cuando el nexo une proposiciones u oraciones, no palabras o grupos de palabras. ¿Existe alguna oración coordinada en el texto?",
+    "yuxtaposicion": "Existe una oración yuxtapuesta si la oración contiene tres o más proposiciones yuxtapuestas. Una proposición yuxtapuesta está al mismo nivel sintáctico que otra y se relaciona con ella sin nexo coordinante explícito, únicamente mediante un signo de puntuación, como coma, punto y coma o dos puntos. Solo cuenta la yuxtaposición cuando el signo separa dos proposiciones u oraciones del mismo nivel sintáctico. ¿Existe alguna oración yuxtapuesta en el texto?",
+    "relativa": "Existe una oración de relativo compleja por su estructura o por la distancia entre la relativa y su antecedente. Es compleja si cumple al menos una de estas condiciones: 1. Relativos encapsulados: una oración de relativo aparece dentro de otra oración de relativo. 2. Relativo alejado de su antecedente: existe una cantidad considerable de material entre ambos, especialmente otras proposiciones, incisos u otros elementos que dificulten identificar el referente. ¿Existe alguna oración de relativo compleja en el texto?",
+    "concordancia": "¿Existe alguna oración con errores gramaticales de concordancia en el texto?",
+    "gerundio": "Existe un uso erróneo del gerundio cuando expresa una acción posterior a la principal. Normativamente, el gerundio debe expresar normalmente una acción simultánea o anterior, no posterior. Presta especial atención a estructuras donde primero ocurre la acción del verbo principal y después la expresada por el gerundio. ¿Existe un uso erróneo del gerundio?",
+    "redundancia": "Existe redundancia cuando se repite innecesariamente una misma información, idea o significado mediante palabras o expresiones que no aportan contenido nuevo. ¿Existe alguna oración con redundancia innecesaria en el texto?",
+    "enfasis": "Existe una formulación enfática cuando contiene expresiones intensificadoras, reiterativas o enfáticas innecesarias que pueden hacer el mensaje más complejo o menos directo. ¿Existe alguna oración con énfasis innecesario para transmitir el significado?",
+    "rodeos": "Existe un rodeo expresivo cuando una idea puede expresarse de forma más directa, sencilla y concisa mediante un verbo simple, pero se usa una construcción más larga o perifrástica que añade complejidad innecesaria. Debe poder sustituirse la expresión nominal o construcción equivalente por un verbo simple sin cambiar significativamente el significado. ¿Existe algún rodeo en el texto?",
+    "negativas": "Existe una oración negativa cuando contiene dos o más elementos de negación combinados en la misma estructura. Cuenta como elementos negativos: 1. Partículas, pronombres o determinantes negativos explícitos ('no', 'jamás', 'ningún', etc.). 2. Palabras o expresiones con significado negativo ('infrecuente', 'desleal', 'imposible', etc.). ¿Existe alguna oración negativa en el texto?",
+    "secundaria": "Existe información secundaria cuando la oración contiene contenido adicional no necesario para comprender la idea principal, introducido como información complementaria, aclaratoria o accesoria. Se dice cuando una idea principal claramente identificable se combina con uno o varios datos secundarios que pueden dificultar innecesariamente la comprensión. ¿Existe información secundaria en el texto?"
     }
-    criterios_parrafo = []
 
-    for i, resultado in enumerate(resultados_parrafo):
-        if resultado["noul"]>0.5:
-            criterios_parrafo.append(instrucciones_parrafo[i])
+    aspectos_parrafo = {
+        "perdida_referente": "Existe pérdida de referente cuando no se puede identificar claramente a qué persona, objeto, concepto o entidad se refiere una expresión posterior del párrafo. Puede ocurrir si un pronombre, demostrativo o expresión nominal no tiene un antecedente claro, si hay varios antecedentes posibles o si la referencia no puede relacionarse fácilmente con la información previa. ¿Existe pérdida de referente en el texto?",
+    "uso_abundante_negativas": "Existe un uso abundante de formulaciones negativas solo si se cumplen ambas condiciones: 1. Al menos dos oraciones del párrafo contienen una acumulación de elementos o expresiones de modalidad negativa.  2. La repetición de estas formulaciones tiene una presencia relevante en el párrafo. ¿Existe un uso abundante de formulaciones negativas en el texto?",
+    "idea_principal": "Existe presentación tardía de la idea principal cuando el mensaje central del párrafo aparece después de una parte significativa de información secundaria, contextual o explicativa, de modo que el lector debe avanzar bastante para identificarlo. ¿Existe presentación tardía de la idea principal en el texto?"
 
-    resultados = ev_sentences(texto, aspectos_seleccionados=criterios_oracion, aspectos_parrafo_seleccionados=criterios_parrafo)
+    }
 
-    return resultados
+    oraciones = separar_oraciones(texto)
+
+    if not oraciones:
+        return {
+            "oracion": [],
+            "parrafo": []
+        }
+
+    resultados_oraciones = []
+
+    instrucciones_oracion = [
+            {
+                "type": "noul",
+                "instructions": descripcion,
+                "options": ["no", "yes"]
+            }
+            for descripcion in aspectos_oracion.values()
+         ]
+
+    for item in oraciones:
+        texto_oracion = item["oracion"]
+
+        evaluaciones =  jev.decide(
+            texto_oracion,
+            instrucciones_oracion
+        )
+
+        for criterio, evaluacion in zip(aspectos_oracion.keys(), evaluaciones):
+            if evaluacion["noul"]>0.5:
+                resultados_oraciones.append({
+                    "inicio": item["inicio"],
+                    "oracion": texto_oracion,
+                    "aspecto": criterio,
+                    "razonamiento": ""
+                })
+
+    instrucciones_parrafo = [
+        {
+            "type": "noul",
+            "instructions": descripcion,
+            "options": ["no", "yes"]
+        }
+        for descripcion in aspectos_parrafo.values()
+    ]
+
+    evaluaciones_parrafo = jev.decide(
+        texto,
+        instrucciones_parrafo
+    )
+
+    resultados_parrafo = []
+
+    for criterio, evaluacion in zip(aspectos_parrafo.keys(), evaluaciones_parrafo):
+        if evaluacion["noul"]>0.5:
+            resultados_parrafo.append({
+                "aspecto": criterio,
+                "razonamiento": ""
+            })
+
+    #instrucciones_oracion = {0: "inciso",
+    #                 1: "modificador",
+    #                 2: "coordinadada",
+    #                 3: "yuxtaposicion",
+    #                 4: "relativa",
+    #                 5: "concordancia",
+    #                 6: "gerundio",
+    #                 7: "redundancia",
+    #                 8: "enfasis",
+    #                 9: "rodeos",
+    #                 10:"negativas",
+    #                 11: "secundaria"}
+
+    #for i, resultado in enumerate(resultados_oracion):
+    #    if resultado["noul"]>0.5:
+    #        criterios_oracion.append(instrucciones_oracion[i])
+
+
+    #resultados_parrafo = jev.decide(texto,
+    #                                [{"type": "noul", "instructions": perdida_referente, "options": ["no", "yes"]},
+    #                                 {"type": "noul", "instructions": uso_abundante_negativas, "options": ["no", "yes"]},
+    #                                 {"type": "noul", "instructions": idea_principal, "options": ["no", "yes"]}])
+
+    #instrucciones_parrafo = {
+    #    0: "perdida_referente",
+    #    1: "uso_abundante_negativas",
+    #    2: "idea_principal"
+    #}
+
+    #for i, resultado in enumerate(resultados_parrafo):
+    #    if resultado["noul"]>0.5:
+    #        criterios_parrafo.append(instrucciones_parrafo[i])
+
+    #resultados = ev_sentences(texto, aspectos_seleccionados=criterios_oracion, aspectos_parrafo_seleccionados=criterios_parrafo)
+
+    return {"oracion": resultados_oraciones, "parrafo": resultados_parrafo}
 
 def evaluate_words(texto):
     aspectos = {
