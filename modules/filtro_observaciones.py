@@ -1,27 +1,12 @@
 from openjev_decide import OpenJev
 from modules.observaciones_llm import *
+import gc
+import torch
 # code/openjev_decide.py
-jev = OpenJev.from_pretrained("AlexWortega/openjev", subfolder="qwen3.5-4b-nli-v5", device="cuda")
 
-texto1= """
-Texto experimental sobre cambio climático y guía de observaciones
-El cambio climático debe entenderse aquí como una alteración persistente de los patrones medios del sistema terrestre que afecta a la atmósfera, al océano, a la criosfera y a la biosfera, y que en 2026 se observa con claridad en indicadores como la concentración de dióxido de carbono, que los registros de NASA situaron en 431 ppm en abril de ese año, la temperatura media global, la extensión del hielo marino y la frecuencia de episodios extremos, aunque la interpretación de esos datos requiere series largas, contextos comparables y cautela metodológica, porque un valor aislado no explica por sí solo un proceso complejo y, sin embargo, a menudo se presenta como si cerrara el debate, algo que conviene evitar cuando se intenta comunicar ciencia a personas con distintas trayectorias lectoras. En ese marco, la literatura reciente del IPCC y de la Organización Meteorológica Mundial coincide en que la influencia humana sobre el calentamiento es inequívoca, pero esa constatación, que se apoya en observaciones, modelos climáticos y atribución estadística, suele explicarse mediante secuencias demasiado densas, con incisos, subordinadas y términos técnicos que no siempre se reformulan para el público general, lo cual dificulta la comprensión del mensaje aunque el contenido factual sea sólido.
 
-Los océanos absorben gran parte del exceso de calor, de modo que la capa superior se ha ido calentando, la expansión térmica ha contribuido al aumento del nivel del mar y la estratificación ha cambiado la distribución de nutrientes, salinidad y oxígeno disuelto; por eso, cuando se habla de impactos marinos, conviene distinguir entre procesos físicos, químicos y biológicos, aunque en textos poco cuidadosos todo se mezcle en una sola cadena de causalidad con expresiones del tipo “llevar a cabo un seguimiento exhaustivo” o “efectuar una evaluación integral” en lugar de verbos más directos. En paralelo, el retroceso de glaciares, de casquetes polares y de nieve estacional altera el albedo, alimenta retroalimentaciones positivas y modifica la disponibilidad de agua en cuencas de montaña, lo que afecta a riego, abastecimiento urbano, energía hidroeléctrica y ecosistemas, y sin embargo a veces se presenta mediante listas desordenadas, mezclando sustantivos, infinitivos y sintagmas nominales de longitud desigual, con una marcación vacilante que impide identificar con facilidad qué elemento pertenece a cada categoría.
-
-Los episodios de calor extremo, las sequías prolongadas, las lluvias intensas y los incendios forestales muestran con especial nitidez que el calentamiento no actúa solo sobre la temperatura, sino sobre la salud, la productividad y la movilidad humana, y esta observación puede formularse sin dramatismo, pero también sin esconder la relación entre exposición, vulnerabilidad y capacidad de respuesta, porque un lenguaje vago tiende a hablar de “eventos” o de “fenómenos” cuando en realidad hay personas, infraestructuras y decisiones políticas concretas. Desde el punto de vista epidemiológico, la combinación de calor, ozono troposférico, mala calidad del aire y estrés hídrico incrementa riesgos cardiovasculares y respiratorios, mientras que en agricultura la variabilidad de las precipitaciones y la elevación de las temperaturas obligan a revisar calendarios de siembra, selección de cultivos y manejo del suelo; no obstante, en muchos textos de divulgación esa información aparece envuelta en un estilo frío y excesivamente culto, saturado de tecnicismos, siglas y nominalizaciones como “implementación de medidas de mitigación” o “realización de evaluaciones de impacto”.
-
-La respuesta al cambio climático incluye mitigación y adaptación, pero también gobernanza, financiación, justicia distributiva y aceptación social, de manera que no basta con enumerar tecnologías como la solar, la eólica o el almacenamiento, sino que hay que explicar quién paga la transición, cómo se reparte el coste y qué indicadores permiten valorar si una política reduce emisiones sin aumentar desigualdades; por ello, una exposición rigurosa debería partir de ideas concretas y progresar hacia formulaciones más abstractas, no al revés, y evitar giros formularios del tipo “en el presente contexto” o “a los efectos oportunos”. Si se quiere hablar de la transición energética en un lenguaje accesible, resulta preferible decir “cambiar el sistema de energía” antes que “proceder a la descarbonización del mix”, y conviene además no abusar de extranjerismos, latinismos ni localismos que pueden resultar opacos para lectoras y lectores de distintos países, porque un español general, apoyado cuando sea necesario en equivalencias como ordenador/computadora o coche/auto, favorece una lectura más amplia y menos sesgada por la variedad regional.
-
-Una explicación útil para el público general debería incluir ejemplos cotidianos, analogías moderadas y resúmenes breves que permitan retomar el hilo, por ejemplo comparar el exceso de gases de efecto invernadero con una manta que retiene más calor del necesario, siempre que la comparación se use con prudencia y no se convierta en una metáfora opaca o en una ironía difícil de descifrar; además, cuando se introducen datos, la información relevante debería aparecer primero, no al final de una oración interminable que obliga a reordenar mentalmente la frase para entenderla. También es recomendable dividir los contenidos en apartados, subtítulos y bloques breves, porque la lectura en pantalla se beneficia de jerarquías claras, de frases temáticas al inicio de cada sección y de apoyos visuales como gráficos, tablas o iconos bien descritos, aunque en muchos textos académicos esa estructura se omite y el lector debe recorrer párrafos extensos, con repeticiones sinonímicas y digresiones laterales, para llegar a la idea central.
-
-Desde el punto de vista metodológico, conviene recordar que los modelos climáticos no son oráculos, sino herramientas que integran ecuaciones físicas, observaciones satelitales y datos de superficie para explorar escenarios posibles, y que su valor aumenta cuando se explican sus límites, sus márgenes de incertidumbre y la diferencia entre proyección y predicción; sin embargo, en textos dirigidos a no especialistas a menudo se presenta la modelización con siglas no definidas, como GCM, RCP o SSP, o con fórmulas que no se reformulan, lo que obliga a quienes leen a suspender la comprensión hasta encontrar una aclaración que quizá no llega. A ello se añade un problema de estilo cuando el autor mezcla registros, alterna frases coloquiales con tecnicismos de laboratorio, introduce juicios subjetivos mediante adjetivos valorativos o usa dobles negaciones y pasivas impersonales que ocultan quién realiza la acción, de modo que el texto pierde voz, precisión y coherencia sintáctica al mismo tiempo.
-
-En la comunicación pública del clima también importa la relación entre texto y elementos multimodales: una figura sobre la trayectoria de las emisiones, un mapa de calor o una tabla de impactos requieren pie de figura, título explicativo, texto alternativo y coherencia con el argumento verbal, porque de lo contrario la imagen queda como adorno y el texto como una sucesión de afirmaciones sin soporte visual; además, cuando se citan fuentes, la presentación de la bibliografía debe seguir un formato estable, ya sea APA, MLA, Vancouver o Chicago, y no mezclar estilos sin justificación. Por eso, en un documento bien construido, los ejemplos, los casos de estudio y los resúmenes parciales ayudan a que la lectura avance de forma ordenada, pero aquí se ofrecen de manera irregular y, a veces, con notas al margen, referencias indirectas o alusiones que solo una persona especializada podría reconstruir sin esfuerzo.
-
-En conclusión, el cambio climático exige un tratamiento informado, claro y público, pero este texto experimental prefiere un cierre más bien recargado, con reiteraciones, con frases de transición que no siempre resultan elegantes y con una bibliografía que mezcla formatos, autor-fecha y numeración sin criterio único, precisamente para que un asistente de redacción pueda detectar fallos en la secuencia, en la consistencia y en la adecuación global del documento. Si en el futuro se añadieran módulos de análisis de sentimientos, verificación de evidencias o selección de variedad del español, el sistema debería incorporar también notas aclaratorias, contextualización de teorías y referencias mínimas a autores y obras, porque una mención como “como todos saben” presupone conocimientos que no se pueden dar por supuestos en un público heterogéneo y porque una buena herramienta de lenguaje claro debe incluir a quien no comparte el mismo bagaje cultural, lingüístico o académico."""
-fin = "Informativo"
 def evaluate_text(texto, fin):
+    jev = OpenJev.from_pretrained("AlexWortega/openjev", subfolder="qwen3.5-4b-nli-v5", device="cuda")
     instrucciones1 = " Existe falta de coherencia interna cuando las ideas de un texto presentan contradicciones, incompatibilidades lógicas, reiteraciones innecesarias o saltos informativos que dificultan la comprensión global del mensaje. Se manifiesta cuando una afirmación contradice otra, cuando se repite información sin aportar contenido nuevo o cuando se introducen ideas sin relación clara con el contenido previo. ¿Existe falta de coherencia interna?"
     instrucciones2 =  "Existe falta de progresión temática cuando las ideas no avanzan de forma ordenada y el texto no desarrolla gradualmente la información. Se manifiesta mediante cambios bruscos de tema, introducción de información sin conexión con lo anterior o ausencia de relaciones lógicas entre las distintas partes del texto. La progresión temática adecuada implica que cada idea amplíe, complemente o desarrolle la información previamente presentada. ¿Existe falta de progresión temática?"
     instrucciones3 = "Existe falta de claridad entre ideas cuando sus relaciones no son evidentes para el lector. Puede deberse a ausencia o uso inadecuado de conectores o marcadores, o a relaciones no explícitas de causa-efecto, secuencia temporal, contraste, ejemplificación o adición. ¿Existe falta de claridad entre ideas?"
@@ -40,9 +25,13 @@ def evaluate_text(texto, fin):
                 {"type": "noul", "instructions": instrucciones6, "options": ["no", "yes"]},
                 {"type": "noul", "instructions": instrucciones7, "options": ["no", "yes"]},
                 {"type": "noul", "instructions": instrucciones8, "options": ["no", "yes"]}])
+    del jev
+    torch.cuda.empty_cache()
+    gc.collect()
     return resultados
 
 def evaluate_sentences(texto):
+    jev = OpenJev.from_pretrained("AlexWortega/openjev", subfolder="qwen3.5-4b-nli-v5", device="cuda")
     aspectos_oracion = {
         "inciso": "Existe un inciso cuando una construcción interrumpe la estructura principal de la oración para añadir información adicional, aclaratoria o secundaria. Puede aparecer entre comas, paréntesis, rayas u otros signos equivalentes. No consideres incisos las comas que separan elementos de una enumeración ni las que forman parte de la estructura sintáctica normal. ¿Existe alguna oración con inciso en el texto?",
     "modificador": "Existe un modificador o complemento entre el sujeto y su verbo principal cuando una información adicional interrumpe su relación directa. Solo debe detectarse si está realmente entre el sujeto y el verbo principal. No consideres modificaciones que formen parte del propio sujeto ni complementos posteriores al verbo. ¿Existe alguna oración con un modificador entre el sujeto y el verbo principal en el texto?",
@@ -159,9 +148,14 @@ def evaluate_sentences(texto):
 
     #resultados = ev_sentences(texto, aspectos_seleccionados=criterios_oracion, aspectos_parrafo_seleccionados=criterios_parrafo)
 
+    del jev
+    torch.cuda.empty_cache()
+    gc.collect()
+
     return {"oracion": resultados_oraciones, "parrafo": resultados_parrafo}
 
 def evaluate_words(texto):
+    jev = OpenJev.from_pretrained("AlexWortega/openjev", subfolder="qwen3.5-4b-nli-v5", device="cuda")
     aspectos = {
         "siglas": "Existe una sigla cuando la palabra o secuencia está formada por las iniciales de varias palabras y funciona como denominación abreviada (p. ej., OMS, ONU, UE, ADN). ¿Existe una sigla cuyo significado no está explicado ni puede conocerse por el contexto?",
         "lexico_poco_frecuente": "Existe léxico poco frecuente cuando una palabra es poco habitual en el uso general del español y puede resultar desconocida para una parte importante de los lectores. ¿Hay alguna palabra poco frecuente en el texto?",
@@ -222,4 +216,8 @@ def evaluate_words(texto):
     #        criterios.append(instrucciones[i])
 
     #resultados = ev_words(texto, aspectos_seleccionados=criterios)
+    del jev
+    torch.cuda.empty_cache()
+    gc.collect()
+
     return resultados
