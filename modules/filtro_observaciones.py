@@ -1,12 +1,11 @@
-from openjev_decide import OpenJev
+
 from modules.observaciones_llm import *
-import gc
-import torch
+
 # code/openjev_decide.py
 
 
-def evaluate_text(texto, fin):
-    jev = OpenJev.from_pretrained("AlexWortega/openjev", subfolder="qwen3.5-4b-nli-v5", device="cuda")
+def evaluate_text(jev, texto, fin):
+    
     instrucciones1 = " Existe falta de coherencia interna cuando las ideas de un texto presentan contradicciones, incompatibilidades lógicas, reiteraciones innecesarias o saltos informativos que dificultan la comprensión global del mensaje. Se manifiesta cuando una afirmación contradice otra, cuando se repite información sin aportar contenido nuevo o cuando se introducen ideas sin relación clara con el contenido previo. ¿Existe falta de coherencia interna?"
     instrucciones2 =  "Existe falta de progresión temática cuando las ideas no avanzan de forma ordenada y el texto no desarrolla gradualmente la información. Se manifiesta mediante cambios bruscos de tema, introducción de información sin conexión con lo anterior o ausencia de relaciones lógicas entre las distintas partes del texto. La progresión temática adecuada implica que cada idea amplíe, complemente o desarrolle la información previamente presentada. ¿Existe falta de progresión temática?"
     instrucciones3 = "Existe falta de claridad entre ideas cuando sus relaciones no son evidentes para el lector. Puede deberse a ausencia o uso inadecuado de conectores o marcadores, o a relaciones no explícitas de causa-efecto, secuencia temporal, contraste, ejemplificación o adición. ¿Existe falta de claridad entre ideas?"
@@ -25,13 +24,13 @@ def evaluate_text(texto, fin):
                 {"type": "noul", "instructions": instrucciones6, "options": ["no", "yes"]},
                 {"type": "noul", "instructions": instrucciones7, "options": ["no", "yes"]},
                 {"type": "noul", "instructions": instrucciones8, "options": ["no", "yes"]}])
-    del jev
-    torch.cuda.empty_cache()
-    gc.collect()
+    #del jev
+    #torch.cuda.empty_cache()
+    #gc.collect()
     return resultados
 
-def evaluate_sentences(texto):
-    jev = OpenJev.from_pretrained("AlexWortega/openjev", subfolder="qwen3.5-4b-nli-v5", device="cuda")
+def evaluate_sentences(jev, texto):
+    
     aspectos_oracion = {
         "inciso": "Existe un inciso cuando una construcción interrumpe la estructura principal de la oración para añadir información adicional, aclaratoria o secundaria. Puede aparecer entre comas, paréntesis, rayas u otros signos equivalentes. No consideres incisos las comas que separan elementos de una enumeración ni las que forman parte de la estructura sintáctica normal. ¿Existe alguna oración con inciso en el texto?",
     "modificador": "Existe un modificador o complemento entre el sujeto y su verbo principal cuando una información adicional interrumpe su relación directa. Solo debe detectarse si está realmente entre el sujeto y el verbo principal. No consideres modificaciones que formen parte del propio sujeto ni complementos posteriores al verbo. ¿Existe alguna oración con un modificador entre el sujeto y el verbo principal en el texto?",
@@ -148,14 +147,14 @@ def evaluate_sentences(texto):
 
     #resultados = ev_sentences(texto, aspectos_seleccionados=criterios_oracion, aspectos_parrafo_seleccionados=criterios_parrafo)
 
-    del jev
-    torch.cuda.empty_cache()
-    gc.collect()
-
+    #del jev
+    #torch.cuda.empty_cache()
+    #gc.collect()
+#
     return {"oracion": resultados_oraciones, "parrafo": resultados_parrafo}
 
-def evaluate_words(texto):
-    jev = OpenJev.from_pretrained("AlexWortega/openjev", subfolder="qwen3.5-4b-nli-v5", device="cuda")
+def evaluate_words(jev, texto):
+    
     aspectos = {
         "siglas": "Busca en la oración cualquier sigla, como OMS, ONU, UE o DNI. Si aparece una sigla y su significado no está explicado en la oración responde verdadero. Si no aparece ninguna sigla o si la sigla aparece acompañada de su significado responde falso.",
         "lexico_poco_frecuente": "Existe léxico poco frecuente cuando una palabra es poco habitual en el uso general del español y puede resultar desconocida para una parte importante de los lectores. ¿Hay alguna palabra poco frecuente en el texto?",
@@ -216,8 +215,6 @@ def evaluate_words(texto):
     #        criterios.append(instrucciones[i])
 
     #resultados = ev_words(texto, aspectos_seleccionados=criterios)
-    del jev
-    torch.cuda.empty_cache()
-    gc.collect()
+
 
     return resultados

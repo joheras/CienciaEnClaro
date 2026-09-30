@@ -18,6 +18,11 @@ from modules.filtro_observaciones import *
 
 from spellchecker import SpellChecker
 import re
+from openjev_decide import OpenJev
+import gc
+import torch
+
+jev = OpenJev.from_pretrained("AlexWortega/openjev", subfolder="qwen3.5-4b-nli-v5", device="cuda")
 
 spell = SpellChecker(language="es")
 #vocabulario_spacy = [
@@ -134,11 +139,11 @@ def dividir_parrafos(texto):
     return texto.split("\n")
 
 # Nos analiza todos los índices para un párrafo dado
-async def analizar_parrafo(texto, inicioParrafo, texto_completo=None):
+async def analizar_parrafo(jev,texto, inicioParrafo, texto_completo=None):
     result = []
 
-    evaluaciones_llm = evaluate_sentences(texto)
-    evaluaciones_palabras_llm = evaluate_words(texto)
+    evaluaciones_llm = evaluate_sentences(jev,texto)
+    evaluaciones_palabras_llm = evaluate_words(jev,texto)
 
     total_oraciones = 0
     oraciones_largas = 0
@@ -199,7 +204,11 @@ async def analyse_paragraph(request: Request):
     data = await request.json()
     texto = data['parrafo']
     inicioParrafo = data['start']
-    result = await analizar_parrafo(texto, inicioParrafo)
+    jev.model.cuda()
+    result = await analizar_parrafo(jev,texto, inicioParrafo)
+    jev.model.cpu()
+    torch.cuda.empty_cache()
+    gc.collect()
     return JSONResponse(content=result)
 
 
@@ -211,12 +220,14 @@ async def analyse_text(request: Request):
     texto = data.get("text", "")
     fin = data["intencionalidad"]
 
+
     parrafos = dividir_parrafos(texto)
     resultados = {} # Aquí voy a almacenar todos los comentarios por parrafo
 
+    jev.model.cuda()
     inicio = 0
     for i, parrafo in enumerate(parrafos, start=1):
-        data_parrafo = await analizar_parrafo(parrafo, inicio)
+        data_parrafo = await analizar_parrafo(jev,parrafo, inicio)
         resultados[i] = {
             "comentarios": data_parrafo["comentarios"],
             "stats": data_parrafo["stats"]
@@ -226,6 +237,9 @@ async def analyse_text(request: Request):
         #"comentarios": await stadistics_text(texto),
         "comentarios": await globales(texto, fin),
     "stats": ""}
+    jev.model.cpu()
+    torch.cuda.empty_cache()
+    gc.collect()
     return JSONResponse(content=resultados)
 
 
@@ -1157,12 +1171,12 @@ async def stadistics_text(texto):
     result.append(resumen)
     return {"global": result}
 
-async def llm_text(texto, fin):
+async def llm_text(jev,texto, fin):
     """ Dado un texto devuelve un resumen de dicho texto con los índices pragmático-discursivos que no cumplen las características deseadas evaluadas por un LLM"""
     result = []
     inicioParrafo = 0
     finParrafo = inicioParrafo + len(texto)
-    analisis = evaluate_text(texto, fin)
+    analisis = evaluate_text(jev, texto, fin)
     if analisis[0]['noul']>0.5:
         resumen = {
             "id": str(uuid.uuid4()),
@@ -1268,7 +1282,7 @@ async def globales(texto, fin):
     result.append(estadisticas)
     legibilidad = await legibility_text(texto)
     result.append(legibilidad)
-    pragmaticos = await llm_text(texto, fin)
+    pragmaticos = await llm_text(jev,texto, fin)
     result.append(pragmaticos)
     return result
 
