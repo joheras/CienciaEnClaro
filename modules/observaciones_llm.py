@@ -12,7 +12,7 @@ import re
 #lm = dspy.LM('ollama_chat/gemma4:12b', api_base='http://ollama:11434',think=False) #Grande
 
 #lm = dspy.LM("ollama_chat/gemma4:e4b", api_base='http://localhost:11434', think=False)
-lm = dspy.LM("ollama_chat/gemma4:e4b", api_base='http://ollama:11434', think=False)
+lm = dspy.LM("ollama_chat/gemma4:e2b", api_base='http://ollama:11434', think=False)
 
 dspy.configure(lm=lm)
 

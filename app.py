@@ -204,9 +204,9 @@ async def analyse_paragraph(request: Request):
     data = await request.json()
     texto = data['parrafo']
     inicioParrafo = data['start']
-    jev.ce.model.cuda()
+    #jev.ce.model.cuda()
     result = await analizar_parrafo(jev,texto, inicioParrafo)
-    jev.ce.model.cpu()
+    #jev.ce.model.cpu()
     torch.cuda.empty_cache()
     gc.collect()
     return JSONResponse(content=result)
@@ -224,7 +224,7 @@ async def analyse_text(request: Request):
     parrafos = dividir_parrafos(texto)
     resultados = {} # Aquí voy a almacenar todos los comentarios por parrafo
 
-    jev.ce.model.cuda()
+    #jev.ce.model.cuda()
     inicio = 0
     for i, parrafo in enumerate(parrafos, start=1):
         data_parrafo = await analizar_parrafo(jev,parrafo, inicio)
@@ -237,7 +237,7 @@ async def analyse_text(request: Request):
         #"comentarios": await stadistics_text(texto),
         "comentarios": await globales(texto, fin),
     "stats": ""}
-    jev.ce.model.cpu()
+    #jev.ce.model.cpu()
     torch.cuda.empty_cache()
     gc.collect()
     return JSONResponse(content=resultados)
