@@ -60,3 +60,30 @@ def latinism(palabra):
 
 def tecnisimos(palabra):
     return tecnico(palabra)
+
+def sigla(texto):
+    siglas = []
+    palabras = re.findall(
+        r'\b[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]+(?:-[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]+)*\b',
+        texto
+    )
+    for palabra in palabras:
+        letras = ''.join(c for c in palabra if c.isalpha())
+
+        if (
+                len(letras) >= 2
+                and letras.isupper()
+        ):
+            siglas.append(palabra)
+
+    siglas_con_puntos = re.findall(
+        r'\b(?:[A-ZÁÉÍÓÚÜÑ]\.\s*){2,}',
+        texto
+    )
+
+    for sigla in siglas_con_puntos:
+        sigla = sigla.strip()
+        if sigla not in siglas:
+            siglas.append(sigla)
+
+    return siglas

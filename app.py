@@ -612,20 +612,20 @@ async def lexsem_paragraph(texto, inicioParrafo, evaluaciones_llm=None, evaluaci
         palabra = palabra_llm["palabra"]
         oracion = palabra_llm["oracion"]
         inicioFrase = inicioParrafo + palabra_llm['inicioFrase']
-        if aspecto=="sigla":
-            resumen = {
-                "id": str(uuid.uuid4()),
-                "start": inicioPalabra,
-                "end": finPalabra,
-                "text": "Uso de siglas",
-                "description": "Evita el uso de siglas sin descripción",
-                "type": "léxico-semántico",
-                "name": "siglas",
-                "suggestion": "false",
-                "oracion": oracion,
-                "inicioFrase": inicioFrase
-            }
-            result.append(resumen)
+        #if aspecto=="sigla":
+        #    resumen = {
+        #        "id": str(uuid.uuid4()),
+        #        "start": inicioPalabra,
+        #        "end": finPalabra,
+        #        "text": "Uso de siglas",
+        #        "description": "Evita el uso de siglas sin descripción",
+        #        "type": "léxico-semántico",
+        #        "name": "siglas",
+        #        "suggestion": "false",
+        #        "oracion": oracion,
+        #        "inicioFrase": inicioFrase
+        #    }
+        #    result.append(resumen)
 
         if aspecto == "lexico_poco_frecuente":
             resumen = {
@@ -821,6 +821,21 @@ async def lexsem_paragraph(texto, inicioParrafo, evaluaciones_llm=None, evaluaci
                     "oracion": oracion,
                     "palabra": palabra,
                     "inicioFrase":inicioParrafo + sent.start_char
+                }
+                result.append(resumen)
+
+            if sigla(palabra):
+                resumen = {
+                    "id": str(uuid.uuid4()),
+                    "start": inicioPalabra,
+                    "end": finPalabra,
+                    "text": "Uso de siglas",
+                    "description": "Evita el uso de siglas sin descripción",
+                    "type": "léxico-semántico",
+                    "name": "siglas",
+                    "suggestion": "false",
+                    "oracion": oracion,
+                    "inicioFrase": inicioFrase
                 }
                 result.append(resumen)
 #            if latinism(palabra):

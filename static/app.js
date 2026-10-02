@@ -2991,6 +2991,10 @@ async function generateSuggestion(comment){
     overlay.style.display = "flex";
     currentModalComment.suggestion = "";
     suggestedTextArea.innerHTML = "";
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+        controller.abort();
+    }, 30000   );
     try {
         // Generamos la sugerencia
         const response = await fetch("/generar_sugerencia", {
@@ -3000,8 +3004,10 @@ async function generateSuggestion(comment){
                 oracion: comment.oracion,
                 palabra: comment.palabra,
                 criterio: comment.name
-            })
+            }),
+            signal: controller.signal
         });
+        clearTimeout(timeout);
         if (!response.ok){
             console.error(await response.text());
             return;
@@ -3016,8 +3022,15 @@ async function generateSuggestion(comment){
         originalTextArea.innerHTML = diff.original;
         suggestedTextArea.innerHTML = diff.suggested;
     } catch (err) {
-        console.error("Error generando sugerencia:",err);
-        suggestedTextArea.textContent = "error generando sugerencia";
+        clearTimeout(timeout);
+        if (err.name === "AbortError"){
+            console.log("La generación de la sugerencia ha superado los 30 segundos.");
+            suggestedTextArea.textContent =
+                "Nuestros servidores están saturados. Prueba en otro momento.";
+        } else {
+            console.error("Error generando sugerencia:",err);
+            suggestedTextArea.textContent = "Error generando sugerencia";
+        }
     }
     overlay.style.display ="none";
 }
